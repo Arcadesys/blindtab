@@ -355,7 +355,7 @@ button:disabled {
     flex-direction: column;
     align-items: flex-start; /* Align to left instead of center */
     justify-content: flex-start; /* Align to top instead of center */
-    padding: 0; /* Remove all padding */
+    padding: 10px; /* Add padding */
     overflow-x: visible; /* Allow horizontal overflow */
     box-sizing: border-box; /* Include padding in width/height calculations */
     white-space: nowrap; /* Prevent text wrapping */
