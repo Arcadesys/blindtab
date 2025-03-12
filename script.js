@@ -1764,6 +1764,7 @@ function editSong(index) {
         // Update format help text when format changes
         formatSelect.addEventListener('change', () => {
             updateFormatHelp(formatSelect.value);
+            updateSongContentFormat(formatSelect.value);
         });
         
         function updateFormatHelp(format) {
@@ -1771,6 +1772,32 @@ function editSong(index) {
                 formatHelp.innerHTML = 'Format: Place chords in square brackets before the word they go with.<br>Example: [G]Her green [Em]plastic watering can';
             } else {
                 formatHelp.innerHTML = 'Format: Place chords on a separate line above the lyrics.<br>Example:<br>G &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Em<br>Her green plastic watering can';
+            }
+        }
+        
+        // Function to update the song content based on the selected format
+        function updateSongContentFormat(format) {
+            const songIndex = parseInt(songEditorModal.dataset.songIndex);
+            if (isNaN(songIndex) || songIndex < 0 || songIndex >= songLibrary.length) return;
+            
+            const song = songLibrary[songIndex];
+            
+            if (format === 'brackets') {
+                lyricsInput.value = MarkdownParser.toChordInBrackets(song.data);
+            } else {
+                // Create markdown format with song info
+                const songInfo = {
+                    title: song.title,
+                    artist: song.artist,
+                    key: song.key || 'C'
+                };
+                
+                // Get just the content part (after the metadata)
+                const fullMarkdown = MarkdownParser.toMarkdown(song.data, songInfo);
+                const contentStartIndex = fullMarkdown.indexOf('---\n\n') + 5;
+                const contentOnly = fullMarkdown.substring(contentStartIndex);
+                
+                lyricsInput.value = contentOnly;
             }
         }
         
@@ -1835,13 +1862,14 @@ function editSong(index) {
     // Default to brackets format
     if (formatSelect) formatSelect.value = 'brackets';
     
-    // Convert song data to the selected format
-    if (lyricsInput) {
-        lyricsInput.value = MarkdownParser.toChordInBrackets(song.data);
-    }
-    
     // Store the current song index for saving
     songEditorModal.dataset.songIndex = index;
+    
+    // Convert song data to the selected format
+    if (lyricsInput) {
+        // Use the bracket format by default
+        lyricsInput.value = MarkdownParser.toChordInBrackets(song.data);
+    }
     
     // Show the modal
     songEditorModal.style.display = 'block';
