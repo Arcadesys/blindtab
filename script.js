@@ -175,10 +175,16 @@ let songTitle = "Fake Plastic Trees";
 let songArtist = "Radiohead";
 let currentSongMarkdown = ""; // Store the current song in Markdown format
 let autoResizeText = true; // Enable auto-resizing by default
+let showNumerals = false; // Default to showing chord names, not numerals
+let currentKey = 'G'; // Default key (G major for this song)
 
 // Chord mapping for transposition
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
 const flatChords = ['A', 'Bb', 'B', 'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab'];
+
+// Roman numeral mapping for diatonic scale degrees
+const majorNumerals = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'];
+const minorNumerals = ['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII'];
 
 // Transpose a chord based on the current transposition steps
 function transposeChord(chord) {
@@ -209,6 +215,96 @@ function transposeChord(chord) {
     
     // Return the new chord with the original modifier
     return chordArray[newIndex] + modifier;
+}
+
+// Convert a chord to its diatonic scale numeral
+function chordToNumeral(chord) {
+    // Extract the root note and any modifiers (like m, 7, maj7, etc.)
+    const match = chord.match(/^([A-G][#b]?)(.*)$/);
+    if (!match) return chord; // Not a valid chord format
+    
+    const [, root, modifier] = match;
+    
+    // Find the index of the root note in the appropriate chord array
+    const chordArray = useFlats ? flatChords : sharpChords;
+    let rootIndex = chordArray.indexOf(root);
+    
+    if (rootIndex === -1) {
+        // Try to find an equivalent chord (e.g., if using sharps but the chord is Bb)
+        const altChordArray = useFlats ? sharpChords : flatChords;
+        const altIndex = altChordArray.indexOf(root);
+        if (altIndex !== -1) {
+            rootIndex = altIndex;
+        } else {
+            return chord; // Can't find this chord
+        }
+    }
+    
+    // Find the index of the current key in the chord array
+    const keyIndex = chordArray.indexOf(currentKey);
+    if (keyIndex === -1) return chord; // Current key not found
+    
+    // Calculate the scale degree (0-11)
+    let scaleDegree = (rootIndex - keyIndex + 12) % 12;
+    
+    // Determine if we're in a major or minor key
+    const isMinor = currentKey.includes('m');
+    const numerals = isMinor ? minorNumerals : majorNumerals;
+    
+    // Map the scale degree to a diatonic numeral
+    // This is a simplified approach - in reality, we'd need to analyze the chord quality
+    let numeral = '';
+    
+    // Map common scale degrees to numerals
+    switch (scaleDegree) {
+        case 0: // Tonic
+            numeral = numerals[0]; // I or i
+            break;
+        case 2: // Supertonic
+            numeral = numerals[1]; // ii or ii°
+            break;
+        case 4: // Mediant
+            numeral = numerals[2]; // iii or III
+            break;
+        case 5: // Subdominant
+            numeral = numerals[3]; // IV or iv
+            break;
+        case 7: // Dominant
+            numeral = numerals[4]; // V or v
+            break;
+        case 9: // Submediant
+            numeral = numerals[5]; // vi or VI
+            break;
+        case 11: // Leading tone
+            numeral = numerals[6]; // vii° or VII
+            break;
+        default:
+            // For non-diatonic chords, return the original chord name
+            return chord;
+    }
+    
+    // Adjust the numeral based on the chord quality
+    if (modifier.includes('m') && !isMinor && (scaleDegree === 0 || scaleDegree === 5 || scaleDegree === 7)) {
+        // If it's a minor chord where a major would be expected in a major key
+        numeral = numeral.toLowerCase();
+    } else if (!modifier.includes('m') && isMinor && (scaleDegree === 0 || scaleDegree === 5 || scaleDegree === 7)) {
+        // If it's a major chord where a minor would be expected in a minor key
+        numeral = numeral.toUpperCase();
+    }
+    
+    // Add any additional modifiers (7, maj7, etc.)
+    let additionalModifier = '';
+    if (modifier.includes('7')) {
+        additionalModifier = '7';
+    } else if (modifier.includes('maj7')) {
+        additionalModifier = 'maj7';
+    } else if (modifier.includes('dim') || modifier.includes('°')) {
+        additionalModifier = '°';
+    } else if (modifier.includes('aug') || modifier.includes('+')) {
+        additionalModifier = '+';
+    }
+    
+    return numeral + additionalModifier;
 }
 
 // Find the longest line in the song data
@@ -358,6 +454,7 @@ function displayCurrentLines() {
             lineContainer.style.flexGrow = '0'; // Don't allow growth
             lineContainer.style.flexShrink = '0'; // Don't allow shrinking
             lineContainer.style.whiteSpace = 'nowrap'; // Prevent text wrapping
+            lineContainer.style.marginBottom = '0.5em'; // Add space between lines
             
             if (line.chords && line.chords.length > 0 && line.lyric) {
                 // For lines with both chords and lyrics, we need to align them
@@ -367,7 +464,8 @@ function displayCurrentLines() {
                 alignmentWrapper.className = 'alignment-wrapper';
                 alignmentWrapper.style.width = '100%';
                 alignmentWrapper.style.textAlign = 'left'; // Ensure left alignment
-                alignmentWrapper.style.minHeight = 'auto'; // Auto height instead of fixed
+                alignmentWrapper.style.position = 'relative'; // For absolute positioning of chords
+                alignmentWrapper.style.minHeight = '2.5em'; // Provide space for chords above lyrics
                 alignmentWrapper.style.flexGrow = '0'; // Don't allow growth
                 alignmentWrapper.style.flexShrink = '0'; // Don't allow shrinking
                 alignmentWrapper.style.whiteSpace = 'nowrap'; // Prevent text wrapping
@@ -378,19 +476,23 @@ function displayCurrentLines() {
                 chordContainer.style.width = '100%';
                 chordContainer.style.textAlign = 'left'; // Ensure left alignment
                 chordContainer.style.whiteSpace = 'nowrap'; // Prevent text wrapping
+                chordContainer.style.position = 'absolute'; // Position above lyrics
+                chordContainer.style.top = '0';
+                chordContainer.style.left = '0';
                 
                 // Add each chord at its position
                 line.chords.forEach(chord => {
                     const chordSpan = document.createElement('span');
                     chordSpan.className = 'chord';
-                    chordSpan.textContent = transposeChord(chord.text);
+                    chordSpan.textContent = getChordDisplayText(chord.text);
                     
-                    // Position chords with absolute positioning but no centering
-                    // Use em units for better scaling with font size
-                    chordSpan.style.left = `${chord.position * 0.5}em`;
-                    
-                    // Ensure consistent vertical positioning
+                    // Position chords with absolute positioning
+                    chordSpan.style.position = 'absolute';
+                    chordSpan.style.left = `${chord.position * 0.6}em`; // Adjust multiplier for better spacing
                     chordSpan.style.top = '0';
+                    chordSpan.style.color = '#4a90e2'; // Make chords stand out
+                    chordSpan.style.fontWeight = 'bold';
+                    
                     chordContainer.appendChild(chordSpan);
                 });
                 
@@ -401,7 +503,7 @@ function displayCurrentLines() {
                 lyricElement.style.width = '100%';
                 lyricElement.style.textAlign = 'left'; // Ensure left alignment
                 lyricElement.style.lineHeight = '1.2'; // Reduced line height
-                lyricElement.style.paddingTop = '0'; // Remove top padding
+                lyricElement.style.marginTop = '1.5em'; // Space for chords above
                 lyricElement.style.whiteSpace = 'nowrap'; // Prevent text wrapping
                 
                 // Add elements to the wrapper
@@ -414,15 +516,19 @@ function displayCurrentLines() {
                 chordContainer.className = 'chord-container chord-only';
                 chordContainer.style.textAlign = 'left'; // Ensure left alignment
                 chordContainer.style.whiteSpace = 'nowrap'; // Prevent text wrapping
+                chordContainer.style.marginBottom = '0.5em'; // Add space below
                 
                 // Add each chord
                 line.chords.forEach(chord => {
                     const chordSpan = document.createElement('span');
                     chordSpan.className = 'chord';
-                    chordSpan.textContent = transposeChord(chord.text);
+                    chordSpan.textContent = getChordDisplayText(chord.text);
+                    chordSpan.style.color = '#4a90e2'; // Make chords stand out
+                    chordSpan.style.fontWeight = 'bold';
+                    
                     if (chord.position > 0) {
                         // Use em units for better scaling
-                        chordSpan.style.marginLeft = `${chord.position * 0.5}em`;
+                        chordSpan.style.marginLeft = `${chord.position * 0.6}em`; // Adjust multiplier for better spacing
                     }
                     chordContainer.appendChild(chordSpan);
                 });
@@ -436,7 +542,6 @@ function displayCurrentLines() {
                 lyricElement.style.width = '100%';
                 lyricElement.style.textAlign = 'left'; // Ensure left alignment
                 lyricElement.style.lineHeight = '1.2'; // Reduced line height
-                lyricElement.style.paddingTop = '0'; // Remove top padding
                 lyricElement.style.whiteSpace = 'nowrap'; // Prevent text wrapping
                 lineContainer.appendChild(lyricElement);
             }
@@ -580,6 +685,30 @@ function toggleAutoResize() {
     }
 }
 
+// Toggle between chord names and numerals
+function toggleNumerals() {
+    showNumerals = !showNumerals;
+    
+    // Update the toggle button text
+    const numeralsToggle = document.getElementById('numerals-toggle');
+    if (numeralsToggle) {
+        numeralsToggle.textContent = showNumerals ? 'Show Chords' : 'Show Numerals';
+        numeralsToggle.classList.toggle('active', showNumerals);
+    }
+    
+    // Redisplay the lines with the new setting
+    displayCurrentLines();
+}
+
+// Get the chord text to display (either the chord name or its numeral)
+function getChordDisplayText(chord) {
+    if (showNumerals) {
+        return chordToNumeral(chord);
+    } else {
+        return transposeChord(chord);
+    }
+}
+
 // Set up event listeners
 function setupEventListeners() {
     // Navigation buttons
@@ -631,6 +760,17 @@ function setupEventListeners() {
     
     // Auto-resize toggle
     autoResizeToggle.addEventListener('click', toggleAutoResize);
+    
+    // Create and add the numerals toggle button to the chords section
+    const chordsSection = document.querySelector('.panel-section:nth-child(2) .controls');
+    if (chordsSection) {
+        const numeralsToggle = document.createElement('button');
+        numeralsToggle.id = 'numerals-toggle';
+        numeralsToggle.textContent = 'Show Numerals';
+        numeralsToggle.setAttribute('aria-label', 'Toggle between chord names and numerals');
+        numeralsToggle.addEventListener('click', toggleNumerals);
+        chordsSection.appendChild(numeralsToggle);
+    }
     
     // Handle window resize
     window.addEventListener('resize', updateContainerWidth);
