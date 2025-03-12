@@ -286,10 +286,17 @@ function displayCurrentLines() {
     // Create a fixed position container for consistent positioning
     const fixedPositionContainer = document.createElement('div');
     fixedPositionContainer.className = 'fixed-position-container';
+    
+    // Explicitly set inline styles to ensure proper positioning
     fixedPositionContainer.style.position = 'absolute';
-    fixedPositionContainer.style.top = '20px'; // Fixed top position
-    fixedPositionContainer.style.left = '20px'; // Fixed left position
-    fixedPositionContainer.style.width = 'calc(100% - 40px)'; // Account for padding
+    fixedPositionContainer.style.top = '20px';
+    fixedPositionContainer.style.left = '20px';
+    fixedPositionContainer.style.width = 'calc(100% - 40px)';
+    fixedPositionContainer.style.height = 'calc(100% - 40px)';
+    fixedPositionContainer.style.display = 'flex';
+    fixedPositionContainer.style.flexDirection = 'column';
+    fixedPositionContainer.style.alignItems = 'flex-start';
+    fixedPositionContainer.style.justifyContent = 'flex-start';
     
     // Preserve the height to prevent layout shifts
     if (oldHeight > 0) {
@@ -732,11 +739,11 @@ function updateFontSize() {
 // Optimize text size to fill the viewport
 function optimizeTextSize() {
     // Get the available height and width for the lyrics container
-    const containerHeight = calculateAvailableHeight();
+    const containerHeight = lyricsContainer.offsetHeight - 40; // Use actual container height minus padding
     const containerWidth = lyricsContainer.offsetWidth - 60; // Account for padding
     
     // Start with a large font size and decrease until content fits
-    let maxSize = 120; // Further reduced maximum font size for better consistency
+    let maxSize = 200; // Increased maximum font size to better fill the space
     let minSize = 16;  // Minimum font size
     let currentSize = maxSize;
     let bestSize = minSize;  // Default to minimum if nothing fits
@@ -754,8 +761,12 @@ function optimizeTextSize() {
         const contentHeight = calculateContentHeight();
         const contentWidth = calculateContentWidth();
         
-        const heightFits = contentHeight <= containerHeight * 0.85; // Reduced margin for more consistent sizing
-        const widthFits = contentWidth <= containerWidth * 0.95; // Allow 95% of container width
+        // Debug info
+        console.log(`Testing size ${currentSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
+        
+        // Use more aggressive filling - allow up to 98% of container height and width
+        const heightFits = contentHeight <= containerHeight * 0.98;
+        const widthFits = contentWidth <= containerWidth * 0.98;
         
         const fits = heightFits && widthFits;
         
@@ -772,8 +783,8 @@ function optimizeTextSize() {
         currentSize = Math.floor((minSize + maxSize) / 2);
     }
     
-    // Apply the best size found, but reduce it slightly to ensure it fits
-    fontSize = Math.floor(bestSize * 0.9); // Apply a larger safety margin for consistency
+    // Apply the best size found with minimal safety margin
+    fontSize = Math.floor(bestSize * 0.98); // Apply a small safety margin for consistency
     updateFontSize();
     fontSizeSlider.value = fontSize;
     
