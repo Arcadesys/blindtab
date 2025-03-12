@@ -299,6 +299,7 @@ function displayCurrentLines() {
     fixedPositionContainer.style.justifyContent = 'flex-start'; // Align to top
     fixedPositionContainer.style.padding = '0'; // Remove all padding
     fixedPositionContainer.style.boxSizing = 'border-box'; // Ensure padding is included in width/height
+    fixedPositionContainer.style.textAlign = 'left'; // Ensure text is left-aligned
     
     // Display the selected number of lines at a time
     for (let i = 0; i < linesToDisplay; i++) {
@@ -343,6 +344,7 @@ function displayCurrentLines() {
                     chordSpan.className = 'chord';
                     chordSpan.textContent = transposeChord(chord.text);
                     
+                    // Position chords with absolute positioning but no centering
                     // Use em units for better scaling with font size
                     chordSpan.style.left = `${chord.position * 0.5}em`;
                     

@@ -357,6 +357,8 @@ button:disabled {
     align-items: flex-start; /* Left alignment */
     flex-grow: 0; /* Don't allow growth */
     flex-shrink: 0; /* Don't allow shrinking */
+    padding-left: 0; /* Ensure no left padding */
+    text-align: left; /* Ensure left alignment */
 }
 
 /* Chord container */
@@ -369,6 +371,7 @@ button:disabled {
     letter-spacing: 0.05em;
     margin-bottom: 0; /* Remove bottom margin completely */
     text-align: left; /* Left align text */
+    padding-left: 0; /* Ensure no left padding */
 }
 
 .dark-theme .chord-container {
@@ -381,6 +384,7 @@ button:disabled {
     white-space: nowrap;
     top: 0; /* Ensure consistent vertical positioning */
     font-size: 0.8em; /* Make chords slightly smaller than lyrics */
+    text-align: left; /* Ensure left alignment */
 }
 
 .chord-only {
