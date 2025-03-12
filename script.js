@@ -711,9 +711,35 @@ function getChordDisplayText(chord) {
 
 // Set up event listeners
 function setupEventListeners() {
-    // Navigation buttons
-    prevBtn.addEventListener('click', goToPreviousLines);
-    nextBtn.addEventListener('click', goToNextLines);
+    // Keyboard navigation (for foot pedal)
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight' || event.key === ' ') {
+            // Right arrow or space goes forward
+            goToNextLines();
+        } else if (event.key === 'ArrowLeft') {
+            // Left arrow goes backward
+            goToPreviousLines();
+        }
+    });
+    
+    // Touch/click navigation
+    lyricsContainer.addEventListener('click', (event) => {
+        // Get the click position relative to the container
+        const containerRect = lyricsContainer.getBoundingClientRect();
+        const clickX = event.clientX - containerRect.left;
+        const containerWidth = containerRect.width;
+        
+        // If click is on the left half, go back; if on the right half, go forward
+        if (clickX < containerWidth / 2) {
+            goToPreviousLines();
+        } else {
+            goToNextLines();
+        }
+    });
+    
+    // Hide navigation buttons as they're no longer needed
+    if (prevBtn) prevBtn.style.display = 'none';
+    if (nextBtn) nextBtn.style.display = 'none';
     
     // Theme toggle
     themeToggle.addEventListener('click', toggleTheme);
@@ -779,6 +805,11 @@ function setupEventListeners() {
     document.addEventListener('click', (event) => {
         if (!event.target.closest('#key-select-btn') && !event.target.closest('#key-dropdown')) {
             keyDropdown.classList.remove('show');
+        }
+        
+        // Close controls panel when clicking outside
+        if (controlsVisible && !event.target.closest('#controls-panel') && !event.target.closest('#show-controls-btn')) {
+            toggleControls(false);
         }
     });
 }
