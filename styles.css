@@ -30,7 +30,7 @@ body {
 .container {
     max-width: 100%; /* Changed from 800px to use full width */
     margin: 0 auto;
-    padding: 10px; /* Reduced from 20px */
+    padding: 10px 10px 60px 10px; /* Added bottom padding for fixed navigation */
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -275,10 +275,13 @@ button:disabled {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    align-items: center; /* Center content horizontally */
     transition: min-height 0.3s ease, font-size 0.3s ease;
     font-family: 'Roboto Mono', 'Courier New', Courier, monospace; /* Google Fonts + fallbacks */
     overflow: hidden; /* Prevent scrolling within the container */
     padding: 0; /* Remove any padding */
+    width: 100%; /* Ensure full width */
+    max-width: 100vw; /* Limit to viewport width */
 }
 
 .controls-panel.show + .lyrics-container {
@@ -289,6 +292,9 @@ button:disabled {
 .line-container {
     margin-bottom: 15px; /* Reduced from 25px */
     position: relative;
+    width: 100%; /* Full width */
+    max-width: 90vw; /* Limit width to 90% of viewport to prevent overflow */
+    text-align: left; /* Ensure text alignment is consistent */
 }
 
 /* Wrapper for aligned chord-lyric pairs */
@@ -298,6 +304,7 @@ button:disabled {
     display: flex;
     flex-direction: column;
     margin-bottom: 5px; /* Reduced from 10px */
+    width: 100%; /* Full width */
 }
 
 /* Chord container */
@@ -352,11 +359,29 @@ button:disabled {
     margin-top: auto;
     margin-bottom: 0; /* Ensure no bottom margin */
     padding: 5px 0; /* Add minimal padding */
+    width: 100%; /* Full width */
+    position: fixed; /* Fix position */
+    bottom: 10px; /* Position at bottom */
+    left: 0; /* Align to left edge */
+    padding: 0 20px; /* Add horizontal padding */
+    background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
+    z-index: 900; /* Below controls panel but above content */
+}
+
+.dark-theme .navigation {
+    background-color: rgba(34, 34, 34, 0.8); /* Dark semi-transparent background */
 }
 
 .navigation button {
-    padding: 5px 10px; /* Reduced padding */
-    font-size: 14px; /* Smaller font */
+    padding: 10px 20px; /* Increased padding */
+    font-size: 16px; /* Larger font */
+    min-width: 120px; /* Minimum width */
+    border-radius: 30px; /* Rounded corners */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Add shadow for depth */
+}
+
+.dark-theme .navigation button {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4); /* Darker shadow for dark theme */
 }
 
 /* Auto-scroll controls */
@@ -496,21 +521,26 @@ button:disabled {
 @media (max-width: 600px) {
     .lyrics-container {
         font-size: 20px;
+        max-width: 95vw; /* Slightly wider on mobile */
     }
     
     header {
-        flex-direction: column;
-        gap: 15px;
+        flex-direction: row; /* Keep header in a row */
+        gap: 5px;
     }
     
     .navigation {
-        flex-direction: column;
-        gap: 15px;
+        flex-direction: row; /* Keep buttons side by side */
+        gap: 10px;
+        justify-content: space-between;
+        padding: 0 10px; /* Reduced padding */
+        bottom: 5px; /* Closer to bottom */
     }
     
     .navigation button {
-        padding: 12px 20px;
-        width: 100%;
+        padding: 8px 15px; /* Smaller padding */
+        min-width: 100px; /* Smaller minimum width */
+        font-size: 14px; /* Smaller font */
     }
     
     .auto-scroll-controls {
@@ -527,6 +557,10 @@ button:disabled {
         width: 90%;
         max-width: 300px;
         right: 5px;
+    }
+    
+    .line-container {
+        max-width: 95vw; /* Slightly wider on mobile */
     }
 }
 
