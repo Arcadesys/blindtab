@@ -735,9 +735,9 @@ function optimizeTextSize() {
     // Only adjust if the content doesn't already fill the container
     if (ratio !== 1) {
         // Calculate new font size based on the ratio
-        // Use a slightly more conservative ratio to avoid overflow
-        const adjustmentFactor = ratio * 0.9; // More conservative factor
-        fontSize = Math.max(16, Math.min(100, Math.floor(fontSize * adjustmentFactor)));
+        // Use a more aggressive factor to fill more space
+        const adjustmentFactor = ratio * 0.95; // More aggressive factor
+        fontSize = Math.max(16, Math.min(150, Math.floor(fontSize * adjustmentFactor))); // Increased max font size
         
         // Apply the new font size
         updateFontSize();
@@ -748,11 +748,11 @@ function optimizeTextSize() {
             const newRatio = containerHeight / newContentHeight;
             
             // Fine-tune if needed
-            if (Math.abs(newRatio - 1) > 0.1) {
-                fontSize = Math.max(16, Math.min(100, Math.floor(fontSize * (newRatio * 0.9))));
+            if (Math.abs(newRatio - 1) > 0.05) { // More sensitive adjustment
+                fontSize = Math.max(16, Math.min(150, Math.floor(fontSize * (newRatio * 0.95))));
                 updateFontSize();
             }
-        }, 100); // Increased delay for better DOM update
+        }, 100);
     }
 }
 
@@ -761,7 +761,7 @@ function calculateAvailableHeight() {
     const windowHeight = window.innerHeight;
     const headerHeight = document.querySelector('header').offsetHeight;
     const navigationHeight = document.querySelector('.navigation').offsetHeight;
-    const containerPadding = 40; // Account for container padding
+    const containerPadding = 20; // Reduced from 40
     
     return windowHeight - headerHeight - navigationHeight - containerPadding;
 }
