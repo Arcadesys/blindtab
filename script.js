@@ -956,7 +956,6 @@ function switchSong(index) {
     
     // Update current song index
     currentSongIndex = index;
-    BlindTabStorage.saveCurrentSongIndex(index);
     
     // Load the selected song
     const song = songLibrary[currentSongIndex];
@@ -1269,56 +1268,303 @@ function showAddSongModal() {
     addSongModal.style.display = 'block';
 }
 
-// Parse lyrics with chord markers into song data format
-function parseLyricsWithChords(lyricsText) {
-    const lines = lyricsText.split('\n');
-    const songData = [];
-    
-    lines.forEach(line => {
-        // Check if line is empty
-        if (line.trim() === '') {
-            songData.push({ lyric: '' });
-            return;
+// Markdown Parser for Leadsheets
+const MarkdownParser = {
+    // Convert song data to markdown format
+    toMarkdown(songData, songInfo = {}) {
+        let markdown = '';
+        
+        // Add song metadata
+        if (songInfo.title) {
+            markdown += `# ${songInfo.title}\n`;
         }
         
-        // Find all chord markers [chord]
-        const chordRegex = /\[([^\]]+)\]/g;
-        let match;
-        const chords = [];
-        let lastIndex = 0;
-        let lyricLine = '';
-        
-        // Extract all chords and their positions
-        while ((match = chordRegex.exec(line)) !== null) {
-            const chordText = match[1];
-            const chordPosition = match.index - lastIndex;
-            
-            chords.push({
-                text: chordText,
-                position: lyricLine.length
-            });
-            
-            // Add the text between the last chord and this one
-            lyricLine += line.substring(lastIndex, match.index);
-            
-            // Update lastIndex to skip the chord marker
-            lastIndex = match.index + match[0].length;
+        if (songInfo.artist) {
+            markdown += `## ${songInfo.artist}\n`;
         }
         
-        // Add the remaining text after the last chord
-        lyricLine += line.substring(lastIndex);
+        if (songInfo.key) {
+            markdown += `Key: ${songInfo.key}\n`;
+        }
         
-        // Add the line to song data
-        songData.push({
-            chords: chords.length > 0 ? chords : undefined,
-            lyric: lyricLine
+        // Add additional metadata if available
+        if (songInfo.tempo) {
+            markdown += `Tempo: ${songInfo.tempo} BPM\n`;
+        }
+        
+        if (songInfo.timeSignature) {
+            markdown += `Time: ${songInfo.timeSignature}\n`;
+        }
+        
+        // Add a separator
+        markdown += '\n---\n\n';
+        
+        // Process each line
+        songData.forEach(line => {
+            // Empty line
+            if (!line.lyric && (!line.chords || line.chords.length === 0)) {
+                markdown += '\n';
+                return;
+            }
+            
+            // Line with chords
+            if (line.chords && line.chords.length > 0) {
+                // Sort chords by position
+                const sortedChords = [...line.chords].sort((a, b) => a.position - b.position);
+                
+                // Create chord line
+                let chordLine = '';
+                let lastPosition = 0;
+                
+                sortedChords.forEach(chord => {
+                    // Add spaces to position the chord
+                    while (chordLine.length < chord.position) {
+                        chordLine += ' ';
+                    }
+                    
+                    // Add the chord
+                    chordLine += chord.text;
+                    lastPosition = chord.position + chord.text.length;
+                });
+                
+                markdown += chordLine + '\n';
+            }
+            
+            // Add lyrics line
+            if (line.lyric) {
+                markdown += line.lyric + '\n';
+            } else if (line.chords && line.chords.length > 0) {
+                // If there are chords but no lyrics, add an empty line
+                markdown += '\n';
+            }
         });
-    });
+        
+        return markdown;
+    },
     
-    return songData;
-}
+    // Convert markdown to song data
+    fromMarkdown(markdown) {
+        const lines = markdown.split('\n');
+        const songData = [];
+        let songInfo = {
+            title: '',
+            artist: '',
+            key: 'C'
+        };
+        
+        let inMetadata = true;
+        let currentLineIndex = 0;
+        
+        // Process metadata
+        while (currentLineIndex < lines.length && inMetadata) {
+            const line = lines[currentLineIndex].trim();
+            
+            // Check for title (# Title)
+            if (line.startsWith('# ')) {
+                songInfo.title = line.substring(2).trim();
+                currentLineIndex++;
+                continue;
+            }
+            
+            // Check for artist (## Artist)
+            if (line.startsWith('## ')) {
+                songInfo.artist = line.substring(3).trim();
+                currentLineIndex++;
+                continue;
+            }
+            
+            // Check for key (Key: X)
+            if (line.startsWith('Key:')) {
+                songInfo.key = line.substring(4).trim();
+                currentLineIndex++;
+                continue;
+            }
+            
+            // Check for tempo (Tempo: X BPM)
+            if (line.startsWith('Tempo:')) {
+                const tempoMatch = line.match(/Tempo:\s*(\d+)/);
+                if (tempoMatch) {
+                    songInfo.tempo = parseInt(tempoMatch[1]);
+                }
+                currentLineIndex++;
+                continue;
+            }
+            
+            // Check for time signature (Time: X/Y)
+            if (line.startsWith('Time:')) {
+                songInfo.timeSignature = line.substring(5).trim();
+                currentLineIndex++;
+                continue;
+            }
+            
+            // Check for separator
+            if (line === '---') {
+                inMetadata = false;
+                currentLineIndex++;
+                continue;
+            }
+            
+            // Skip empty lines in metadata
+            if (line === '') {
+                currentLineIndex++;
+                continue;
+            }
+            
+            // If we reach here and haven't found metadata markers, assume content starts
+            inMetadata = false;
+        }
+        
+        // Process song content
+        let isChordLine = false;
+        let pendingChords = [];
+        
+        for (let i = currentLineIndex; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // Check if this is a chord line (contains chord patterns and spaces)
+            const chordPattern = /^[\s]*[A-G][#b]?(?:m|maj|min|aug|dim|sus|add|°|\+)?[0-9]?(?:\/[A-G][#b]?)?(?:\s+[A-G][#b]?(?:m|maj|min|aug|dim|sus|add|°|\+)?[0-9]?(?:\/[A-G][#b]?)?)*[\s]*$/;
+            isChordLine = chordPattern.test(line) && line.trim().length > 0;
+            
+            if (isChordLine) {
+                // Extract chords and their positions
+                pendingChords = [];
+                let position = 0;
+                
+                // Find all chord-like patterns
+                const chordMatches = line.matchAll(/[A-G][#b]?(?:m|maj|min|aug|dim|sus|add|°|\+)?[0-9]?(?:\/[A-G][#b]?)?/g);
+                
+                for (const match of chordMatches) {
+                    pendingChords.push({
+                        text: match[0],
+                        position: match.index
+                    });
+                }
+                
+                // If this is a chord-only line (no lyrics follow), add it to songData
+                if (i + 1 >= lines.length || lines[i + 1].trim() === '' || chordPattern.test(lines[i + 1])) {
+                    songData.push({
+                        chords: pendingChords,
+                        lyric: ''
+                    });
+                    pendingChords = [];
+                }
+            } else {
+                // This is a lyric line or empty line
+                if (line.trim() === '') {
+                    // Empty line
+                    songData.push({ lyric: '' });
+                } else {
+                    // Lyric line, possibly with pending chords
+                    songData.push({
+                        chords: pendingChords.length > 0 ? pendingChords : undefined,
+                        lyric: line
+                    });
+                    pendingChords = [];
+                }
+            }
+        }
+        
+        return { songData, songInfo };
+    },
+    
+    // Alternative format: Convert from chord-in-brackets format [G]Lyrics [D]more lyrics
+    fromChordInBrackets(text) {
+        const lines = text.split('\n');
+        const songData = [];
+        
+        lines.forEach(line => {
+            if (line.trim() === '') {
+                // Empty line
+                songData.push({ lyric: '' });
+                return;
+            }
+            
+            // Find all chord markers [chord]
+            const chordRegex = /\[([^\]]+)\]/g;
+            let match;
+            const chords = [];
+            let lastIndex = 0;
+            let lyricLine = '';
+            
+            // Extract all chords and their positions
+            while ((match = chordRegex.exec(line)) !== null) {
+                const chordText = match[1];
+                
+                chords.push({
+                    text: chordText,
+                    position: lyricLine.length
+                });
+                
+                // Add the text between the last chord and this one
+                lyricLine += line.substring(lastIndex, match.index);
+                
+                // Update lastIndex to skip the chord marker
+                lastIndex = match.index + match[0].length;
+            }
+            
+            // Add the remaining text after the last chord
+            lyricLine += line.substring(lastIndex);
+            
+            // Add the line to song data
+            songData.push({
+                chords: chords.length > 0 ? chords : undefined,
+                lyric: lyricLine
+            });
+        });
+        
+        return songData;
+    },
+    
+    // Convert to chord-in-brackets format
+    toChordInBrackets(songData) {
+        let result = '';
+        
+        songData.forEach(line => {
+            if (!line.lyric && (!line.chords || line.chords.length === 0)) {
+                // Empty line
+                result += '\n';
+                return;
+            }
+            
+            if (!line.chords || line.chords.length === 0) {
+                // Only lyrics, no chords
+                result += line.lyric + '\n';
+                return;
+            }
+            
+            // Line with chords and lyrics
+            const sortedChords = [...line.chords].sort((a, b) => a.position - b.position);
+            let currentPosition = 0;
+            let resultLine = '';
+            
+            // Insert chords at their positions
+            for (let i = 0; i < sortedChords.length; i++) {
+                const chord = sortedChords[i];
+                
+                // If the chord position is beyond the lyric length, place it at the end
+                const position = Math.min(chord.position, line.lyric.length);
+                
+                // Add text before this chord
+                resultLine += line.lyric.substring(currentPosition, position);
+                
+                // Add the chord in brackets
+                resultLine += `[${chord.text}]`;
+                
+                // Update current position
+                currentPosition = position;
+            }
+            
+            // Add remaining lyrics
+            resultLine += line.lyric.substring(currentPosition);
+            
+            result += resultLine + '\n';
+        });
+        
+        return result;
+    }
+};
 
-// Add a new song to the library
+// Update the addNewSong function to use the markdown parser
 function addNewSong() {
     const titleInput = document.getElementById('song-title-input');
     const artistInput = document.getElementById('song-artist-input');
@@ -1337,8 +1583,8 @@ function addNewSong() {
         return;
     }
     
-    // Parse lyrics into song data format
-    const parsedSongData = parseLyricsWithChords(lyrics);
+    // Parse lyrics into song data format using the chord-in-brackets format
+    const parsedSongData = MarkdownParser.fromChordInBrackets(lyrics);
     
     // Create new song object
     const newSong = {
@@ -1364,11 +1610,300 @@ function addNewSong() {
     saveSongLibrary();
 }
 
-// Edit an existing song
+// Update the editSong function to use the markdown parser
 function editSong(index) {
-    // Implement similar to addNewSong but pre-fill the form with existing data
-    // and update instead of add
-    alert('Edit functionality coming soon!');
+    // Check if the song editor modal exists
+    let songEditorModal = document.getElementById('song-editor-modal');
+    
+    if (!songEditorModal) {
+        // Create the modal
+        songEditorModal = document.createElement('div');
+        songEditorModal.id = 'song-editor-modal';
+        songEditorModal.className = 'modal';
+        songEditorModal.style.display = 'none';
+        songEditorModal.style.position = 'fixed';
+        songEditorModal.style.zIndex = '10000';
+        songEditorModal.style.left = '0';
+        songEditorModal.style.top = '0';
+        songEditorModal.style.width = '100%';
+        songEditorModal.style.height = '100%';
+        songEditorModal.style.overflow = 'auto';
+        songEditorModal.style.backgroundColor = 'rgba(0,0,0,0.4)';
+        
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        modalContent.style.backgroundColor = '#fefefe';
+        modalContent.style.margin = '5% auto';
+        modalContent.style.padding = '20px';
+        modalContent.style.border = '1px solid #888';
+        modalContent.style.width = '90%';
+        modalContent.style.maxWidth = '800px';
+        modalContent.style.borderRadius = '5px';
+        modalContent.style.maxHeight = '90vh';
+        modalContent.style.overflowY = 'auto';
+        
+        // Create close button
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'close-modal';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.color = '#aaa';
+        closeBtn.style.float = 'right';
+        closeBtn.style.fontSize = '28px';
+        closeBtn.style.fontWeight = 'bold';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.addEventListener('click', () => {
+            songEditorModal.style.display = 'none';
+        });
+        
+        // Create form
+        const form = document.createElement('form');
+        form.id = 'edit-song-form';
+        
+        // Title input
+        const titleLabel = document.createElement('label');
+        titleLabel.textContent = 'Song Title:';
+        titleLabel.htmlFor = 'edit-song-title';
+        titleLabel.style.display = 'block';
+        titleLabel.style.marginTop = '10px';
+        
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.id = 'edit-song-title';
+        titleInput.required = true;
+        titleInput.style.width = '100%';
+        titleInput.style.padding = '8px';
+        titleInput.style.marginBottom = '15px';
+        titleInput.style.boxSizing = 'border-box';
+        
+        // Artist input
+        const artistLabel = document.createElement('label');
+        artistLabel.textContent = 'Artist:';
+        artistLabel.htmlFor = 'edit-song-artist';
+        artistLabel.style.display = 'block';
+        
+        const artistInput = document.createElement('input');
+        artistInput.type = 'text';
+        artistInput.id = 'edit-song-artist';
+        artistInput.required = true;
+        artistInput.style.width = '100%';
+        artistInput.style.padding = '8px';
+        artistInput.style.marginBottom = '15px';
+        artistInput.style.boxSizing = 'border-box';
+        
+        // Key input
+        const keyLabel = document.createElement('label');
+        keyLabel.textContent = 'Key:';
+        keyLabel.htmlFor = 'edit-song-key';
+        keyLabel.style.display = 'block';
+        
+        const keyInput = document.createElement('select');
+        keyInput.id = 'edit-song-key';
+        keyInput.style.width = '100%';
+        keyInput.style.padding = '8px';
+        keyInput.style.marginBottom = '15px';
+        keyInput.style.boxSizing = 'border-box';
+        
+        // Add key options
+        const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        keys.forEach(key => {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = key;
+            keyInput.appendChild(option);
+        });
+        
+        // Format selector
+        const formatLabel = document.createElement('label');
+        formatLabel.textContent = 'Format:';
+        formatLabel.htmlFor = 'edit-format-select';
+        formatLabel.style.display = 'block';
+        
+        const formatSelect = document.createElement('select');
+        formatSelect.id = 'edit-format-select';
+        formatSelect.style.width = '100%';
+        formatSelect.style.padding = '8px';
+        formatSelect.style.marginBottom = '15px';
+        formatSelect.style.boxSizing = 'border-box';
+        
+        // Add format options
+        const formatOptions = [
+            { value: 'brackets', text: 'Chord in brackets [G]Lyrics' },
+            { value: 'markdown', text: 'Chord above lyrics (Markdown)' }
+        ];
+        
+        formatOptions.forEach(option => {
+            const optionElement = document.createElement('option');
+            optionElement.value = option.value;
+            optionElement.textContent = option.text;
+            formatSelect.appendChild(optionElement);
+        });
+        
+        // Lyrics and chords textarea
+        const lyricsLabel = document.createElement('label');
+        lyricsLabel.textContent = 'Lyrics and Chords:';
+        lyricsLabel.htmlFor = 'edit-song-content';
+        lyricsLabel.style.display = 'block';
+        
+        const formatHelp = document.createElement('div');
+        formatHelp.id = 'format-help';
+        formatHelp.style.fontSize = '0.8em';
+        formatHelp.style.color = '#666';
+        formatHelp.style.marginBottom = '10px';
+        
+        const lyricsInput = document.createElement('textarea');
+        lyricsInput.id = 'edit-song-content';
+        lyricsInput.rows = '20';
+        lyricsInput.required = true;
+        lyricsInput.style.width = '100%';
+        lyricsInput.style.padding = '8px';
+        lyricsInput.style.marginBottom = '15px';
+        lyricsInput.style.boxSizing = 'border-box';
+        lyricsInput.style.fontFamily = 'monospace';
+        
+        // Update format help text when format changes
+        formatSelect.addEventListener('change', () => {
+            updateFormatHelp(formatSelect.value);
+        });
+        
+        function updateFormatHelp(format) {
+            if (format === 'brackets') {
+                formatHelp.innerHTML = 'Format: Place chords in square brackets before the word they go with.<br>Example: [G]Her green [Em]plastic watering can';
+            } else {
+                formatHelp.innerHTML = 'Format: Place chords on a separate line above the lyrics.<br>Example:<br>G &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Em<br>Her green plastic watering can';
+            }
+        }
+        
+        // Submit button
+        const submitBtn = document.createElement('button');
+        submitBtn.type = 'submit';
+        submitBtn.textContent = 'Save Changes';
+        submitBtn.style.padding = '10px 15px';
+        submitBtn.style.backgroundColor = '#4a90e2';
+        submitBtn.style.color = 'white';
+        submitBtn.style.border = 'none';
+        submitBtn.style.borderRadius = '4px';
+        submitBtn.style.cursor = 'pointer';
+        
+        // Add elements to form
+        form.appendChild(titleLabel);
+        form.appendChild(titleInput);
+        form.appendChild(artistLabel);
+        form.appendChild(artistInput);
+        form.appendChild(keyLabel);
+        form.appendChild(keyInput);
+        form.appendChild(formatLabel);
+        form.appendChild(formatSelect);
+        form.appendChild(lyricsLabel);
+        form.appendChild(formatHelp);
+        form.appendChild(lyricsInput);
+        form.appendChild(submitBtn);
+        
+        // Add form submission handler
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveSongEdits();
+        });
+        
+        // Add elements to modal
+        modalContent.appendChild(closeBtn);
+        modalContent.appendChild(document.createElement('h2')).textContent = 'Edit Song';
+        modalContent.appendChild(form);
+        songEditorModal.appendChild(modalContent);
+        
+        // Add modal to document
+        document.body.appendChild(songEditorModal);
+        
+        // Initialize format help
+        updateFormatHelp('brackets');
+    }
+    
+    // Get the song to edit
+    const song = songLibrary[index];
+    
+    // Fill the form with song data
+    const titleInput = document.getElementById('edit-song-title');
+    const artistInput = document.getElementById('edit-song-artist');
+    const keyInput = document.getElementById('edit-song-key');
+    const formatSelect = document.getElementById('edit-format-select');
+    const lyricsInput = document.getElementById('edit-song-content');
+    
+    if (titleInput) titleInput.value = song.title;
+    if (artistInput) artistInput.value = song.artist;
+    if (keyInput) keyInput.value = song.key || 'C';
+    
+    // Default to brackets format
+    if (formatSelect) formatSelect.value = 'brackets';
+    
+    // Convert song data to the selected format
+    if (lyricsInput) {
+        lyricsInput.value = MarkdownParser.toChordInBrackets(song.data);
+    }
+    
+    // Store the current song index for saving
+    songEditorModal.dataset.songIndex = index;
+    
+    // Show the modal
+    songEditorModal.style.display = 'block';
+    
+    // Function to save edits
+    window.saveSongEdits = function() {
+        const titleInput = document.getElementById('edit-song-title');
+        const artistInput = document.getElementById('edit-song-artist');
+        const keyInput = document.getElementById('edit-song-key');
+        const formatSelect = document.getElementById('edit-format-select');
+        const lyricsInput = document.getElementById('edit-song-content');
+        const songIndex = parseInt(songEditorModal.dataset.songIndex);
+        
+        if (!titleInput || !artistInput || !keyInput || !lyricsInput || isNaN(songIndex)) {
+            alert('Error: Missing form fields');
+            return;
+        }
+        
+        const title = titleInput.value.trim();
+        const artist = artistInput.value.trim();
+        const key = keyInput.value;
+        const format = formatSelect.value;
+        const content = lyricsInput.value;
+        
+        if (!title || !artist || !content) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        // Parse content based on selected format
+        let parsedSongData;
+        if (format === 'brackets') {
+            parsedSongData = MarkdownParser.fromChordInBrackets(content);
+        } else {
+            const result = MarkdownParser.fromMarkdown(`# ${title}\n## ${artist}\nKey: ${key}\n\n---\n\n${content}`);
+            parsedSongData = result.songData;
+        }
+        
+        // Update the song
+        songLibrary[songIndex].title = title;
+        songLibrary[songIndex].artist = artist;
+        songLibrary[songIndex].key = key;
+        songLibrary[songIndex].data = parsedSongData;
+        
+        // Save to localStorage
+        saveSongLibrary();
+        
+        // Update the display if this is the current song
+        if (songIndex === currentSongIndex) {
+            songTitle = title;
+            songArtist = artist;
+            currentKey = key;
+            songData = parsedSongData;
+            displayCurrentLines();
+        }
+        
+        // Update the song selector
+        updateSongSelector();
+        
+        // Close the modal
+        songEditorModal.style.display = 'none';
+    };
 }
 
 // Delete a song from the library
@@ -1405,292 +1940,188 @@ function deleteSong(index) {
 
 // Save song library to localStorage
 function saveSongLibrary() {
-    BlindTabStorage.saveSongLibrary(songLibrary);
+    try {
+        localStorage.setItem('songLibrary', JSON.stringify(songLibrary));
+    } catch (e) {
+        console.error('Failed to save song library to localStorage:', e);
+    }
 }
 
 // Load song library from localStorage
 function loadSongLibrary() {
     try {
-        const savedLibrary = BlindTabStorage.loadSongLibrary();
-        if (savedLibrary && savedLibrary.length > 0) {
-            songLibrary = savedLibrary;
+        const savedLibrary = localStorage.getItem('songLibrary');
+        if (savedLibrary) {
+            songLibrary = JSON.parse(savedLibrary);
             
-            // Load the first song or the previously selected song
-            const savedIndex = BlindTabStorage.loadCurrentSongIndex();
-            switchSong(savedIndex < songLibrary.length ? savedIndex : 0);
-        } else {
             // If library is empty, add the default song
-            songLibrary = [{
-                title: songTitle,
-                artist: songArtist,
-                key: currentKey,
-                data: songData
-            }];
+            if (songLibrary.length === 0) {
+                songLibrary.push({
+                    title: songTitle,
+                    artist: songArtist,
+                    key: currentKey,
+                    data: songData
+                });
+            }
+            
+            // Load the first song
             switchSong(0);
         }
     } catch (e) {
-        console.error('Failed to load song library:', e);
+        console.error('Failed to load song library from localStorage:', e);
     }
 }
 
 // Set chord color
 function setChordColor(color) {
     chordColor = color;
-    BlindTabStorage.saveChordColor(color);
+    
+    // Save the color preference to localStorage
+    try {
+        localStorage.setItem('chordColor', color);
+    } catch (e) {
+        console.error('Failed to save chord color to localStorage:', e);
+    }
+    
+    // Update the display
     displayCurrentLines();
 }
 
 // Load chord color from localStorage
 function loadChordColor() {
-    chordColor = BlindTabStorage.loadChordColor();
+    try {
+        const savedColor = localStorage.getItem('chordColor');
+        if (savedColor) {
+            chordColor = savedColor;
+        }
+    } catch (e) {
+        console.error('Failed to load chord color from localStorage:', e);
+    }
 }
 
-// Save user settings
-function saveUserSettings() {
-    BlindTabStorage.saveSettings({
-        fontSize: fontSize,
-        theme: document.body.classList.contains('dark-theme') ? 'dark' : 'light',
-        autoResize: autoResizeText,
-        linesToDisplay: linesToDisplay,
-        useFlats: useFlats,
-        showNumerals: showNumerals,
-        transposeSteps: transposeSteps
+// Create and add the chord color picker to the chords section
+function createChordColorPicker() {
+    const chordsSection = document.querySelector('.panel-section:nth-child(2) .controls');
+    if (!chordsSection) return;
+    
+    // Create a container for the color picker
+    const colorPickerContainer = document.createElement('div');
+    colorPickerContainer.className = 'color-picker-container';
+    colorPickerContainer.style.marginTop = '10px';
+    
+    // Add a label
+    const colorLabel = document.createElement('label');
+    colorLabel.textContent = 'Chord Color:';
+    colorLabel.style.display = 'block';
+    colorLabel.style.marginBottom = '5px';
+    colorPickerContainer.appendChild(colorLabel);
+    
+    // Create a flex container for color options
+    const colorOptions = document.createElement('div');
+    colorOptions.style.display = 'flex';
+    colorOptions.style.flexWrap = 'wrap';
+    colorOptions.style.gap = '5px';
+    
+    // Define high contrast color options
+    const highContrastColors = [
+        { name: 'Blue', value: '#4a90e2' },
+        { name: 'Red', value: '#e74c3c' },
+        { name: 'Green', value: '#2ecc71' },
+        { name: 'Purple', value: '#9b59b6' },
+        { name: 'Orange', value: '#e67e22' },
+        { name: 'Yellow', value: '#f1c40f' },
+        { name: 'Pink', value: '#e84393' },
+        { name: 'Cyan', value: '#00cec9' }
+    ];
+    
+    // Create color buttons
+    highContrastColors.forEach(color => {
+        const colorButton = document.createElement('button');
+        colorButton.className = 'color-option';
+        colorButton.setAttribute('aria-label', `Set chord color to ${color.name}`);
+        colorButton.style.width = '24px';
+        colorButton.style.height = '24px';
+        colorButton.style.backgroundColor = color.value;
+        colorButton.style.border = chordColor === color.value ? '2px solid white' : '1px solid #ccc';
+        colorButton.style.borderRadius = '4px';
+        colorButton.style.cursor = 'pointer';
+        
+        // Add click event
+        colorButton.addEventListener('click', () => {
+            // Update all button borders
+            document.querySelectorAll('.color-option').forEach(btn => {
+                btn.style.border = '1px solid #ccc';
+            });
+            
+            // Highlight selected button
+            colorButton.style.border = '2px solid white';
+            
+            // Set the chord color
+            setChordColor(color.value);
+        });
+        
+        colorOptions.appendChild(colorButton);
     });
-}
-
-// Load user settings
-function loadUserSettings() {
-    const settings = BlindTabStorage.loadSettings();
     
-    // Apply loaded settings
-    if (settings) {
-        // Font size
-        if (settings.fontSize) {
-            fontSize = settings.fontSize;
-            if (fontSizeSlider) fontSizeSlider.value = fontSize;
-            updateSliderBackground(fontSize);
-        }
-        
-        // Theme
-        if (settings.theme === 'dark') {
-            document.body.classList.add('dark-theme');
-            document.body.classList.remove('light-theme');
-            if (themeToggle) {
-                const toggleIcon = themeToggle.querySelector('.toggle-icon');
-                if (toggleIcon) toggleIcon.textContent = '🌙';
-            }
-        }
-        
-        // Auto resize
-        if (settings.autoResize !== undefined) {
-            autoResizeText = settings.autoResize;
-            if (autoResizeToggle) {
-                if (autoResizeText) {
-                    autoResizeToggle.classList.add('active');
-                    lyricsContainer.classList.add('auto-resize');
-                } else {
-                    autoResizeToggle.classList.remove('active');
-                    lyricsContainer.classList.remove('auto-resize');
-                }
-            }
-        }
-        
-        // Lines to display
-        if (settings.linesToDisplay) {
-            linesToDisplay = settings.linesToDisplay;
-            if (linesToDisplaySelect) linesToDisplaySelect.value = linesToDisplay;
-        }
-        
-        // Use flats
-        if (settings.useFlats !== undefined) {
-            useFlats = settings.useFlats;
-            if (useFlatsBtn) useFlatsBtn.textContent = useFlats ? 'Use #' : 'Use ♭';
-        }
-        
-        // Show numerals
-        if (settings.showNumerals !== undefined) {
-            showNumerals = settings.showNumerals;
-            const numeralsToggle = document.getElementById('numerals-toggle');
-            if (numeralsToggle) {
-                numeralsToggle.textContent = showNumerals ? 'Show Chords' : 'Show Numerals';
-                numeralsToggle.classList.toggle('active', showNumerals);
-            }
-        }
-        
-        // Transpose steps
-        if (settings.transposeSteps !== undefined) {
-            transposeSteps = settings.transposeSteps;
-            highlightSelectedKey();
-        }
-    }
-}
-
-// Add data export functionality
-function exportUserData() {
-    const jsonData = BlindTabStorage.exportData();
-    if (!jsonData) {
-        alert('Error exporting data. Please try again.');
-        return;
-    }
+    // Add custom color picker
+    const customColorContainer = document.createElement('div');
+    customColorContainer.style.marginTop = '5px';
+    customColorContainer.style.display = 'flex';
+    customColorContainer.style.alignItems = 'center';
     
-    // Create a download link
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `blindtab_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
+    const customColorInput = document.createElement('input');
+    customColorInput.type = 'color';
+    customColorInput.value = chordColor;
+    customColorInput.style.width = '24px';
+    customColorInput.style.height = '24px';
+    customColorInput.style.border = 'none';
+    customColorInput.style.padding = '0';
+    customColorInput.style.background = 'none';
     
-    // Clean up
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
-}
-
-// Add data import functionality
-function importUserData(jsonData) {
-    if (!jsonData) {
-        alert('No data to import.');
-        return false;
-    }
-    
-    const success = BlindTabStorage.importData(jsonData);
-    if (success) {
-        alert('Data imported successfully. The app will now reload.');
-        location.reload();
-        return true;
-    } else {
-        alert('Error importing data. Please check the file format and try again.');
-        return false;
-    }
-}
-
-// Create a data management UI
-function createDataManagementUI() {
-    // Check if the data management section already exists
-    let dataSection = document.querySelector('.data-management-section');
-    
-    if (!dataSection) {
-        // Create the data management section
-        dataSection = document.createElement('div');
-        dataSection.className = 'panel-section data-management-section';
-        
-        // Create header
-        const header = document.createElement('h3');
-        header.textContent = 'Data Management';
-        dataSection.appendChild(header);
-        
-        // Create storage stats display
-        const statsContainer = document.createElement('div');
-        statsContainer.className = 'storage-stats';
-        statsContainer.style.marginBottom = '10px';
-        statsContainer.style.fontSize = '0.9em';
-        
-        // Update stats function
-        const updateStats = () => {
-            const stats = BlindTabStorage.getStorageStats();
-            statsContainer.innerHTML = `
-                <div>Storage used: ${stats.totalSize}KB (${stats.percentUsed}%)</div>
-                <div>Items stored: ${stats.itemCount}</div>
-            `;
-        };
-        
-        updateStats(); // Initial update
-        dataSection.appendChild(statsContainer);
-        
-        // Create buttons container
-        const buttonsContainer = document.createElement('div');
-        buttonsContainer.style.display = 'flex';
-        buttonsContainer.style.flexDirection = 'column';
-        buttonsContainer.style.gap = '8px';
-        
-        // Export button
-        const exportBtn = document.createElement('button');
-        exportBtn.textContent = 'Export All Data';
-        exportBtn.addEventListener('click', exportUserData);
-        buttonsContainer.appendChild(exportBtn);
-        
-        // Import button and file input
-        const importContainer = document.createElement('div');
-        importContainer.style.display = 'flex';
-        importContainer.style.flexDirection = 'column';
-        
-        const importBtn = document.createElement('button');
-        importBtn.textContent = 'Import Data';
-        
-        const importInput = document.createElement('input');
-        importInput.type = 'file';
-        importInput.id = 'import-data-input';
-        importInput.accept = '.json';
-        importInput.style.display = 'none';
-        
-        importBtn.addEventListener('click', () => importInput.click());
-        
-        importInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                
-                reader.onload = (event) => {
-                    importUserData(event.target.result);
-                };
-                
-                reader.readAsText(file);
-            }
+    customColorInput.addEventListener('input', (e) => {
+        // Update all button borders
+        document.querySelectorAll('.color-option').forEach(btn => {
+            btn.style.border = '1px solid #ccc';
         });
         
-        importContainer.appendChild(importBtn);
-        importContainer.appendChild(importInput);
-        buttonsContainer.appendChild(importContainer);
-        
-        // Clear data button
-        const clearBtn = document.createElement('button');
-        clearBtn.textContent = 'Clear All Data';
-        clearBtn.style.backgroundColor = '#e74c3c';
-        clearBtn.style.color = 'white';
-        
-        clearBtn.addEventListener('click', () => {
-            if (confirm('WARNING: This will delete all your songs and settings. This action cannot be undone. Continue?')) {
-                BlindTabStorage.clearAllData();
-                alert('All data cleared. The app will now reload.');
-                location.reload();
-            }
-        });
-        
-        buttonsContainer.appendChild(clearBtn);
-        dataSection.appendChild(buttonsContainer);
-        
-        // Add the data section to the controls panel
-        const controlsPanel = document.getElementById('controls-panel');
-        controlsPanel.appendChild(dataSection);
-    }
+        // Set the chord color
+        setChordColor(e.target.value);
+    });
+    
+    const customColorLabel = document.createElement('span');
+    customColorLabel.textContent = 'Custom';
+    customColorLabel.style.marginLeft = '5px';
+    customColorLabel.style.fontSize = '0.9em';
+    
+    customColorContainer.appendChild(customColorInput);
+    customColorContainer.appendChild(customColorLabel);
+    
+    // Add elements to the container
+    colorPickerContainer.appendChild(colorOptions);
+    colorPickerContainer.appendChild(customColorContainer);
+    
+    // Add the container to the chords section
+    chordsSection.appendChild(colorPickerContainer);
 }
 
 // Initialize the app
 function init() {
     console.log("Initializing app...");
     
-    // Initialize storage system
-    BlindTabStorage.init();
-    
-    // Load chord color from storage
+    // Load chord color from localStorage
     loadChordColor();
     
     // Set up event listeners first
     setupEventListeners();
     
-    // Load user settings
-    loadUserSettings();
-    
-    // Load song library from storage
+    // Load song library from localStorage
     loadSongLibrary();
     
-    // Create UI components
+    // Create song selector UI
     createSongSelector();
+    
+    // Create chord color picker
     createChordColorPicker();
-    createDataManagementUI();
     
     // Then display the lines
     displayCurrentLines();
