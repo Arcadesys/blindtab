@@ -5,6 +5,10 @@
     box-sizing: border-box;
 }
 
+:root {
+    --auto-resize-font-size: clamp(16px, calc(4vw + 4vh), 200px);
+}
+
 body {
     font-family: 'Arial', sans-serif;
     transition: background-color 0.3s, color 0.3s;
@@ -321,10 +325,8 @@ button:disabled {
 
 /* Auto-resize class for CSS-based text sizing */
 .lyrics-container.auto-resize {
-    /* Use viewport width for font size - adjust the multiplier as needed */
-    font-size: calc(4vw + 4vh) !important;
-    /* Ensure minimum and maximum font sizes */
-    font-size: clamp(16px, calc(4vw + 4vh), 200px) !important;
+    /* Use the CSS variable for font size that adjusts based on longest line */
+    font-size: var(--auto-resize-font-size) !important;
 }
 
 /* Fixed position container for consistent text positioning */
