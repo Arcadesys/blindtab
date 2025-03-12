@@ -212,10 +212,28 @@ function init() {
     // Apply auto-resize if enabled
     if (autoResizeText) {
         lyricsContainer.classList.add('auto-resize');
+        // Explicitly remove any inline font-size style
+        lyricsContainer.style.removeProperty('font-size');
     } else {
         lyricsContainer.classList.remove('auto-resize');
         updateFontSize();
     }
+    
+    // Explicitly set width to ensure proper dimensions
+    // Use requestAnimationFrame to ensure DOM is fully rendered
+    requestAnimationFrame(() => {
+        // Force a layout calculation
+        const containerWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0) - 20; // 20px for margins
+        lyricsContainer.style.width = `${containerWidth}px`;
+        lyricsContainer.style.maxWidth = '100vw';
+        
+        console.log(`Explicitly set lyrics container width to ${containerWidth}px`);
+        
+        // If auto-resize is enabled, make sure the font-size style is removed again
+        if (autoResizeText) {
+            lyricsContainer.style.removeProperty('font-size');
+        }
+    });
     
     console.log("Initialization complete");
 }
@@ -274,8 +292,14 @@ function loadSettings() {
                 // Update toggle button state
                 if (autoResizeText) {
                     autoResizeToggle.classList.add('active');
+                    // Explicitly remove any inline font-size style
+                    lyricsContainer.classList.add('auto-resize');
+                    lyricsContainer.style.removeProperty('font-size');
                 } else {
                     autoResizeToggle.classList.remove('active');
+                    lyricsContainer.classList.remove('auto-resize');
+                    // Apply the manual font size
+                    updateFontSize();
                 }
             }
         } catch (e) {
@@ -306,8 +330,16 @@ function displayCurrentLines() {
     console.log("Number of lines to display:", linesToDisplay);
     console.log("Total song data length:", songData.length);
     
+    // Store the current width before clearing
+    const currentWidth = lyricsContainer.style.width;
+    
     // Clear the container
     lyricsContainer.innerHTML = '';
+    
+    // Restore the width after clearing
+    if (currentWidth) {
+        lyricsContainer.style.width = currentWidth;
+    }
     
     // Create a fixed position container for consistent positioning
     const fixedPositionContainer = document.createElement('div');
@@ -636,11 +668,13 @@ function setupEventListeners() {
     
     // Window resize event for text optimization
     window.addEventListener('resize', () => {
+        // Update container width on resize
+        const containerWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0) - 20;
+        lyricsContainer.style.width = `${containerWidth}px`;
+        
+        // If auto-resize is enabled, make sure the font-size style is removed
         if (autoResizeText) {
-            // Use requestAnimationFrame to ensure DOM is updated first
-            requestAnimationFrame(() => {
-                optimizeTextSize();
-            });
+            lyricsContainer.style.removeProperty('font-size');
         }
     });
     
@@ -1112,8 +1146,8 @@ function toggleAutoResize() {
         autoResizeToggle.classList.add('active');
         // Apply CSS-based auto-resize
         lyricsContainer.classList.add('auto-resize');
-        // Remove any inline font size
-        lyricsContainer.style.fontSize = '';
+        // Remove any inline font-size style
+        lyricsContainer.style.removeProperty('font-size');
     } else {
         autoResizeToggle.classList.remove('active');
         // Remove CSS-based auto-resize
