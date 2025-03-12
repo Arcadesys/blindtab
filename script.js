@@ -300,6 +300,8 @@ function displayCurrentLines() {
     fixedPositionContainer.style.padding = '0'; // Remove all padding
     fixedPositionContainer.style.boxSizing = 'border-box'; // Ensure padding is included in width/height
     fixedPositionContainer.style.textAlign = 'left'; // Ensure text is left-aligned
+    fixedPositionContainer.style.whiteSpace = 'nowrap'; // Prevent text wrapping
+    fixedPositionContainer.style.overflowX = 'visible'; // Allow horizontal overflow
     
     // Display the selected number of lines at a time
     for (let i = 0; i < linesToDisplay; i++) {
@@ -319,6 +321,7 @@ function displayCurrentLines() {
             lineContainer.style.alignItems = 'flex-start'; // Ensure left alignment
             lineContainer.style.flexGrow = '0'; // Don't allow growth
             lineContainer.style.flexShrink = '0'; // Don't allow shrinking
+            lineContainer.style.whiteSpace = 'nowrap'; // Prevent text wrapping
             
             if (line.chords && line.chords.length > 0 && line.lyric) {
                 // For lines with both chords and lyrics, we need to align them
@@ -331,12 +334,14 @@ function displayCurrentLines() {
                 alignmentWrapper.style.minHeight = 'auto'; // Auto height instead of fixed
                 alignmentWrapper.style.flexGrow = '0'; // Don't allow growth
                 alignmentWrapper.style.flexShrink = '0'; // Don't allow shrinking
+                alignmentWrapper.style.whiteSpace = 'nowrap'; // Prevent text wrapping
                 
                 // Create chord container
                 const chordContainer = document.createElement('div');
                 chordContainer.className = 'chord-container';
                 chordContainer.style.width = '100%';
                 chordContainer.style.textAlign = 'left'; // Ensure left alignment
+                chordContainer.style.whiteSpace = 'nowrap'; // Prevent text wrapping
                 
                 // Add each chord at its position
                 line.chords.forEach(chord => {
@@ -361,6 +366,7 @@ function displayCurrentLines() {
                 lyricElement.style.textAlign = 'left'; // Ensure left alignment
                 lyricElement.style.lineHeight = '1.2'; // Reduced line height
                 lyricElement.style.paddingTop = '0'; // Remove top padding
+                lyricElement.style.whiteSpace = 'nowrap'; // Prevent text wrapping
                 
                 // Add elements to the wrapper
                 alignmentWrapper.appendChild(chordContainer);
@@ -371,6 +377,7 @@ function displayCurrentLines() {
                 const chordContainer = document.createElement('div');
                 chordContainer.className = 'chord-container chord-only';
                 chordContainer.style.textAlign = 'left'; // Ensure left alignment
+                chordContainer.style.whiteSpace = 'nowrap'; // Prevent text wrapping
                 
                 // Add each chord
                 line.chords.forEach(chord => {
@@ -394,6 +401,7 @@ function displayCurrentLines() {
                 lyricElement.style.textAlign = 'left'; // Ensure left alignment
                 lyricElement.style.lineHeight = '1.2'; // Reduced line height
                 lyricElement.style.paddingTop = '0'; // Remove top padding
+                lyricElement.style.whiteSpace = 'nowrap'; // Prevent text wrapping
                 lineContainer.appendChild(lyricElement);
             }
             
@@ -817,10 +825,13 @@ function optimizeTextSize() {
         
         console.log(`Testing size ${testSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
         
-        // Use a more aggressive fill ratio (99% instead of 98%)
-        if (contentHeight <= containerHeight * 0.99 && contentWidth <= containerWidth * 0.99) {
-            // Content fits, we found our size
-            break;
+        // Prioritize width fitting over height - use a more aggressive width check (95%)
+        if (contentWidth <= containerWidth * 0.95) {
+            // Content width fits, check height as secondary concern
+            if (contentHeight <= containerHeight * 0.99) {
+                // Both width and height fit, we found our size
+                break;
+            }
         }
         
         // Reduce the test size
@@ -838,8 +849,8 @@ function optimizeTextSize() {
         }
     }
     
-    // Apply a smaller safety margin (99.5% instead of 99%)
-    fontSize = Math.floor(testSize * 0.995);
+    // Apply a smaller safety margin (99% instead of 99.5%)
+    fontSize = Math.floor(testSize * 0.99);
     
     // Update the font size using the proper function to ensure all UI elements are updated
     updateFontSize();
