@@ -34,7 +34,10 @@ A simple, accessible web application for displaying song lyrics and chords with 
 4. Toggle between light and dark themes with the sun/moon button
 5. Click "Select Key" to open a dropdown menu with all available keys
 6. Toggle between sharps and flats notation with the "Use ♭" button
-7. Control auto-scroll speed by adjusting the BPM value
+7. Control auto-scroll speed by adjusting the BPM value:
+   - Each line advances after 4 beats (one measure in 4/4 time)
+   - Lower BPM = slower scroll, higher BPM = faster scroll
+   - Recommended range: 40-120 BPM for comfortable reading
 
 ## Current Song
 

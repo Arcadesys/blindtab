@@ -200,6 +200,18 @@ button:disabled {
     min-width: 30px;
 }
 
+.bpm-help {
+    font-size: 12px;
+    color: #666;
+    margin-top: 2px;
+    text-align: center;
+    width: 100%;
+}
+
+.dark-theme .bpm-help {
+    color: #aaa;
+}
+
 /* Key selector styles */
 .key-selector {
     position: relative;

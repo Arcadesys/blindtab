@@ -65,7 +65,7 @@ let transposeSteps = 0; // Default transposition (no change)
 let useFlats = false; // Default to using sharps
 let isAutoScrolling = false;
 let autoScrollInterval = null;
-let bpm = 80; // Default BPM
+let bpm = 60; // Default BPM - slower default for better readability
 
 // Chord mapping for transposition
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
@@ -297,8 +297,10 @@ function startAutoScroll() {
     stopAutoScroll();
     
     // Calculate interval based on BPM (beats per minute)
-    // Assuming 1 line per beat, convert BPM to milliseconds
-    const intervalMs = (60 / bpm) * 1000;
+    // Using a slower pace - one line per 4 beats (one measure in 4/4 time)
+    // This makes the scroll much more readable
+    const beatsPerLine = 4;
+    const intervalMs = (60 / bpm) * 1000 * beatsPerLine;
     
     // Set up the interval
     autoScrollInterval = setInterval(() => {
