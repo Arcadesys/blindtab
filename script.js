@@ -189,6 +189,9 @@ function init() {
     highlightSelectedKey();
     loadSettings();
     
+    // Initialize slider background
+    updateSliderBackground(fontSize);
+    
     // Initial text size optimization
     if (autoResizeText) {
         optimizeTextSize();
@@ -472,6 +475,11 @@ function setupEventListeners() {
         // Update font size from slider
         fontSize = parseInt(fontSizeSlider.value);
         updateFontSize();
+        
+        // Update the slider position visually
+        updateSliderBackground(fontSize);
+        
+        // Save settings
         saveSettings();
     });
     
@@ -740,16 +748,45 @@ function toggleTheme() {
         body.classList.remove('light-theme');
         body.classList.add('dark-theme');
         toggleIcon.textContent = '🌙';
+        
+        // Update slider background for dark theme
+        updateSliderBackground(fontSize);
     } else {
         body.classList.remove('dark-theme');
         body.classList.add('light-theme');
         toggleIcon.textContent = '☀️';
+        
+        // Update slider background for light theme
+        updateSliderBackground(fontSize);
     }
 }
 
 // Font size adjustment functions
 function updateFontSize() {
     lyricsContainer.style.fontSize = `${fontSize}px`;
+    
+    // Update the slider value in case it was set programmatically
+    fontSizeSlider.value = fontSize;
+    
+    // Update the slider background to reflect current value
+    updateSliderBackground(fontSize);
+}
+
+// Update slider background to show the filled portion
+function updateSliderBackground(value) {
+    const min = parseInt(fontSizeSlider.min);
+    const max = parseInt(fontSizeSlider.max);
+    const percentage = ((value - min) / (max - min)) * 100;
+    
+    // Create gradient background for the slider
+    fontSizeSlider.style.background = 
+        `linear-gradient(to right, #4a90e2 0%, #4a90e2 ${percentage}%, #d3d3d3 ${percentage}%, #d3d3d3 100%)`;
+    
+    // For dark theme, use different colors
+    if (document.body.classList.contains('dark-theme')) {
+        fontSizeSlider.style.background = 
+            `linear-gradient(to right, #7ab5ff 0%, #7ab5ff ${percentage}%, #555 ${percentage}%, #555 100%)`;
+    }
 }
 
 // Optimize text size to fill the viewport
@@ -765,7 +802,7 @@ function optimizeTextSize() {
     // First pass: quickly find an approximate size with larger steps
     while (testSize > 16) { // Don't go below 16px
         fontSize = testSize;
-        updateFontSize();
+        lyricsContainer.style.fontSize = `${fontSize}px`; // Direct update for performance
         
         // Force layout recalculation
         void lyricsContainer.offsetHeight;
@@ -799,11 +836,21 @@ function optimizeTextSize() {
     
     // Apply a smaller safety margin (98% instead of 95%)
     fontSize = Math.floor(testSize * 0.98);
+    
+    // Update the font size using the proper function to ensure all UI elements are updated
     updateFontSize();
-    fontSizeSlider.value = fontSize;
     
     // Save the setting
     saveSettings();
+    
+    // Show a brief visual indicator that auto-sizing has completed
+    const autoResizeButton = document.getElementById('auto-resize-toggle');
+    if (autoResizeButton) {
+        autoResizeButton.classList.add('pulse');
+        setTimeout(() => {
+            autoResizeButton.classList.remove('pulse');
+        }, 500);
+    }
 }
 
 // Calculate the available height for the lyrics container
