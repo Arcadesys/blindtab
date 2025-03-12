@@ -279,7 +279,7 @@ button:disabled {
     transition: min-height 0.3s ease, font-size 0.3s ease;
     font-family: 'Roboto Mono', 'Courier New', Courier, monospace; /* Google Fonts + fallbacks */
     overflow: hidden; /* Prevent scrolling within the container */
-    padding: 0; /* Remove any padding */
+    padding: 0 0 60px 0; /* Add bottom padding to account for navigation */
     width: 100%; /* Ensure full width */
     max-width: 100vw; /* Limit to viewport width */
 }
@@ -290,7 +290,7 @@ button:disabled {
 
 /* Line container for proper chord-lyric alignment */
 .line-container {
-    margin-bottom: 25px; /* Increased from 15px */
+    margin-bottom: 1.5em; /* Use em units for better scaling */
     position: relative;
     width: 100%; /* Full width */
     max-width: 90vw; /* Limit width to 90% of viewport to prevent overflow */
@@ -311,11 +311,11 @@ button:disabled {
 .chord-container {
     position: relative;
     width: 100%;
-    height: 30px; /* Increased from 25px */
+    height: 1.5em; /* Use em units for better scaling with font size */
     font-weight: 700;
     color: #4a90e2;
     letter-spacing: 0.05em;
-    margin-bottom: 5px; /* Reduced from 10px */
+    margin-bottom: 0.3em; /* Use em units for better scaling */
 }
 
 .dark-theme .chord-container {
@@ -327,18 +327,20 @@ button:disabled {
     position: absolute;
     white-space: nowrap;
     top: 0; /* Ensure consistent vertical positioning */
+    font-size: 0.8em; /* Make chords slightly smaller than lyrics */
 }
 
 .chord-only {
     position: relative;
-    margin-bottom: 5px;
+    margin-bottom: 0.3em;
     height: auto;
 }
 
 .chord-only .chord {
     position: relative;
     display: inline-block;
-    margin-right: 10px;
+    margin-right: 0.5em; /* Use em units for better scaling */
+    font-size: 1em; /* Reset font size for chord-only lines */
 }
 
 /* Lyric line */
@@ -347,7 +349,7 @@ button:disabled {
     width: 100%;
     white-space: pre;
     line-height: 1.5; /* Increased from default */
-    padding-top: 5px; /* Add some space between chord and lyric */
+    padding-top: 0.3em; /* Use em units for better scaling */
 }
 
 /* For lyric-only lines */

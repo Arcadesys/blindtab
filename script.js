@@ -307,8 +307,12 @@ function displayCurrentLines() {
                     const chordSpan = document.createElement('span');
                     chordSpan.className = 'chord';
                     chordSpan.textContent = transposeChord(chord.text);
-                    chordSpan.style.left = `${chord.position}ch`;
-                    // Add a small top margin to ensure chords are visible
+                    
+                    // Use em units instead of ch for better scaling with font size
+                    // Approximate conversion: 1ch ≈ 0.5em for monospace fonts
+                    chordSpan.style.left = `${chord.position * 0.5}em`;
+                    
+                    // Ensure consistent vertical positioning
                     chordSpan.style.top = '0';
                     chordContainer.appendChild(chordSpan);
                 });
@@ -333,7 +337,8 @@ function displayCurrentLines() {
                     chordSpan.className = 'chord';
                     chordSpan.textContent = transposeChord(chord.text);
                     if (chord.position > 0) {
-                        chordSpan.style.marginLeft = `${chord.position}ch`;
+                        // Use em units for better scaling
+                        chordSpan.style.marginLeft = `${chord.position * 0.5}em`;
                     }
                     chordContainer.appendChild(chordSpan);
                 });
@@ -360,7 +365,7 @@ function displayCurrentLines() {
         // Use a longer timeout to ensure DOM is fully updated and rendered
         setTimeout(() => {
             optimizeTextSize();
-        }, 50);
+        }, 100); // Increased timeout for better reliability
     }
 }
 
@@ -710,7 +715,7 @@ function optimizeTextSize() {
     const containerHeight = calculateAvailableHeight();
     
     // Start with a large font size and decrease until content fits
-    let maxSize = 200; // Maximum font size to try
+    let maxSize = 150; // Reduced maximum font size to avoid extreme scaling issues
     let minSize = 16;  // Minimum font size
     let currentSize = maxSize;
     let bestSize = minSize;  // Default to minimum if nothing fits
@@ -726,7 +731,7 @@ function optimizeTextSize() {
         
         // Check if content fits
         const contentHeight = calculateContentHeight();
-        const fits = contentHeight <= containerHeight * 0.95; // Allow for some margin
+        const fits = contentHeight <= containerHeight * 0.9; // Reduced margin for more aggressive sizing
         
         if (fits) {
             // This size fits, save it and try a larger one
@@ -741,8 +746,8 @@ function optimizeTextSize() {
         currentSize = Math.floor((minSize + maxSize) / 2);
     }
     
-    // Apply the best size found
-    fontSize = bestSize;
+    // Apply the best size found, but reduce it slightly to ensure it fits
+    fontSize = Math.floor(bestSize * 0.95); // Apply a small safety margin
     updateFontSize();
     fontSizeSlider.value = fontSize;
     
@@ -754,9 +759,9 @@ function optimizeTextSize() {
 function calculateAvailableHeight() {
     const windowHeight = window.innerHeight;
     const headerHeight = document.querySelector('header').offsetHeight || 0;
-    const navigationHeight = 60; // Fixed height for navigation
+    const navigationHeight = 70; // Increased fixed height for navigation
     const songInfoHeight = document.querySelector('.song-info') ? document.querySelector('.song-info').offsetHeight : 0;
-    const containerPadding = 20; // Increased padding for better spacing
+    const containerPadding = 30; // Increased padding for better spacing
     
     // Calculate total height to subtract
     const subtractHeight = headerHeight + navigationHeight + songInfoHeight + containerPadding;
