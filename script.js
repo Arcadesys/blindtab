@@ -57,6 +57,8 @@ const autoScrollToggle = document.getElementById('auto-scroll-toggle');
 const bpmInput = document.getElementById('bpm-input');
 const increaseBpm = document.getElementById('increase-bpm');
 const decreaseBpm = document.getElementById('decrease-bpm');
+const showControlsBtn = document.getElementById('show-controls-btn');
+const controlsPanel = document.getElementById('controls-panel');
 
 // App state
 let currentIndex = 0;
@@ -66,6 +68,7 @@ let useFlats = false; // Default to using sharps
 let isAutoScrolling = false;
 let autoScrollInterval = null;
 let bpm = 60; // Default BPM - slower default for better readability
+let controlsVisible = false; // Controls hidden by default
 
 // Chord mapping for transposition
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
@@ -111,6 +114,11 @@ function loadSettings() {
                 bpm = settings.bpm;
                 bpmInput.value = bpm;
             }
+            
+            // Load controls visibility state
+            if (settings.controlsVisible) {
+                toggleControls(true);
+            }
         } catch (e) {
             console.error('Error loading settings:', e);
         }
@@ -124,7 +132,8 @@ function saveSettings() {
         theme: document.body.classList.contains('dark-theme') ? 'dark' : 'light',
         transposeSteps,
         useFlats,
-        bpm
+        bpm,
+        controlsVisible
     };
     
     localStorage.setItem('blindTabSettings', JSON.stringify(settings));
@@ -262,6 +271,12 @@ function setupEventListeners() {
         saveSettings();
     });
     
+    // Show/hide controls
+    showControlsBtn.addEventListener('click', () => {
+        toggleControls();
+        saveSettings();
+    });
+    
     // Close dropdown when clicking outside
     document.addEventListener('click', function(event) {
         if (!event.target.closest('.key-selector') && keyDropdown.classList.contains('show')) {
@@ -274,6 +289,20 @@ function setupEventListeners() {
     
     // Touch navigation for the lyrics container
     lyricsContainer.addEventListener('click', handleContainerClick);
+}
+
+// Toggle controls panel visibility
+function toggleControls(setVisible = null) {
+    // If setVisible is provided, use that value, otherwise toggle
+    controlsVisible = setVisible !== null ? setVisible : !controlsVisible;
+    
+    if (controlsVisible) {
+        controlsPanel.classList.add('show');
+        showControlsBtn.classList.add('active');
+    } else {
+        controlsPanel.classList.remove('show');
+        showControlsBtn.classList.remove('active');
+    }
 }
 
 // Toggle auto-scroll
