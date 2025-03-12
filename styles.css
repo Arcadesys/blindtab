@@ -241,19 +241,21 @@ button:disabled {
 /* Wrapper for aligned chord-lyric pairs */
 .alignment-wrapper {
     position: relative;
-    min-height: 60px; /* Provide space for both chord and lyric */
+    min-height: 70px; /* Increased space for both chord and lyric */
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px; /* Add space between line pairs */
 }
 
 /* Chord container */
 .chord-container {
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: relative; /* Changed from absolute to relative */
     width: 100%;
-    height: 25px;
+    height: 30px; /* Increased height for better visibility */
     font-weight: 700;
     color: #4a90e2;
     letter-spacing: 0.05em;
+    margin-bottom: 15px; /* Increased space between chords and lyrics */
 }
 
 .dark-theme .chord-container {
@@ -279,8 +281,7 @@ button:disabled {
 }
 
 .lyric-line {
-    position: absolute;
-    top: 30px; /* Position below the chord line */
+    position: relative; /* Changed from absolute to relative */
     width: 100%;
     white-space: pre;
 }

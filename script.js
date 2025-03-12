@@ -308,6 +308,8 @@ function displayCurrentLines() {
                     chordSpan.className = 'chord';
                     chordSpan.textContent = transposeChord(chord.text);
                     chordSpan.style.left = `${chord.position}ch`;
+                    // Add a small top margin to ensure chords are visible
+                    chordSpan.style.top = '0';
                     chordContainer.appendChild(chordSpan);
                 });
                 
@@ -734,7 +736,7 @@ function optimizeTextSize() {
     if (ratio !== 1) {
         // Calculate new font size based on the ratio
         // Use a slightly more conservative ratio to avoid overflow
-        const adjustmentFactor = ratio * 0.95;
+        const adjustmentFactor = ratio * 0.9; // More conservative factor
         fontSize = Math.max(16, Math.min(100, Math.floor(fontSize * adjustmentFactor)));
         
         // Apply the new font size
@@ -747,10 +749,10 @@ function optimizeTextSize() {
             
             // Fine-tune if needed
             if (Math.abs(newRatio - 1) > 0.1) {
-                fontSize = Math.max(16, Math.min(100, Math.floor(fontSize * (newRatio * 0.95))));
+                fontSize = Math.max(16, Math.min(100, Math.floor(fontSize * (newRatio * 0.9))));
                 updateFontSize();
             }
-        }, 50);
+        }, 100); // Increased delay for better DOM update
     }
 }
 
