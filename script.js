@@ -280,17 +280,14 @@ function saveSettings() {
 
 // Display current lines based on the selected number of lines
 function displayCurrentLines() {
-    // Store the current height before clearing content
-    const oldHeight = lyricsContainer.offsetHeight;
-    
-    // Clear the container but maintain its dimensions
+    // Clear the container
     lyricsContainer.innerHTML = '';
     
     // Create a fixed position container for consistent positioning
     const fixedPositionContainer = document.createElement('div');
     fixedPositionContainer.className = 'fixed-position-container';
     
-    // Explicitly set inline styles to ensure proper positioning and centering
+    // Explicitly set inline styles to ensure proper positioning and left alignment
     fixedPositionContainer.style.position = 'absolute';
     fixedPositionContainer.style.top = '0';
     fixedPositionContainer.style.left = '0';
@@ -298,15 +295,10 @@ function displayCurrentLines() {
     fixedPositionContainer.style.height = '100%';
     fixedPositionContainer.style.display = 'flex';
     fixedPositionContainer.style.flexDirection = 'column';
-    fixedPositionContainer.style.alignItems = 'flex-start'; // Align to left instead of center
-    fixedPositionContainer.style.justifyContent = 'flex-start'; // Align to top instead of center
-    fixedPositionContainer.style.padding = '20px';
-    fixedPositionContainer.style.boxSizing = 'border-box'; // Ensure padding is included in width/height calculations
-    
-    // Preserve the height to prevent layout shifts
-    if (oldHeight > 0) {
-        lyricsContainer.style.minHeight = `${oldHeight}px`;
-    }
+    fixedPositionContainer.style.alignItems = 'flex-start'; // Ensure left alignment
+    fixedPositionContainer.style.justifyContent = 'flex-start'; // Align to top
+    fixedPositionContainer.style.padding = '10px 20px'; // Reduced top/bottom padding
+    fixedPositionContainer.style.boxSizing = 'border-box'; // Ensure padding is included in width/height
     
     // Display the selected number of lines at a time
     for (let i = 0; i < linesToDisplay; i++) {
@@ -320,10 +312,12 @@ function displayCurrentLines() {
             const lineContainer = document.createElement('div');
             lineContainer.className = 'line-container';
             lineContainer.style.width = '100%';
-            lineContainer.style.textAlign = 'left'; // Left align text
+            lineContainer.style.textAlign = 'left'; // Ensure left alignment
             lineContainer.style.display = 'flex';
             lineContainer.style.flexDirection = 'column';
-            lineContainer.style.alignItems = 'flex-start'; // Left align children
+            lineContainer.style.alignItems = 'flex-start'; // Ensure left alignment
+            lineContainer.style.flexGrow = '0'; // Don't allow growth
+            lineContainer.style.flexShrink = '0'; // Don't allow shrinking
             
             if (line.chords && line.chords.length > 0 && line.lyric) {
                 // For lines with both chords and lyrics, we need to align them
@@ -332,13 +326,16 @@ function displayCurrentLines() {
                 const alignmentWrapper = document.createElement('div');
                 alignmentWrapper.className = 'alignment-wrapper';
                 alignmentWrapper.style.width = '100%';
-                alignmentWrapper.style.textAlign = 'left'; // Left align text
+                alignmentWrapper.style.textAlign = 'left'; // Ensure left alignment
+                alignmentWrapper.style.minHeight = 'auto'; // Auto height instead of fixed
+                alignmentWrapper.style.flexGrow = '0'; // Don't allow growth
+                alignmentWrapper.style.flexShrink = '0'; // Don't allow shrinking
                 
                 // Create chord container
                 const chordContainer = document.createElement('div');
                 chordContainer.className = 'chord-container';
                 chordContainer.style.width = '100%';
-                chordContainer.style.textAlign = 'left'; // Left align chords
+                chordContainer.style.textAlign = 'left'; // Ensure left alignment
                 
                 // Add each chord at its position
                 line.chords.forEach(chord => {
@@ -346,8 +343,7 @@ function displayCurrentLines() {
                     chordSpan.className = 'chord';
                     chordSpan.textContent = transposeChord(chord.text);
                     
-                    // Use em units instead of ch for better scaling with font size
-                    // Approximate conversion: 1ch ≈ 0.5em for monospace fonts
+                    // Use em units for better scaling with font size
                     chordSpan.style.left = `${chord.position * 0.5}em`;
                     
                     // Ensure consistent vertical positioning
@@ -360,7 +356,8 @@ function displayCurrentLines() {
                 lyricElement.className = 'lyric-line';
                 lyricElement.textContent = line.lyric;
                 lyricElement.style.width = '100%';
-                lyricElement.style.textAlign = 'left'; // Left align lyrics
+                lyricElement.style.textAlign = 'left'; // Ensure left alignment
+                lyricElement.style.lineHeight = '1.4'; // Slightly reduced line height
                 
                 // Add elements to the wrapper
                 alignmentWrapper.appendChild(chordContainer);
@@ -370,7 +367,7 @@ function displayCurrentLines() {
                 // Only chord, no lyrics
                 const chordContainer = document.createElement('div');
                 chordContainer.className = 'chord-container chord-only';
-                chordContainer.style.textAlign = 'left'; // Left align chords
+                chordContainer.style.textAlign = 'left'; // Ensure left alignment
                 
                 // Add each chord
                 line.chords.forEach(chord => {
@@ -391,7 +388,8 @@ function displayCurrentLines() {
                 lyricElement.className = 'lyric-line';
                 lyricElement.textContent = line.lyric;
                 lyricElement.style.width = '100%';
-                lyricElement.style.textAlign = 'left'; // Left align lyrics
+                lyricElement.style.textAlign = 'left'; // Ensure left alignment
+                lyricElement.style.lineHeight = '1.4'; // Slightly reduced line height
                 lineContainer.appendChild(lyricElement);
             }
             
@@ -474,7 +472,9 @@ function setupEventListeners() {
         
         // Update font size from slider
         fontSize = parseInt(fontSizeSlider.value);
-        updateFontSize();
+        
+        // Apply the font size immediately
+        lyricsContainer.style.fontSize = `${fontSize}px`;
         
         // Update the slider position visually
         updateSliderBackground(fontSize);
@@ -792,12 +792,12 @@ function updateSliderBackground(value) {
 // Optimize text size to fill the viewport
 function optimizeTextSize() {
     // Get the available height and width for the lyrics container
-    const containerHeight = lyricsContainer.offsetHeight - 40; // Account for padding (20px top + 20px bottom)
+    const containerHeight = lyricsContainer.offsetHeight - 20; // Account for reduced padding (10px top + 10px bottom)
     const containerWidth = lyricsContainer.offsetWidth - 40; // Account for padding (20px left + 20px right)
     
     // Start with a very large font size and decrease until content fits
-    let testSize = 400; // Start with a much larger font size
-    let step = 20; // Larger initial step size for faster convergence
+    let testSize = 500; // Start with an even larger font size
+    let step = 25; // Larger initial step size for faster convergence
     
     // First pass: quickly find an approximate size with larger steps
     while (testSize > 16) { // Don't go below 16px
@@ -813,8 +813,8 @@ function optimizeTextSize() {
         
         console.log(`Testing size ${testSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
         
-        // Use a more aggressive fill ratio (95% instead of 90%)
-        if (contentHeight <= containerHeight * 0.95 && contentWidth <= containerWidth * 0.95) {
+        // Use a more aggressive fill ratio (98% instead of 95%)
+        if (contentHeight <= containerHeight * 0.98 && contentWidth <= containerWidth * 0.98) {
             // Content fits, we found our size
             break;
         }
@@ -834,8 +834,8 @@ function optimizeTextSize() {
         }
     }
     
-    // Apply a smaller safety margin (98% instead of 95%)
-    fontSize = Math.floor(testSize * 0.98);
+    // Apply a smaller safety margin (99% instead of 98%)
+    fontSize = Math.floor(testSize * 0.99);
     
     // Update the font size using the proper function to ensure all UI elements are updated
     updateFontSize();
@@ -853,20 +853,6 @@ function optimizeTextSize() {
     }
 }
 
-// Calculate the available height for the lyrics container
-function calculateAvailableHeight() {
-    const windowHeight = window.innerHeight;
-    const headerHeight = document.querySelector('header').offsetHeight || 0;
-    const navigationHeight = 70; // Increased fixed height for navigation
-    const songInfoHeight = document.querySelector('.song-info') ? document.querySelector('.song-info').offsetHeight : 0;
-    const containerPadding = 60; // Increased padding to account for fixed position container's top and bottom margins
-    
-    // Calculate total height to subtract
-    const subtractHeight = headerHeight + navigationHeight + songInfoHeight + containerPadding;
-    
-    return windowHeight - subtractHeight;
-}
-
 // Calculate the current content height
 function calculateContentHeight() {
     // Get the fixed position container
@@ -882,7 +868,8 @@ function calculateContentHeight() {
         totalHeight += container.offsetHeight;
     });
     
-    return totalHeight || 300; // Default to 300px if no content
+    // Add a small buffer for spacing
+    return totalHeight + 10;
 }
 
 // Calculate the current content width
@@ -901,7 +888,8 @@ function calculateContentWidth() {
         maxWidth = Math.max(maxWidth, width);
     });
     
-    return maxWidth || 1000; // Default to 1000px if no content
+    // Add a small buffer for safety
+    return maxWidth + 10;
 }
 
 // Update the number of lines to display

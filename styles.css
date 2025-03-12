@@ -28,7 +28,7 @@ body {
 }
 
 .container {
-    max-width: 100%; /* Changed from 800px to use full width */
+    max-width: 100%; /* Use full width */
     margin: 0 auto;
     padding: 10px 10px 60px 10px; /* Added bottom padding for fixed navigation */
     display: flex;
@@ -279,6 +279,8 @@ button:disabled {
 .song-info {
     text-align: center;
     margin-bottom: 10px; /* Reduced from 30px */
+    width: 100%;
+    padding: 0 10px;
 }
 
 .song-info h2 {
@@ -318,8 +320,9 @@ button:disabled {
     flex-direction: column;
     align-items: flex-start; /* Align to left instead of center */
     justify-content: flex-start; /* Align to top instead of center */
-    padding: 20px;
+    padding: 10px 20px; /* Reduced top/bottom padding to maximize vertical space */
     overflow-x: hidden; /* Prevent horizontal overflow */
+    box-sizing: border-box; /* Include padding in width/height calculations */
 }
 
 .controls-panel.show + .lyrics-container {
@@ -328,7 +331,7 @@ button:disabled {
 
 /* Line container for proper chord-lyric alignment */
 .line-container {
-    margin-bottom: 1.5em;
+    margin-bottom: 1.2em; /* Reduced from 1.5em to fit more content */
     position: relative;
     width: 100%;
     max-width: 100%; /* Allow full width */
@@ -338,18 +341,22 @@ button:disabled {
     display: flex;
     flex-direction: column;
     align-items: flex-start; /* Left align children */
+    flex-grow: 0; /* Don't allow growth */
+    flex-shrink: 0; /* Don't allow shrinking */
 }
 
 /* Wrapper for aligned chord-lyric pairs */
 .alignment-wrapper {
     position: relative;
-    min-height: 80px;
+    min-height: auto; /* Changed from fixed 80px to auto */
     height: auto;
     display: flex;
     flex-direction: column;
-    margin-bottom: 20px; /* Increased from 10px for better spacing */
+    margin-bottom: 10px; /* Reduced from 20px for better spacing */
     width: 100%;
     align-items: flex-start; /* Left alignment */
+    flex-grow: 0; /* Don't allow growth */
+    flex-shrink: 0; /* Don't allow shrinking */
 }
 
 /* Chord container */
@@ -360,7 +367,7 @@ button:disabled {
     font-weight: 700;
     color: #4a90e2;
     letter-spacing: 0.05em;
-    margin-bottom: 0.3em; /* Use em units for better scaling */
+    margin-bottom: 0.2em; /* Reduced from 0.3em for tighter spacing */
     text-align: left; /* Left align text */
 }
 
@@ -378,7 +385,7 @@ button:disabled {
 
 .chord-only {
     position: relative;
-    margin-bottom: 0.3em;
+    margin-bottom: 0.2em; /* Reduced from 0.3em */
     height: auto;
 }
 
@@ -394,8 +401,8 @@ button:disabled {
     position: relative;
     width: 100%;
     white-space: pre-wrap; /* Change from pre to pre-wrap to allow wrapping */
-    line-height: 1.5; /* Increased from default */
-    padding-top: 0.3em; /* Use em units for better scaling */
+    line-height: 1.4; /* Reduced from 1.5 for tighter spacing */
+    padding-top: 0.2em; /* Reduced from 0.3em */
     overflow-wrap: break-word; /* Allow long words to break */
     word-wrap: break-word; /* Legacy support */
     text-align: left; /* Left align text */
@@ -732,4 +739,15 @@ button:disabled {
 
 .dark-theme .modal-footer {
     border-top-color: #555;
+}
+
+/* Add a pulse animation for the auto-resize button */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+#auto-resize-toggle.pulse {
+    animation: pulse 0.5s ease-in-out;
 } 
