@@ -182,6 +182,21 @@ let autoResizeText = true; // Enable auto-resizing by default
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
 const flatChords = ['A', 'Bb', 'B', 'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab'];
 
+// Update the lyrics container width
+function updateContainerWidth() {
+    // Calculate the optimal width based on window dimensions
+    const containerWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0) - 20; // 20px for margins
+    lyricsContainer.style.width = `${containerWidth}px`;
+    lyricsContainer.style.maxWidth = '100vw';
+    
+    // If auto-resize is enabled, make sure the font-size style is removed
+    if (autoResizeText) {
+        lyricsContainer.style.removeProperty('font-size');
+    }
+    
+    console.log(`Updated lyrics container width to ${containerWidth}px`);
+}
+
 // Initialize the app
 function init() {
     console.log("Initializing app...");
@@ -222,17 +237,7 @@ function init() {
     // Explicitly set width to ensure proper dimensions
     // Use requestAnimationFrame to ensure DOM is fully rendered
     requestAnimationFrame(() => {
-        // Force a layout calculation
-        const containerWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0) - 20; // 20px for margins
-        lyricsContainer.style.width = `${containerWidth}px`;
-        lyricsContainer.style.maxWidth = '100vw';
-        
-        console.log(`Explicitly set lyrics container width to ${containerWidth}px`);
-        
-        // If auto-resize is enabled, make sure the font-size style is removed again
-        if (autoResizeText) {
-            lyricsContainer.style.removeProperty('font-size');
-        }
+        updateContainerWidth();
     });
     
     console.log("Initialization complete");
@@ -669,13 +674,15 @@ function setupEventListeners() {
     // Window resize event for text optimization
     window.addEventListener('resize', () => {
         // Update container width on resize
-        const containerWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0) - 20;
-        lyricsContainer.style.width = `${containerWidth}px`;
-        
-        // If auto-resize is enabled, make sure the font-size style is removed
-        if (autoResizeText) {
-            lyricsContainer.style.removeProperty('font-size');
-        }
+        updateContainerWidth();
+    });
+    
+    // Handle orientation changes on mobile devices
+    window.addEventListener('orientationchange', () => {
+        // Use setTimeout to ensure dimensions are updated after orientation change completes
+        setTimeout(() => {
+            updateContainerWidth();
+        }, 100);
     });
     
     // Auto-resize toggle
@@ -1155,6 +1162,9 @@ function toggleAutoResize() {
         // Apply the manual font size
         updateFontSize();
     }
+    
+    // Update container width to ensure proper dimensions
+    updateContainerWidth();
     
     // Save settings
     saveSettings();
