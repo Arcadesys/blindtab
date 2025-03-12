@@ -4,7 +4,10 @@ A simple, accessible web application for displaying song lyrics and chords with 
 
 ## Features
 
-- **Simple Display**: Shows two lines of lyrics and chords at a time for easy reading
+- **Accessible Display**: 
+  - Shows two lines of lyrics and chords at a time
+  - Rolling buffer navigation (one line at a time) for better readability
+  - Previous line remains visible when advancing to help maintain context
 - **Accessible Navigation**: 
   - Tap/click on left/right sides to navigate
   - Previous/Next buttons

@@ -226,15 +226,15 @@ function toggleUseFlats() {
 
 // Navigation functions
 function goToNextLines() {
-    if (currentIndex < songData.length - 2) {
-        currentIndex += 2;
+    if (currentIndex < songData.length - 1) {
+        currentIndex += 1;
         displayCurrentLines();
     }
 }
 
 function goToPreviousLines() {
     if (currentIndex > 0) {
-        currentIndex -= 2;
+        currentIndex -= 1;
         displayCurrentLines();
     }
 }
