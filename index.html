@@ -18,7 +18,34 @@
                     <button id="decrease-font" aria-label="Decrease font size">A-</button>
                     <button id="increase-font" aria-label="Increase font size">A+</button>
                 </div>
-                <button id="transpose-btn" aria-label="Change song key">Select Key</button>
+                <div class="key-selector">
+                    <button id="key-select-btn" aria-label="Open key selection menu">Select Key</button>
+                    <div id="key-dropdown" class="key-dropdown">
+                        <div class="key-option" data-transpose="0">Original Key</div>
+                        <div class="key-option" data-transpose="1">A♯/B♭</div>
+                        <div class="key-option" data-transpose="2">B</div>
+                        <div class="key-option" data-transpose="3">C</div>
+                        <div class="key-option" data-transpose="4">C♯/D♭</div>
+                        <div class="key-option" data-transpose="5">D</div>
+                        <div class="key-option" data-transpose="6">D♯/E♭</div>
+                        <div class="key-option" data-transpose="7">E</div>
+                        <div class="key-option" data-transpose="8">F</div>
+                        <div class="key-option" data-transpose="9">F♯/G♭</div>
+                        <div class="key-option" data-transpose="10">G</div>
+                        <div class="key-option" data-transpose="11">G♯/A♭</div>
+                        <div class="key-option" data-transpose="-1">G</div>
+                        <div class="key-option" data-transpose="-2">F♯/G♭</div>
+                        <div class="key-option" data-transpose="-3">F</div>
+                        <div class="key-option" data-transpose="-4">E</div>
+                        <div class="key-option" data-transpose="-5">D♯/E♭</div>
+                        <div class="key-option" data-transpose="-6">D</div>
+                        <div class="key-option" data-transpose="-7">C♯/D♭</div>
+                        <div class="key-option" data-transpose="-8">C</div>
+                        <div class="key-option" data-transpose="-9">B</div>
+                        <div class="key-option" data-transpose="-10">A♯/B♭</div>
+                        <div class="key-option" data-transpose="-11">A</div>
+                    </div>
+                </div>
                 <button id="use-flats" aria-label="Toggle between sharps and flats">Use ♭</button>
             </div>
         </header>

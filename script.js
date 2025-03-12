@@ -49,7 +49,9 @@ const nextBtn = document.getElementById('next-btn');
 const themeToggle = document.getElementById('theme-toggle');
 const increaseFont = document.getElementById('increase-font');
 const decreaseFont = document.getElementById('decrease-font');
-const transposeBtn = document.getElementById('transpose-btn');
+const keySelectBtn = document.getElementById('key-select-btn');
+const keyDropdown = document.getElementById('key-dropdown');
+const keyOptions = document.querySelectorAll('.key-option');
 const useFlatsBtn = document.getElementById('use-flats');
 
 // App state
@@ -66,6 +68,7 @@ const flatChords = ['A', 'Bb', 'B', 'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', '
 function init() {
     displayCurrentLines();
     setupEventListeners();
+    highlightSelectedKey();
 }
 
 // Display current lines (2 at a time)
@@ -153,11 +156,27 @@ function setupEventListeners() {
     increaseFont.addEventListener('click', increaseFontSize);
     decreaseFont.addEventListener('click', decreaseFontSize);
     
-    // Transpose button
-    transposeBtn.addEventListener('click', cycleTransposition);
+    // Key selection
+    keySelectBtn.addEventListener('click', toggleKeyDropdown);
+    
+    // Key options
+    keyOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            const transposeValue = parseInt(this.getAttribute('data-transpose'));
+            setTransposition(transposeValue);
+            toggleKeyDropdown(); // Close dropdown after selection
+        });
+    });
     
     // Use flats toggle
     useFlatsBtn.addEventListener('click', toggleUseFlats);
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.key-selector') && keyDropdown.classList.contains('show')) {
+            keyDropdown.classList.remove('show');
+        }
+    });
     
     // Keyboard navigation
     document.addEventListener('keydown', handleKeyboardNavigation);
@@ -166,20 +185,36 @@ function setupEventListeners() {
     lyricsContainer.addEventListener('click', handleContainerClick);
 }
 
-// Cycle through transposition options
-function cycleTransposition() {
-    // Cycle through common transpositions: 0, +1, +2, -1, -2
-    const transpositions = [0, 1, 2, -1, -2];
-    const currentIndex = transpositions.indexOf(transposeSteps);
-    const nextIndex = (currentIndex + 1) % transpositions.length;
-    transposeSteps = transpositions[nextIndex];
-    
-    // Update button text to show current transposition
-    const sign = transposeSteps > 0 ? '+' : '';
-    transposeBtn.textContent = transposeSteps === 0 ? 'Select Key' : `Key ${sign}${transposeSteps}`;
-    
-    // Refresh display
+// Toggle key selection dropdown
+function toggleKeyDropdown() {
+    keyDropdown.classList.toggle('show');
+}
+
+// Set transposition and update display
+function setTransposition(steps) {
+    transposeSteps = steps;
+    highlightSelectedKey();
     displayCurrentLines();
+}
+
+// Highlight the currently selected key in the dropdown
+function highlightSelectedKey() {
+    keyOptions.forEach(option => {
+        const optionValue = parseInt(option.getAttribute('data-transpose'));
+        if (optionValue === transposeSteps) {
+            option.classList.add('selected');
+        } else {
+            option.classList.remove('selected');
+        }
+    });
+    
+    // Update button text
+    if (transposeSteps === 0) {
+        keySelectBtn.textContent = 'Select Key';
+    } else {
+        const sign = transposeSteps > 0 ? '+' : '';
+        keySelectBtn.textContent = `Key ${sign}${transposeSteps}`;
+    }
 }
 
 // Toggle between sharps and flats

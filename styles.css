@@ -83,11 +83,11 @@ button:disabled {
     border-color: #666;
 }
 
-#transpose-btn, #use-flats {
+#transpose-btn, #use-flats, #key-select-btn {
     background-color: #5a6268;
 }
 
-#transpose-btn:hover, #use-flats:hover {
+#transpose-btn:hover, #use-flats:hover, #key-select-btn:hover {
     background-color: #444a4e;
 }
 
@@ -135,6 +135,65 @@ button:disabled {
     display: flex;
     justify-content: space-between;
     margin-top: auto;
+}
+
+/* Key selector styles */
+.key-selector {
+    position: relative;
+    display: inline-block;
+}
+
+.key-dropdown {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    max-height: 300px;
+    overflow-y: auto;
+    border-radius: 4px;
+    top: 100%;
+    left: 0;
+}
+
+.dark-theme .key-dropdown {
+    background-color: #333;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+}
+
+.key-dropdown.show {
+    display: block;
+}
+
+.key-option {
+    color: #333;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dark-theme .key-option {
+    color: #f0f0f0;
+}
+
+.key-option:hover {
+    background-color: #ddd;
+}
+
+.dark-theme .key-option:hover {
+    background-color: #444;
+}
+
+.key-option.selected {
+    background-color: #4a90e2;
+    color: white;
+}
+
+.dark-theme .key-option.selected {
+    background-color: #357abd;
 }
 
 /* Responsive adjustments */
