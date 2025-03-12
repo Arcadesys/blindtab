@@ -297,7 +297,7 @@ function displayCurrentLines() {
     fixedPositionContainer.style.flexDirection = 'column';
     fixedPositionContainer.style.alignItems = 'flex-start'; // Ensure left alignment
     fixedPositionContainer.style.justifyContent = 'flex-start'; // Align to top
-    fixedPositionContainer.style.padding = '10px 20px'; // Reduced top/bottom padding
+    fixedPositionContainer.style.padding = '0'; // Remove all padding
     fixedPositionContainer.style.boxSizing = 'border-box'; // Ensure padding is included in width/height
     
     // Display the selected number of lines at a time
@@ -792,8 +792,8 @@ function updateSliderBackground(value) {
 // Optimize text size to fill the viewport
 function optimizeTextSize() {
     // Get the available height and width for the lyrics container
-    const containerHeight = lyricsContainer.offsetHeight - 20; // Account for reduced padding (10px top + 10px bottom)
-    const containerWidth = lyricsContainer.offsetWidth - 40; // Account for padding (20px left + 20px right)
+    const containerHeight = lyricsContainer.offsetHeight; // No padding to account for
+    const containerWidth = lyricsContainer.offsetWidth; // No padding to account for
     
     // Start with a very large font size and decrease until content fits
     let testSize = 500; // Start with an even larger font size
@@ -813,8 +813,8 @@ function optimizeTextSize() {
         
         console.log(`Testing size ${testSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
         
-        // Use a more aggressive fill ratio (98% instead of 95%)
-        if (contentHeight <= containerHeight * 0.98 && contentWidth <= containerWidth * 0.98) {
+        // Use a more aggressive fill ratio (99% instead of 98%)
+        if (contentHeight <= containerHeight * 0.99 && contentWidth <= containerWidth * 0.99) {
             // Content fits, we found our size
             break;
         }
@@ -834,8 +834,8 @@ function optimizeTextSize() {
         }
     }
     
-    // Apply a smaller safety margin (99% instead of 98%)
-    fontSize = Math.floor(testSize * 0.99);
+    // Apply a smaller safety margin (99.5% instead of 99%)
+    fontSize = Math.floor(testSize * 0.995);
     
     // Update the font size using the proper function to ensure all UI elements are updated
     updateFontSize();
