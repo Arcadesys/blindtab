@@ -295,7 +295,7 @@ function displayCurrentLines() {
     fixedPositionContainer.style.height = '100%';
     fixedPositionContainer.style.display = 'flex';
     fixedPositionContainer.style.flexDirection = 'column';
-    fixedPositionContainer.style.alignItems = 'center'; // Center horizontally
+    fixedPositionContainer.style.alignItems = 'flex-start'; // Align to left instead of center
     fixedPositionContainer.style.justifyContent = 'flex-start'; // Align to top instead of center
     fixedPositionContainer.style.padding = '20px';
     
@@ -316,10 +316,10 @@ function displayCurrentLines() {
             const lineContainer = document.createElement('div');
             lineContainer.className = 'line-container';
             lineContainer.style.width = '100%';
-            lineContainer.style.textAlign = 'center'; // Center text
+            lineContainer.style.textAlign = 'left'; // Left align text
             lineContainer.style.display = 'flex';
             lineContainer.style.flexDirection = 'column';
-            lineContainer.style.alignItems = 'center'; // Center children
+            lineContainer.style.alignItems = 'flex-start'; // Left align children
             
             if (line.chords && line.chords.length > 0 && line.lyric) {
                 // For lines with both chords and lyrics, we need to align them
@@ -328,13 +328,13 @@ function displayCurrentLines() {
                 const alignmentWrapper = document.createElement('div');
                 alignmentWrapper.className = 'alignment-wrapper';
                 alignmentWrapper.style.width = '100%';
-                alignmentWrapper.style.textAlign = 'center'; // Center text
+                alignmentWrapper.style.textAlign = 'left'; // Left align text
                 
                 // Create chord container
                 const chordContainer = document.createElement('div');
                 chordContainer.className = 'chord-container';
                 chordContainer.style.width = '100%';
-                chordContainer.style.textAlign = 'center'; // Center chords
+                chordContainer.style.textAlign = 'left'; // Left align chords
                 
                 // Add each chord at its position
                 line.chords.forEach(chord => {
@@ -356,7 +356,7 @@ function displayCurrentLines() {
                 lyricElement.className = 'lyric-line';
                 lyricElement.textContent = line.lyric;
                 lyricElement.style.width = '100%';
-                lyricElement.style.textAlign = 'center'; // Center lyrics
+                lyricElement.style.textAlign = 'left'; // Left align lyrics
                 
                 // Add elements to the wrapper
                 alignmentWrapper.appendChild(chordContainer);
@@ -366,7 +366,7 @@ function displayCurrentLines() {
                 // Only chord, no lyrics
                 const chordContainer = document.createElement('div');
                 chordContainer.className = 'chord-container chord-only';
-                chordContainer.style.textAlign = 'center'; // Center chords
+                chordContainer.style.textAlign = 'left'; // Left align chords
                 
                 // Add each chord
                 line.chords.forEach(chord => {
@@ -387,7 +387,7 @@ function displayCurrentLines() {
                 lyricElement.className = 'lyric-line';
                 lyricElement.textContent = line.lyric;
                 lyricElement.style.width = '100%';
-                lyricElement.style.textAlign = 'center'; // Center lyrics
+                lyricElement.style.textAlign = 'left'; // Left align lyrics
                 lineContainer.appendChild(lyricElement);
             }
             

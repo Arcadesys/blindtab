@@ -295,7 +295,7 @@ button:disabled {
     height: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center horizontally */
+    align-items: flex-start; /* Align to left instead of center */
     justify-content: flex-start; /* Align to top instead of center */
     padding: 20px;
     overflow-x: hidden; /* Prevent horizontal overflow */
@@ -311,12 +311,12 @@ button:disabled {
     position: relative;
     width: 100%;
     max-width: 100%; /* Allow full width */
-    text-align: center; /* Center text */
+    text-align: left; /* Left align text */
     overflow-wrap: break-word; /* Allow long words to break */
     word-wrap: break-word; /* Legacy support */
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center children */
+    align-items: flex-start; /* Left align children */
 }
 
 /* Wrapper for aligned chord-lyric pairs */
@@ -328,7 +328,7 @@ button:disabled {
     flex-direction: column;
     margin-bottom: 20px; /* Increased from 10px for better spacing */
     width: 100%;
-    align-items: center; /* Center alignment */
+    align-items: flex-start; /* Left alignment */
 }
 
 /* Chord container */
@@ -340,6 +340,7 @@ button:disabled {
     color: #4a90e2;
     letter-spacing: 0.05em;
     margin-bottom: 0.3em; /* Use em units for better scaling */
+    text-align: left; /* Left align text */
 }
 
 .dark-theme .chord-container {
@@ -376,6 +377,7 @@ button:disabled {
     padding-top: 0.3em; /* Use em units for better scaling */
     overflow-wrap: break-word; /* Allow long words to break */
     word-wrap: break-word; /* Legacy support */
+    text-align: left; /* Left align text */
 }
 
 /* For lyric-only lines */
