@@ -41,11 +41,19 @@ header {
     position: relative;
 }
 
+header h1 {
+    margin: 0;
+    text-align: center;
+    flex-grow: 1;
+}
+
+.header-left, .header-right {
+    width: 40px; /* Same width as the controls button */
+    flex-shrink: 0;
+}
+
 /* Show controls button */
 #show-controls-btn {
-    position: absolute;
-    left: 0;
-    top: 0;
     background: none;
     border: 1px solid #ccc;
     border-radius: 50%;
@@ -77,6 +85,10 @@ header {
     margin-top: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 100;
 }
 
 .dark-theme .controls-panel {
