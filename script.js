@@ -709,44 +709,38 @@ function optimizeTextSize() {
     // Get the available height for the lyrics container
     const containerHeight = calculateAvailableHeight();
     
-    // Use binary search to find the optimal font size
-    let minSize = 16;  // Minimum readable size
-    let maxSize = 300; // Much higher maximum to ensure we find the true maximum
-    let currentSize = fontSize;
-    let bestSize = fontSize;
-    let bestRatio = 0;
+    // Start with a large font size and decrease until content fits
+    let testSize = 200; // Start with a large size
+    let step = 50;      // Initial step size
+    let bestSize = 16;  // Default to minimum if nothing fits
     
-    // Binary search for 8 iterations (should be enough for good precision)
-    for (let i = 0; i < 8; i++) {
-        // Try the current size
-        fontSize = currentSize;
+    // Try progressively smaller sizes until content fits
+    while (step >= 1) {
+        // Try current test size
+        fontSize = testSize;
         updateFontSize();
         
-        // Allow DOM to update
-        // We need to force layout recalculation
+        // Force layout recalculation
         void lyricsContainer.offsetHeight;
         
-        // Check how well it fits
+        // Check if content fits
         const contentHeight = calculateContentHeight();
-        const ratio = containerHeight / contentHeight;
+        const fits = contentHeight <= containerHeight;
         
-        // If this is the best fit so far, remember it
-        if (ratio > bestRatio && ratio <= 1) {
-            bestSize = currentSize;
-            bestRatio = ratio;
+        if (fits) {
+            // This size fits, save it and try a larger one
+            bestSize = testSize;
+            testSize += step;
+        } else {
+            // Too big, try a smaller one
+            testSize -= step;
         }
         
-        // Adjust search range
-        if (ratio < 0.98) { // Too big, reduce size
-            maxSize = currentSize;
-            currentSize = Math.floor((minSize + currentSize) / 2);
-        } else if (ratio > 1.02) { // Too small, increase size
-            minSize = currentSize;
-            currentSize = Math.floor((currentSize + maxSize) / 2);
-        } else {
-            // Close enough to perfect
-            bestSize = currentSize;
-            break;
+        // Reduce step size for finer adjustments
+        if (testSize <= 0 || testSize > 300) {
+            // Reset if we went out of bounds
+            testSize = bestSize;
+            step = Math.floor(step / 2);
         }
     }
     
@@ -755,21 +749,8 @@ function optimizeTextSize() {
     updateFontSize();
     fontSizeSlider.value = fontSize;
     
-    // One final check with a slight adjustment if needed
-    setTimeout(() => {
-        const contentHeight = calculateContentHeight();
-        const ratio = containerHeight / contentHeight;
-        
-        if (ratio < 0.95) { // Still too big
-            fontSize = Math.floor(fontSize * 0.95);
-            updateFontSize();
-            fontSizeSlider.value = fontSize;
-        } else if (ratio > 1.1) { // Still too small
-            fontSize = Math.min(300, Math.floor(fontSize * 1.05));
-            updateFontSize();
-            fontSizeSlider.value = fontSize;
-        }
-    }, 50);
+    // Save the setting
+    saveSettings();
 }
 
 // Calculate the available height for the lyrics container
