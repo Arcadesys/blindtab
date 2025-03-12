@@ -280,7 +280,16 @@ function displayCurrentLines() {
     // Store the current height before clearing content
     const oldHeight = lyricsContainer.offsetHeight;
     
+    // Clear the container but maintain its dimensions
     lyricsContainer.innerHTML = '';
+    
+    // Create a fixed position container for consistent positioning
+    const fixedPositionContainer = document.createElement('div');
+    fixedPositionContainer.className = 'fixed-position-container';
+    fixedPositionContainer.style.position = 'absolute';
+    fixedPositionContainer.style.top = '20px'; // Fixed top position
+    fixedPositionContainer.style.left = '20px'; // Fixed left position
+    fixedPositionContainer.style.width = 'calc(100% - 40px)'; // Account for padding
     
     // Preserve the height to prevent layout shifts
     if (oldHeight > 0) {
@@ -360,9 +369,12 @@ function displayCurrentLines() {
                 lineContainer.appendChild(lyricElement);
             }
             
-            lyricsContainer.appendChild(lineContainer);
+            fixedPositionContainer.appendChild(lineContainer);
         }
     }
+    
+    // Add the fixed position container to the lyrics container
+    lyricsContainer.appendChild(fixedPositionContainer);
     
     // Update button states
     prevBtn.disabled = currentIndex === 0;
@@ -769,7 +781,7 @@ function calculateAvailableHeight() {
     const headerHeight = document.querySelector('header').offsetHeight || 0;
     const navigationHeight = 70; // Increased fixed height for navigation
     const songInfoHeight = document.querySelector('.song-info') ? document.querySelector('.song-info').offsetHeight : 0;
-    const containerPadding = 30; // Increased padding for better spacing
+    const containerPadding = 60; // Increased padding to account for fixed position container's top and bottom margins
     
     // Calculate total height to subtract
     const subtractHeight = headerHeight + navigationHeight + songInfoHeight + containerPadding;
@@ -779,8 +791,12 @@ function calculateAvailableHeight() {
 
 // Calculate the current content height
 function calculateContentHeight() {
+    // Get the fixed position container
+    const fixedContainer = lyricsContainer.querySelector('.fixed-position-container');
+    if (!fixedContainer) return 300; // Default if not found
+    
     // Get all line containers
-    const lineContainers = lyricsContainer.querySelectorAll('.line-container');
+    const lineContainers = fixedContainer.querySelectorAll('.line-container');
     let totalHeight = 0;
     
     // Sum up the heights of all line containers
