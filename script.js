@@ -176,7 +176,7 @@ function cycleTransposition() {
     
     // Update button text to show current transposition
     const sign = transposeSteps > 0 ? '+' : '';
-    transposeBtn.textContent = transposeSteps === 0 ? 'Transpose' : `Trans ${sign}${transposeSteps}`;
+    transposeBtn.textContent = transposeSteps === 0 ? 'Select Key' : `Key ${sign}${transposeSteps}`;
     
     // Refresh display
     displayCurrentLines();

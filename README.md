@@ -13,7 +13,7 @@ A simple, accessible web application for displaying song lyrics and chords with 
   - Adjustable font size
   - Light/Dark theme toggle
 - **Chord Tools**:
-  - Transpose chords up or down
+  - Change song key (transpose up or down)
   - Toggle between sharps (#) and flats (♭)
 - **Responsive Design**: Works on both desktop and mobile browsers
 
@@ -26,7 +26,7 @@ A simple, accessible web application for displaying song lyrics and chords with 
    - Using keyboard arrow keys (left/right or up/down) or spacebar
 3. Adjust font size with the A+/A- buttons
 4. Toggle between light and dark themes with the sun/moon button
-5. Use the Transpose button to cycle through different key options
+5. Use the "Select Key" button to cycle through different key options
 6. Toggle between sharps and flats notation with the "Use ♭" button
 
 ## Current Song
