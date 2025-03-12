@@ -287,16 +287,17 @@ function displayCurrentLines() {
     const fixedPositionContainer = document.createElement('div');
     fixedPositionContainer.className = 'fixed-position-container';
     
-    // Explicitly set inline styles to ensure proper positioning
+    // Explicitly set inline styles to ensure proper positioning and centering
     fixedPositionContainer.style.position = 'absolute';
-    fixedPositionContainer.style.top = '20px';
-    fixedPositionContainer.style.left = '20px';
-    fixedPositionContainer.style.width = 'calc(100% - 40px)';
-    fixedPositionContainer.style.height = 'calc(100% - 40px)';
+    fixedPositionContainer.style.top = '0';
+    fixedPositionContainer.style.left = '0';
+    fixedPositionContainer.style.width = '100%';
+    fixedPositionContainer.style.height = '100%';
     fixedPositionContainer.style.display = 'flex';
     fixedPositionContainer.style.flexDirection = 'column';
-    fixedPositionContainer.style.alignItems = 'flex-start';
-    fixedPositionContainer.style.justifyContent = 'flex-start';
+    fixedPositionContainer.style.alignItems = 'center'; // Center horizontally
+    fixedPositionContainer.style.justifyContent = 'center'; // Center vertically
+    fixedPositionContainer.style.padding = '20px';
     
     // Preserve the height to prevent layout shifts
     if (oldHeight > 0) {
@@ -314,9 +315,11 @@ function displayCurrentLines() {
             // Create a line container
             const lineContainer = document.createElement('div');
             lineContainer.className = 'line-container';
-            lineContainer.style.flexGrow = '1';
+            lineContainer.style.width = '100%';
+            lineContainer.style.textAlign = 'center'; // Center text
             lineContainer.style.display = 'flex';
             lineContainer.style.flexDirection = 'column';
+            lineContainer.style.alignItems = 'center'; // Center children
             
             if (line.chords && line.chords.length > 0 && line.lyric) {
                 // For lines with both chords and lyrics, we need to align them
@@ -324,11 +327,14 @@ function displayCurrentLines() {
                 // Create a wrapper for proper alignment
                 const alignmentWrapper = document.createElement('div');
                 alignmentWrapper.className = 'alignment-wrapper';
-                alignmentWrapper.style.flexGrow = '1';
+                alignmentWrapper.style.width = '100%';
+                alignmentWrapper.style.textAlign = 'center'; // Center text
                 
                 // Create chord container
                 const chordContainer = document.createElement('div');
                 chordContainer.className = 'chord-container';
+                chordContainer.style.width = '100%';
+                chordContainer.style.textAlign = 'center'; // Center chords
                 
                 // Add each chord at its position
                 line.chords.forEach(chord => {
@@ -349,6 +355,8 @@ function displayCurrentLines() {
                 const lyricElement = document.createElement('div');
                 lyricElement.className = 'lyric-line';
                 lyricElement.textContent = line.lyric;
+                lyricElement.style.width = '100%';
+                lyricElement.style.textAlign = 'center'; // Center lyrics
                 
                 // Add elements to the wrapper
                 alignmentWrapper.appendChild(chordContainer);
@@ -358,6 +366,7 @@ function displayCurrentLines() {
                 // Only chord, no lyrics
                 const chordContainer = document.createElement('div');
                 chordContainer.className = 'chord-container chord-only';
+                chordContainer.style.textAlign = 'center'; // Center chords
                 
                 // Add each chord
                 line.chords.forEach(chord => {
@@ -377,6 +386,8 @@ function displayCurrentLines() {
                 const lyricElement = document.createElement('div');
                 lyricElement.className = 'lyric-line';
                 lyricElement.textContent = line.lyric;
+                lyricElement.style.width = '100%';
+                lyricElement.style.textAlign = 'center'; // Center lyrics
                 lineContainer.appendChild(lyricElement);
             }
             
@@ -747,7 +758,7 @@ function optimizeTextSize() {
     const containerWidth = lyricsContainer.offsetWidth - 40;
     
     // Start with a large font size and decrease until content fits
-    let testSize = 250; // Start with a very large font size
+    let testSize = 200; // Start with a large font size (reduced from 250)
     let step = 10; // Initial step size
     
     // First pass: quickly find an approximate size with larger steps
@@ -764,7 +775,7 @@ function optimizeTextSize() {
         
         console.log(`Testing size ${testSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
         
-        if (contentHeight <= containerHeight * 0.95 && contentWidth <= containerWidth * 0.95) {
+        if (contentHeight <= containerHeight * 0.9 && contentWidth <= containerWidth * 0.9) {
             // Content fits, we found our size
             break;
         }
@@ -781,8 +792,8 @@ function optimizeTextSize() {
         }
     }
     
-    // Apply a small safety margin
-    fontSize = Math.floor(testSize * 0.98);
+    // Apply a safety margin
+    fontSize = Math.floor(testSize * 0.95);
     updateFontSize();
     fontSizeSlider.value = fontSize;
     
