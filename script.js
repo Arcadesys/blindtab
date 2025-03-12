@@ -153,9 +153,15 @@ const decreaseBpm = document.getElementById('decrease-bpm');
 const showControlsBtn = document.getElementById('show-controls-btn');
 const controlsPanel = document.getElementById('controls-panel');
 const linesToDisplaySelect = document.getElementById('lines-to-display');
-const metronomeToggle = document.getElementById('metronome-toggle');
-const metronomeVisual = document.getElementById('metronome-visual');
-const beatIndicators = document.querySelectorAll('.beat-indicator');
+const editSongBtn = document.getElementById('edit-song-btn');
+const importSongBtn = document.getElementById('import-song-btn');
+const songFileInput = document.getElementById('song-file-input');
+const songEditorModal = document.getElementById('song-editor-modal');
+const songMarkdownTextarea = document.getElementById('song-markdown');
+const saveSongBtn = document.getElementById('save-song-btn');
+const cancelEditBtn = document.getElementById('cancel-edit-btn');
+const closeModalBtn = document.querySelector('.close-modal');
+const exportSongBtn = document.getElementById('export-song-btn');
 
 // App state
 let currentIndex = 0;
@@ -167,9 +173,9 @@ let autoScrollInterval = null;
 let bpm = 60; // Default BPM - slower default for better readability
 let controlsVisible = false; // Controls hidden by default
 let linesToDisplay = 2; // Default number of lines to display
-let isMetronomeOn = false; // Metronome state
-let metronomeInterval = null; // Interval for metronome ticks
-let audioContext = null; // Audio context for metronome sounds
+let songTitle = "Fake Plastic Trees";
+let songArtist = "Radiohead";
+let currentSongMarkdown = ""; // Store the current song in Markdown format
 
 // Chord mapping for transposition
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
@@ -226,11 +232,6 @@ function loadSettings() {
                 linesToDisplay = settings.linesToDisplay;
                 linesToDisplaySelect.value = linesToDisplay;
             }
-            
-            // Load metronome state
-            if (settings.isMetronomeOn) {
-                toggleMetronome(true);
-            }
         } catch (e) {
             console.error('Error loading settings:', e);
         }
@@ -246,8 +247,7 @@ function saveSettings() {
         useFlats,
         bpm,
         controlsVisible,
-        linesToDisplay,
-        isMetronomeOn
+        linesToDisplay
     };
     
     localStorage.setItem('blindTabSettings', JSON.stringify(settings));
@@ -272,6 +272,10 @@ function displayCurrentLines() {
             if (line.chords && line.chords.length > 0 && line.lyric) {
                 // For lines with both chords and lyrics, we need to align them
                 
+                // Create a wrapper for proper alignment
+                const alignmentWrapper = document.createElement('div');
+                alignmentWrapper.className = 'alignment-wrapper';
+                
                 // Create chord container
                 const chordContainer = document.createElement('div');
                 chordContainer.className = 'chord-container';
@@ -290,9 +294,10 @@ function displayCurrentLines() {
                 lyricElement.className = 'lyric-line';
                 lyricElement.textContent = line.lyric;
                 
-                // Add elements to the container
-                lineContainer.appendChild(chordContainer);
-                lineContainer.appendChild(lyricElement);
+                // Add elements to the wrapper
+                alignmentWrapper.appendChild(chordContainer);
+                alignmentWrapper.appendChild(lyricElement);
+                lineContainer.appendChild(alignmentWrapper);
             } else if (line.chords && line.chords.length > 0) {
                 // Only chord, no lyrics
                 const chordContainer = document.createElement('div');
@@ -451,10 +456,20 @@ function setupEventListeners() {
     // Touch navigation for the lyrics container
     lyricsContainer.addEventListener('click', handleContainerClick);
     
-    // Metronome toggle
-    metronomeToggle.addEventListener('click', () => {
-        toggleMetronome();
-        saveSettings();
+    // Song editor controls
+    editSongBtn.addEventListener('click', openSongEditor);
+    importSongBtn.addEventListener('click', () => songFileInput.click());
+    exportSongBtn.addEventListener('click', exportSongAsMarkdown);
+    songFileInput.addEventListener('change', handleFileImport);
+    saveSongBtn.addEventListener('click', saveSongChanges);
+    cancelEditBtn.addEventListener('click', closeSongEditor);
+    closeModalBtn.addEventListener('click', closeSongEditor);
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', (event) => {
+        if (event.target === songEditorModal) {
+            closeSongEditor();
+        }
     });
 }
 
@@ -526,11 +541,6 @@ function updateBpm(newBpm) {
     // Restart auto-scroll if it's active
     if (isAutoScrolling) {
         startAutoScroll();
-    }
-    
-    // Update metronome if it's active
-    if (isMetronomeOn) {
-        startMetronome();
     }
 }
 
@@ -664,116 +674,239 @@ function updateLinesToDisplay(numLines) {
     displayCurrentLines();
 }
 
-// Metronome functions
-function toggleMetronome(setActive = null) {
-    // If setActive is provided, use that value, otherwise toggle
-    isMetronomeOn = setActive !== null ? setActive : !isMetronomeOn;
+// Song editor functions
+function openSongEditor() {
+    // Convert current song data to Markdown
+    currentSongMarkdown = convertSongDataToMarkdown();
+    songMarkdownTextarea.value = currentSongMarkdown;
     
-    if (isMetronomeOn) {
-        metronomeToggle.textContent = 'Metronome: On';
-        metronomeToggle.classList.add('active');
-        metronomeVisual.style.display = 'flex';
-        startMetronome();
-    } else {
-        metronomeToggle.textContent = 'Metronome: Off';
-        metronomeToggle.classList.remove('active');
-        metronomeVisual.style.display = 'none';
-        stopMetronome();
-        // Reset all beat indicators
-        beatIndicators.forEach(indicator => {
-            indicator.classList.remove('active');
-        });
+    // Show the modal
+    songEditorModal.style.display = 'block';
+}
+
+function closeSongEditor() {
+    songEditorModal.style.display = 'none';
+}
+
+function saveSongChanges() {
+    // Parse the Markdown to get new song data
+    const markdown = songMarkdownTextarea.value;
+    const newSongData = parseSongMarkdown(markdown);
+    
+    // Update the song data and display
+    if (newSongData) {
+        songData.length = 0; // Clear existing song data
+        songData.push(...newSongData.lines);
+        songTitle = newSongData.title;
+        songArtist = newSongData.artist;
+        
+        // Update the song info display
+        updateSongInfo();
+        
+        // Reset to the beginning of the song
+        currentIndex = 0;
+        displayCurrentLines();
+        
+        // Close the editor
+        closeSongEditor();
     }
 }
 
-function startMetronome() {
-    // Clear any existing interval
-    stopMetronome();
+function updateSongInfo() {
+    const songInfoTitle = document.querySelector('.song-info h2');
+    const songInfoArtist = document.querySelector('.song-info p');
     
-    // Initialize AudioContext if needed
-    if (!audioContext) {
-        try {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (e) {
-            console.error('Web Audio API is not supported in this browser');
+    if (songInfoTitle) songInfoTitle.textContent = songTitle;
+    if (songInfoArtist) songInfoArtist.textContent = `by ${songArtist}`;
+}
+
+function handleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const content = e.target.result;
+        songMarkdownTextarea.value = content;
+        
+        // Open the editor to show the imported content
+        songEditorModal.style.display = 'block';
+    };
+    reader.readAsText(file);
+    
+    // Reset the file input so the same file can be selected again
+    event.target.value = '';
+}
+
+// Convert song data to Markdown format
+function convertSongDataToMarkdown() {
+    let markdown = `# ${songTitle}\n## ${songArtist}\n\n`;
+    
+    let currentSection = '';
+    let lineBuffer = [];
+    
+    // Process each line
+    songData.forEach(line => {
+        // Check if this is a section marker (empty line)
+        if (!line.lyric && !line.chords) {
+            // If we have accumulated lines, add them to the markdown
+            if (lineBuffer.length > 0) {
+                markdown += lineBuffer.join('\n') + '\n\n';
+                lineBuffer = [];
+            }
             return;
+        }
+        
+        // Convert line to markdown format
+        let markdownLine = '';
+        
+        if (line.chords && line.chords.length > 0) {
+            // Sort chords by position
+            const sortedChords = [...line.chords].sort((a, b) => a.position - b.position);
+            
+            // Start with the lyric
+            let lyricWithChords = line.lyric;
+            
+            // Insert chords from right to left to avoid position shifts
+            for (let i = sortedChords.length - 1; i >= 0; i--) {
+                const chord = sortedChords[i];
+                const position = chord.position;
+                
+                // Insert the chord at the specified position
+                if (position <= lyricWithChords.length) {
+                    lyricWithChords = 
+                        lyricWithChords.substring(0, position) + 
+                        `[${chord.text}]` + 
+                        lyricWithChords.substring(position);
+                } else {
+                    // If position is beyond the lyric length, append with spaces
+                    lyricWithChords += ' '.repeat(position - lyricWithChords.length) + `[${chord.text}]`;
+                }
+            }
+            
+            markdownLine = lyricWithChords;
+        } else {
+            // Just the lyric
+            markdownLine = line.lyric;
+        }
+        
+        lineBuffer.push(markdownLine);
+    });
+    
+    // Add any remaining lines
+    if (lineBuffer.length > 0) {
+        markdown += lineBuffer.join('\n') + '\n';
+    }
+    
+    return markdown;
+}
+
+// Parse Markdown to song data format
+function parseSongMarkdown(markdown) {
+    const lines = markdown.split('\n');
+    let title = 'Untitled Song';
+    let artist = 'Unknown Artist';
+    const songLines = [];
+    
+    // Parse title and artist
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        if (line.startsWith('# ')) {
+            title = line.substring(2).trim();
+        } else if (line.startsWith('## ')) {
+            artist = line.substring(3).trim();
+        } else if (line.length > 0) {
+            // Start parsing song content
+            for (let j = i; j < lines.length; j++) {
+                const contentLine = lines[j].trim();
+                
+                // Skip empty lines but add them as separators
+                if (contentLine.length === 0) {
+                    songLines.push({ lyric: '' });
+                    continue;
+                }
+                
+                // Skip section headers (e.g., [Verse], [Chorus])
+                if (contentLine.match(/^\[.*\]$/) && !contentLine.match(/\]\w/)) {
+                    continue;
+                }
+                
+                // Parse line with chords
+                const parsedLine = parseLineWithChords(contentLine);
+                songLines.push(parsedLine);
+            }
+            break;
         }
     }
     
-    // Calculate interval based on BPM
-    const intervalMs = (60 / bpm) * 1000;
-    
-    // Set up the interval for metronome ticks
-    let beat = 0;
-    metronomeInterval = setInterval(() => {
-        // Play a tick sound (higher pitch for the first beat of each measure)
-        const isFirstBeat = beat % 4 === 0;
-        playMetronomeTick(isFirstBeat);
-        
-        // Update visual indicators
-        updateBeatIndicators(beat);
-        
-        // Increment beat counter
-        beat = (beat + 1) % 4;
-    }, intervalMs);
-}
-
-function stopMetronome() {
-    if (metronomeInterval) {
-        clearInterval(metronomeInterval);
-        metronomeInterval = null;
-    }
-}
-
-function playMetronomeTick(isFirstBeat) {
-    if (!audioContext) return;
-    
-    // Create an oscillator for the tick sound
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    // Connect the oscillator to the gain node and the gain node to the destination
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    // Set the frequency and type based on whether it's the first beat
-    oscillator.frequency.value = isFirstBeat ? 1000 : 800; // Higher pitch for first beat
-    oscillator.type = 'sine';
-    
-    // Set the volume and duration
-    gainNode.gain.value = 0.1; // Low volume to avoid being too intrusive
-    
-    // Schedule the sound to start immediately and stop after a short duration
-    const now = audioContext.currentTime;
-    oscillator.start(now);
-    oscillator.stop(now + 0.05); // Short duration for a tick sound
-    
-    // Clean up
-    oscillator.onended = () => {
-        oscillator.disconnect();
-        gainNode.disconnect();
+    return {
+        title,
+        artist,
+        lines: songLines
     };
 }
 
-function updateBeatIndicators(currentBeat) {
-    // Remove active class from all indicators
-    beatIndicators.forEach(indicator => {
-        indicator.classList.remove('active');
-    });
-    
-    // Add active class to the current beat indicator
-    const currentIndicator = document.querySelector(`.beat-indicator[data-beat="${currentBeat}"]`);
-    if (currentIndicator) {
-        currentIndicator.classList.add('active');
+// Parse a single line with chord markers
+function parseLineWithChords(line) {
+    // If no chord markers, return just the lyric
+    if (!line.includes('[')) {
+        return { lyric: line };
     }
+    
+    const chords = [];
+    let lyric = line;
+    let offset = 0;
+    
+    // Find all chord markers [chord]
+    const chordRegex = /\[([^\]]+)\]/g;
+    let match;
+    
+    while ((match = chordRegex.exec(line)) !== null) {
+        const chordText = match[1];
+        const position = match.index - offset;
+        
+        // Add chord to the list
+        chords.push({
+            text: chordText,
+            position: position
+        });
+        
+        // Remove the chord marker from the lyric
+        lyric = lyric.replace(`[${chordText}]`, '');
+        offset += chordText.length + 2; // +2 for the brackets
+    }
+    
+    return {
+        chords,
+        lyric
+    };
+}
+
+// Export song as Markdown file
+function exportSongAsMarkdown() {
+    // Generate the Markdown content
+    const markdown = convertSongDataToMarkdown();
+    
+    // Create a blob with the content
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    
+    // Create a download link
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${songTitle.replace(/\s+/g, '_')}.md`;
+    
+    // Trigger the download
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 0);
 }
 
 // Initialize the app when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    // Hide metronome visual initially
-    if (metronomeVisual) {
-        metronomeVisual.style.display = 'none';
-    }
-    
-    init();
-}); 
+document.addEventListener('DOMContentLoaded', init); 

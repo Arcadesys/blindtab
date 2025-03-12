@@ -73,6 +73,13 @@
                     <p>by Radiohead</p>
                 </div>
                 
+                <div class="song-editor-controls">
+                    <button id="edit-song-btn" aria-label="Edit current song">Edit Song</button>
+                    <button id="import-song-btn" aria-label="Import a new song">Import Song</button>
+                    <button id="export-song-btn" aria-label="Export song as Markdown">Export Song</button>
+                    <input type="file" id="song-file-input" accept=".txt,.md" style="display: none;">
+                </div>
+                
                 <div class="auto-scroll-controls">
                     <button id="auto-scroll-toggle" aria-label="Toggle auto-scroll">Auto-Scroll: Off</button>
                     <div class="bpm-control">
@@ -83,13 +90,6 @@
                             <button id="increase-bpm" aria-label="Increase BPM">+</button>
                         </div>
                         <small class="bpm-help">Lower = slower scroll</small>
-                    </div>
-                    <button id="metronome-toggle" aria-label="Toggle metronome">Metronome: Off</button>
-                    <div id="metronome-visual" class="metronome-visual">
-                        <div class="beat-indicator" data-beat="0"></div>
-                        <div class="beat-indicator" data-beat="1"></div>
-                        <div class="beat-indicator" data-beat="2"></div>
-                        <div class="beat-indicator" data-beat="3"></div>
                     </div>
                 </div>
             </div>
@@ -102,6 +102,33 @@
         <div class="navigation">
             <button id="prev-btn" aria-label="Previous lines">Previous</button>
             <button id="next-btn" aria-label="Next lines">Next</button>
+        </div>
+    </div>
+    
+    <!-- Song Editor Modal -->
+    <div id="song-editor-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Song</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="editor-instructions">
+                    <p>Edit your song using this format:</p>
+                    <pre># Song Title
+## Artist Name
+
+[Verse 1]
+[A]Her green plastic [E]watering can
+[F#m]In the fake plastic earth</pre>
+                    <p>Place chords in [brackets] before the word they belong to.</p>
+                </div>
+                <textarea id="song-markdown" spellcheck="false"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="save-song-btn">Save Changes</button>
+                <button id="cancel-edit-btn">Cancel</button>
+            </div>
         </div>
     </div>
     
