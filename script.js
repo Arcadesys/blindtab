@@ -357,8 +357,10 @@ function displayCurrentLines() {
     
     // Optimize text size if auto-resize is enabled
     if (autoResizeText) {
-        // Small delay to allow DOM to update
-        setTimeout(optimizeTextSize, 50);
+        // Use requestAnimationFrame to ensure DOM is updated first
+        requestAnimationFrame(() => {
+            optimizeTextSize();
+        });
     }
 }
 
@@ -505,7 +507,10 @@ function setupEventListeners() {
     // Window resize event for text optimization
     window.addEventListener('resize', () => {
         if (autoResizeText) {
-            optimizeTextSize();
+            // Use requestAnimationFrame to ensure DOM is updated first
+            requestAnimationFrame(() => {
+                optimizeTextSize();
+            });
         }
     });
     
@@ -726,44 +731,79 @@ function optimizeTextSize() {
     // Get the available height for the lyrics container
     const containerHeight = calculateAvailableHeight();
     
-    // Get the current content height
-    const contentHeight = calculateContentHeight();
+    // Use binary search to find the optimal font size
+    let minSize = 16;  // Minimum readable size
+    let maxSize = 300; // Much higher maximum to ensure we find the true maximum
+    let currentSize = fontSize;
+    let bestSize = fontSize;
+    let bestRatio = 0;
     
-    // Calculate the ratio between available height and content height
-    const ratio = containerHeight / contentHeight;
-    
-    // Only adjust if the content doesn't already fill the container
-    if (ratio !== 1) {
-        // Calculate new font size based on the ratio
-        // Use a more aggressive factor to fill more space
-        const adjustmentFactor = ratio * 0.95; // More aggressive factor
-        fontSize = Math.max(16, Math.min(150, Math.floor(fontSize * adjustmentFactor))); // Increased max font size
-        
-        // Apply the new font size
+    // Binary search for 8 iterations (should be enough for good precision)
+    for (let i = 0; i < 8; i++) {
+        // Try the current size
+        fontSize = currentSize;
         updateFontSize();
         
-        // Recalculate after a short delay to account for DOM updates
-        setTimeout(() => {
-            const newContentHeight = calculateContentHeight();
-            const newRatio = containerHeight / newContentHeight;
-            
-            // Fine-tune if needed
-            if (Math.abs(newRatio - 1) > 0.05) { // More sensitive adjustment
-                fontSize = Math.max(16, Math.min(150, Math.floor(fontSize * (newRatio * 0.95))));
-                updateFontSize();
-            }
-        }, 100);
+        // Allow DOM to update
+        // We need to force layout recalculation
+        void lyricsContainer.offsetHeight;
+        
+        // Check how well it fits
+        const contentHeight = calculateContentHeight();
+        const ratio = containerHeight / contentHeight;
+        
+        // If this is the best fit so far, remember it
+        if (ratio > bestRatio && ratio <= 1) {
+            bestSize = currentSize;
+            bestRatio = ratio;
+        }
+        
+        // Adjust search range
+        if (ratio < 0.98) { // Too big, reduce size
+            maxSize = currentSize;
+            currentSize = Math.floor((minSize + currentSize) / 2);
+        } else if (ratio > 1.02) { // Too small, increase size
+            minSize = currentSize;
+            currentSize = Math.floor((currentSize + maxSize) / 2);
+        } else {
+            // Close enough to perfect
+            bestSize = currentSize;
+            break;
+        }
     }
+    
+    // Apply the best size found
+    fontSize = bestSize;
+    updateFontSize();
+    
+    // One final check with a slight adjustment if needed
+    setTimeout(() => {
+        const contentHeight = calculateContentHeight();
+        const ratio = containerHeight / contentHeight;
+        
+        if (ratio < 0.95) { // Still too big
+            fontSize = Math.floor(fontSize * 0.95);
+            updateFontSize();
+        } else if (ratio > 1.1) { // Still too small
+            fontSize = Math.min(300, Math.floor(fontSize * 1.05));
+            updateFontSize();
+        }
+    }, 50);
 }
 
 // Calculate the available height for the lyrics container
 function calculateAvailableHeight() {
     const windowHeight = window.innerHeight;
-    const headerHeight = document.querySelector('header').offsetHeight;
-    const navigationHeight = document.querySelector('.navigation').offsetHeight;
-    const containerPadding = 20; // Reduced from 40
+    const headerHeight = document.querySelector('header').offsetHeight || 0;
+    const navigationHeight = document.querySelector('.navigation').offsetHeight || 0;
+    const controlsHeight = controlsVisible ? document.querySelector('.controls-panel').offsetHeight : 0;
+    const songInfoHeight = document.querySelector('.song-info') ? document.querySelector('.song-info').offsetHeight : 0;
+    const containerPadding = 10; // Minimal padding
     
-    return windowHeight - headerHeight - navigationHeight - containerPadding;
+    // Calculate total height to subtract
+    const subtractHeight = headerHeight + navigationHeight + controlsHeight + songInfoHeight + containerPadding;
+    
+    return windowHeight - subtractHeight;
 }
 
 // Calculate the current content height
@@ -1032,8 +1072,10 @@ function toggleAutoResize() {
     
     if (autoResizeText) {
         autoResizeToggle.classList.add('active');
-        // Apply auto-resize immediately
-        optimizeTextSize();
+        // Apply auto-resize immediately with requestAnimationFrame
+        requestAnimationFrame(() => {
+            optimizeTextSize();
+        });
     } else {
         autoResizeToggle.classList.remove('active');
         // Keep current font size when disabling
