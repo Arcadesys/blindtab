@@ -209,11 +209,20 @@ function init() {
     // Initialize slider background
     updateSliderBackground(fontSize);
     
-    // Initial text size optimization
+    // Initial text size optimization with a longer delay to ensure DOM is fully rendered
     if (autoResizeText) {
+        console.log("Scheduling initial text size optimization...");
+        // First attempt after a longer delay
         setTimeout(() => {
+            console.log("Running initial text size optimization...");
             optimizeTextSize();
-        }, 200); // Longer timeout to ensure DOM is fully rendered
+            
+            // Second attempt as a safety measure to catch any race conditions
+            setTimeout(() => {
+                console.log("Running follow-up text size optimization...");
+                optimizeTextSize();
+            }, 300);
+        }, 500); // Increased from 200ms to 500ms for better reliability
     }
     
     console.log("Initialization complete");
@@ -874,6 +883,17 @@ function optimizeTextSize() {
     const containerHeight = lyricsContainer.offsetHeight; // No padding to account for
     const containerWidth = lyricsContainer.offsetWidth; // No padding to account for
     
+    console.log(`Container dimensions: ${containerWidth}px x ${containerHeight}px`);
+    
+    // Safety check - if container dimensions are too small, try again later
+    if (containerHeight < 100 || containerWidth < 100) {
+        console.log("Container dimensions too small, retrying in 200ms...");
+        setTimeout(() => {
+            optimizeTextSize();
+        }, 200);
+        return;
+    }
+    
     // Start with a very large font size and decrease until content fits
     let testSize = 800; // Start with an even larger font size (increased from 600)
     let step = 40; // Larger initial step size for faster convergence (increased from 30)
@@ -936,6 +956,8 @@ function optimizeTextSize() {
             autoResizeButton.classList.remove('pulse');
         }, 500);
     }
+    
+    console.log(`Final font size: ${fontSize}px`);
 }
 
 // Calculate the current content height

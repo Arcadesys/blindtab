@@ -340,7 +340,7 @@ button:disabled {
     width: 100%;
     max-width: 100vw;
     position: relative; /* Add relative positioning */
-    height: calc(100vh - 80px); /* Adjusted to account for footer only, removed song info height */
+    height: calc(100vh - 60px); /* Further reduced to account only for footer and minimal margins */
     border: 1px solid transparent; /* Add invisible border to ensure the container has dimensions */
 }
 
