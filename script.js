@@ -180,6 +180,8 @@ let currentKey = 'G'; // Default key (G major for this song)
 let isPortraitMode = false; // Track if device is in portrait mode
 let songLibrary = []; // Array to store multiple songs
 let currentSongIndex = 0; // Index of the currently displayed song
+let isAnimating = false; // Track if page turn animation is in progress
+let animationDirection = 0; // Direction of animation (1 for forward, -1 for backward)
 
 // Initialize with the default song
 songLibrary.push({
@@ -449,7 +451,7 @@ function checkOrientation() {
 }
 
 // Display current lines based on the selected number of lines
-function displayCurrentLines() {
+function displayCurrentLines(animate = false) {
     // Clear the container
     lyricsContainer.innerHTML = '';
     
@@ -472,6 +474,15 @@ function displayCurrentLines() {
     fixedPositionContainer.style.textAlign = 'left'; // Ensure text is left-aligned
     fixedPositionContainer.style.whiteSpace = 'nowrap'; // Prevent text wrapping
     fixedPositionContainer.style.overflowX = 'visible'; // Allow horizontal overflow
+    
+    // Add animation if requested
+    if (animate && animationDirection !== 0) {
+        // Set initial transform for animation
+        const startY = animationDirection > 0 ? 30 : -30; // Start position (px)
+        fixedPositionContainer.style.transform = `translateY(${startY}px)`;
+        fixedPositionContainer.style.opacity = '0.7';
+        fixedPositionContainer.style.transition = 'none'; // Ensure no transition for initial state
+    }
     
     // Add a fallback message if no lines are displayed
     if (songData.length === 0) {
@@ -635,6 +646,25 @@ function displayCurrentLines() {
     // Update button states
     prevBtn.disabled = currentIndex === 0;
     nextBtn.disabled = currentIndex >= songData.length - linesToDisplay;
+    
+    // Start animation if requested
+    if (animate && animationDirection !== 0) {
+        // Use requestAnimationFrame to ensure the initial transform is applied before animating
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                // Apply spring animation
+                fixedPositionContainer.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease';
+                fixedPositionContainer.style.transform = 'translateY(0)';
+                fixedPositionContainer.style.opacity = '1';
+                
+                // Reset animation state after animation completes
+                setTimeout(() => {
+                    isAnimating = false;
+                    animationDirection = 0;
+                }, 500);
+            });
+        });
+    }
 }
 
 // Update font size
@@ -664,16 +694,20 @@ function updateSliderBackground(value) {
 
 // Navigation functions
 function goToNextLines() {
-    if (currentIndex < songData.length - 1) {
+    if (currentIndex < songData.length - 1 && !isAnimating) {
+        isAnimating = true;
+        animationDirection = 1;
         currentIndex += 1;
-        displayCurrentLines();
+        displayCurrentLines(true);
     }
 }
 
 function goToPreviousLines() {
-    if (currentIndex > 0) {
+    if (currentIndex > 0 && !isAnimating) {
+        isAnimating = true;
+        animationDirection = -1;
         currentIndex -= 1;
-        displayCurrentLines();
+        displayCurrentLines(true);
     }
 }
 
