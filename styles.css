@@ -296,7 +296,7 @@ button:disabled {
     display: flex;
     flex-direction: column;
     align-items: center; /* Center horizontally */
-    justify-content: center; /* Center vertically */
+    justify-content: flex-start; /* Align to top instead of center */
     padding: 20px;
     overflow-x: hidden; /* Prevent horizontal overflow */
 }

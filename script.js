@@ -296,7 +296,7 @@ function displayCurrentLines() {
     fixedPositionContainer.style.display = 'flex';
     fixedPositionContainer.style.flexDirection = 'column';
     fixedPositionContainer.style.alignItems = 'center'; // Center horizontally
-    fixedPositionContainer.style.justifyContent = 'center'; // Center vertically
+    fixedPositionContainer.style.justifyContent = 'flex-start'; // Align to top instead of center
     fixedPositionContainer.style.padding = '20px';
     
     // Preserve the height to prevent layout shifts
