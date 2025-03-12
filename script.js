@@ -845,6 +845,26 @@ function setupEventListeners() {
         displayCurrentLines();
     });
     
+    // Update the lines to display options to include up to 10 lines
+    if (linesToDisplaySelect) {
+        // Clear existing options
+        linesToDisplaySelect.innerHTML = '';
+        
+        // Add options from 1 to 10
+        for (let i = 1; i <= 10; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i === 1 ? '1 Line' : `${i} Lines`;
+            
+            // Set the default selection (2 lines)
+            if (i === linesToDisplay) {
+                option.selected = true;
+            }
+            
+            linesToDisplaySelect.appendChild(option);
+        }
+    }
+    
     // Key selection
     keySelectBtn.addEventListener('click', toggleKeyDropdown);
     
