@@ -178,6 +178,16 @@ let autoResizeText = true; // Enable auto-resizing by default
 let showNumerals = false; // Default to showing chord names, not numerals
 let currentKey = 'G'; // Default key (G major for this song)
 let isPortraitMode = false; // Track if device is in portrait mode
+let songLibrary = []; // Array to store multiple songs
+let currentSongIndex = 0; // Index of the currently displayed song
+
+// Initialize with the default song
+songLibrary.push({
+    title: songTitle,
+    artist: songArtist,
+    key: currentKey,
+    data: songData
+});
 
 // Chord mapping for transposition
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
@@ -884,12 +894,505 @@ function setupEventListeners() {
     });
 }
 
+// Function to switch to a different song
+function switchSong(index) {
+    // Save current song state if needed
+    saveCurrentSongState();
+    
+    // Update current song index
+    currentSongIndex = index;
+    
+    // Load the selected song
+    const song = songLibrary[currentSongIndex];
+    songTitle = song.title;
+    songArtist = song.artist;
+    currentKey = song.key || 'C';
+    songData = song.data;
+    
+    // Reset navigation to beginning of song
+    currentIndex = 0;
+    
+    // Reset transposition to default (or saved value)
+    transposeSteps = song.transposeSteps || 0;
+    
+    // Update the display
+    displayCurrentLines();
+    updateSongSelector();
+    highlightSelectedKey();
+}
+
+// Save the current state of the song (transposition, position, etc.)
+function saveCurrentSongState() {
+    if (currentSongIndex >= 0 && currentSongIndex < songLibrary.length) {
+        songLibrary[currentSongIndex].transposeSteps = transposeSteps;
+        songLibrary[currentSongIndex].currentIndex = currentIndex;
+        songLibrary[currentSongIndex].key = currentKey;
+    }
+}
+
+// Create and update the song selector UI
+function createSongSelector() {
+    // Check if the song selector already exists
+    let songSelectorSection = document.querySelector('.song-selector-section');
+    
+    if (!songSelectorSection) {
+        // Create the song selector section
+        songSelectorSection = document.createElement('div');
+        songSelectorSection.className = 'panel-section song-selector-section';
+        
+        // Create header
+        const header = document.createElement('h3');
+        header.textContent = 'Song Library';
+        songSelectorSection.appendChild(header);
+        
+        // Create song list container
+        const songListContainer = document.createElement('div');
+        songListContainer.className = 'song-list-container';
+        songListContainer.style.maxHeight = '200px';
+        songListContainer.style.overflowY = 'auto';
+        songListContainer.style.border = '1px solid #ccc';
+        songListContainer.style.borderRadius = '4px';
+        songListContainer.style.padding = '5px';
+        songListContainer.style.marginBottom = '10px';
+        
+        // Create song list
+        const songList = document.createElement('ul');
+        songList.id = 'song-list';
+        songList.style.listStyle = 'none';
+        songList.style.padding = '0';
+        songList.style.margin = '0';
+        
+        songListContainer.appendChild(songList);
+        songSelectorSection.appendChild(songListContainer);
+        
+        // Create add new song button
+        const addSongBtn = document.createElement('button');
+        addSongBtn.id = 'add-song-btn';
+        addSongBtn.textContent = 'Add New Song';
+        addSongBtn.addEventListener('click', showAddSongModal);
+        songSelectorSection.appendChild(addSongBtn);
+        
+        // Add the song selector section to the controls panel
+        // Insert it as the first section
+        const controlsPanel = document.getElementById('controls-panel');
+        controlsPanel.insertBefore(songSelectorSection, controlsPanel.firstChild);
+    }
+    
+    updateSongSelector();
+}
+
+// Update the song selector with current songs
+function updateSongSelector() {
+    const songList = document.getElementById('song-list');
+    if (!songList) return;
+    
+    // Clear the current list
+    songList.innerHTML = '';
+    
+    // Add each song to the list
+    songLibrary.forEach((song, index) => {
+        const listItem = document.createElement('li');
+        listItem.style.padding = '8px';
+        listItem.style.borderBottom = '1px solid #eee';
+        listItem.style.cursor = 'pointer';
+        
+        // Highlight the current song
+        if (index === currentSongIndex) {
+            listItem.style.backgroundColor = '#e0f0ff';
+            listItem.style.fontWeight = 'bold';
+        }
+        
+        // Create song info
+        const songInfo = document.createElement('div');
+        songInfo.className = 'song-info';
+        songInfo.textContent = `${song.title} - ${song.artist}`;
+        
+        // Create song actions
+        const songActions = document.createElement('div');
+        songActions.className = 'song-actions';
+        songActions.style.display = 'flex';
+        songActions.style.gap = '5px';
+        songActions.style.marginTop = '5px';
+        
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.style.fontSize = '0.8em';
+        editBtn.style.padding = '2px 5px';
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            editSong(index);
+        });
+        
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.style.fontSize = '0.8em';
+        deleteBtn.style.padding = '2px 5px';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteSong(index);
+        });
+        
+        songActions.appendChild(editBtn);
+        songActions.appendChild(deleteBtn);
+        
+        listItem.appendChild(songInfo);
+        listItem.appendChild(songActions);
+        
+        // Add click event to select the song
+        listItem.addEventListener('click', () => {
+            switchSong(index);
+        });
+        
+        songList.appendChild(listItem);
+    });
+}
+
+// Show modal to add a new song
+function showAddSongModal() {
+    // Create modal if it doesn't exist
+    let addSongModal = document.getElementById('add-song-modal');
+    
+    if (!addSongModal) {
+        addSongModal = document.createElement('div');
+        addSongModal.id = 'add-song-modal';
+        addSongModal.className = 'modal';
+        addSongModal.style.display = 'none';
+        addSongModal.style.position = 'fixed';
+        addSongModal.style.zIndex = '10000';
+        addSongModal.style.left = '0';
+        addSongModal.style.top = '0';
+        addSongModal.style.width = '100%';
+        addSongModal.style.height = '100%';
+        addSongModal.style.overflow = 'auto';
+        addSongModal.style.backgroundColor = 'rgba(0,0,0,0.4)';
+        
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        modalContent.style.backgroundColor = '#fefefe';
+        modalContent.style.margin = '15% auto';
+        modalContent.style.padding = '20px';
+        modalContent.style.border = '1px solid #888';
+        modalContent.style.width = '80%';
+        modalContent.style.maxWidth = '600px';
+        modalContent.style.borderRadius = '5px';
+        
+        // Create close button
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'close-modal';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.color = '#aaa';
+        closeBtn.style.float = 'right';
+        closeBtn.style.fontSize = '28px';
+        closeBtn.style.fontWeight = 'bold';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.addEventListener('click', () => {
+            addSongModal.style.display = 'none';
+        });
+        
+        // Create form
+        const form = document.createElement('form');
+        form.id = 'add-song-form';
+        
+        // Title input
+        const titleLabel = document.createElement('label');
+        titleLabel.textContent = 'Song Title:';
+        titleLabel.htmlFor = 'song-title-input';
+        titleLabel.style.display = 'block';
+        titleLabel.style.marginTop = '10px';
+        
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.id = 'song-title-input';
+        titleInput.required = true;
+        titleInput.style.width = '100%';
+        titleInput.style.padding = '8px';
+        titleInput.style.marginBottom = '15px';
+        titleInput.style.boxSizing = 'border-box';
+        
+        // Artist input
+        const artistLabel = document.createElement('label');
+        artistLabel.textContent = 'Artist:';
+        artistLabel.htmlFor = 'song-artist-input';
+        artistLabel.style.display = 'block';
+        
+        const artistInput = document.createElement('input');
+        artistInput.type = 'text';
+        artistInput.id = 'song-artist-input';
+        artistInput.required = true;
+        artistInput.style.width = '100%';
+        artistInput.style.padding = '8px';
+        artistInput.style.marginBottom = '15px';
+        artistInput.style.boxSizing = 'border-box';
+        
+        // Key input
+        const keyLabel = document.createElement('label');
+        keyLabel.textContent = 'Key:';
+        keyLabel.htmlFor = 'song-key-input';
+        keyLabel.style.display = 'block';
+        
+        const keyInput = document.createElement('select');
+        keyInput.id = 'song-key-input';
+        keyInput.style.width = '100%';
+        keyInput.style.padding = '8px';
+        keyInput.style.marginBottom = '15px';
+        keyInput.style.boxSizing = 'border-box';
+        
+        // Add key options
+        const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        keys.forEach(key => {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = key;
+            keyInput.appendChild(option);
+        });
+        
+        // Lyrics and chords textarea
+        const lyricsLabel = document.createElement('label');
+        lyricsLabel.textContent = 'Lyrics and Chords:';
+        lyricsLabel.htmlFor = 'song-lyrics-input';
+        lyricsLabel.style.display = 'block';
+        
+        const lyricsHelp = document.createElement('p');
+        lyricsHelp.style.fontSize = '0.8em';
+        lyricsHelp.style.color = '#666';
+        lyricsHelp.innerHTML = 'Format: Place chords in square brackets before the word they go with.<br>Example: [G]Her green [Em]plastic watering can';
+        
+        const lyricsInput = document.createElement('textarea');
+        lyricsInput.id = 'song-lyrics-input';
+        lyricsInput.rows = '15';
+        lyricsInput.required = true;
+        lyricsInput.style.width = '100%';
+        lyricsInput.style.padding = '8px';
+        lyricsInput.style.marginBottom = '15px';
+        lyricsInput.style.boxSizing = 'border-box';
+        lyricsInput.style.fontFamily = 'monospace';
+        
+        // Submit button
+        const submitBtn = document.createElement('button');
+        submitBtn.type = 'submit';
+        submitBtn.textContent = 'Add Song';
+        submitBtn.style.padding = '10px 15px';
+        submitBtn.style.backgroundColor = '#4a90e2';
+        submitBtn.style.color = 'white';
+        submitBtn.style.border = 'none';
+        submitBtn.style.borderRadius = '4px';
+        submitBtn.style.cursor = 'pointer';
+        
+        // Add elements to form
+        form.appendChild(titleLabel);
+        form.appendChild(titleInput);
+        form.appendChild(artistLabel);
+        form.appendChild(artistInput);
+        form.appendChild(keyLabel);
+        form.appendChild(keyInput);
+        form.appendChild(lyricsLabel);
+        form.appendChild(lyricsHelp);
+        form.appendChild(lyricsInput);
+        form.appendChild(submitBtn);
+        
+        // Add form submission handler
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addNewSong();
+        });
+        
+        // Add elements to modal
+        modalContent.appendChild(closeBtn);
+        modalContent.appendChild(document.createElement('h2')).textContent = 'Add New Song';
+        modalContent.appendChild(form);
+        addSongModal.appendChild(modalContent);
+        
+        // Add modal to document
+        document.body.appendChild(addSongModal);
+    }
+    
+    // Show the modal
+    addSongModal.style.display = 'block';
+}
+
+// Parse lyrics with chord markers into song data format
+function parseLyricsWithChords(lyricsText) {
+    const lines = lyricsText.split('\n');
+    const songData = [];
+    
+    lines.forEach(line => {
+        // Check if line is empty
+        if (line.trim() === '') {
+            songData.push({ lyric: '' });
+            return;
+        }
+        
+        // Find all chord markers [chord]
+        const chordRegex = /\[([^\]]+)\]/g;
+        let match;
+        const chords = [];
+        let lastIndex = 0;
+        let lyricLine = '';
+        
+        // Extract all chords and their positions
+        while ((match = chordRegex.exec(line)) !== null) {
+            const chordText = match[1];
+            const chordPosition = match.index - lastIndex;
+            
+            chords.push({
+                text: chordText,
+                position: lyricLine.length
+            });
+            
+            // Add the text between the last chord and this one
+            lyricLine += line.substring(lastIndex, match.index);
+            
+            // Update lastIndex to skip the chord marker
+            lastIndex = match.index + match[0].length;
+        }
+        
+        // Add the remaining text after the last chord
+        lyricLine += line.substring(lastIndex);
+        
+        // Add the line to song data
+        songData.push({
+            chords: chords.length > 0 ? chords : undefined,
+            lyric: lyricLine
+        });
+    });
+    
+    return songData;
+}
+
+// Add a new song to the library
+function addNewSong() {
+    const titleInput = document.getElementById('song-title-input');
+    const artistInput = document.getElementById('song-artist-input');
+    const keyInput = document.getElementById('song-key-input');
+    const lyricsInput = document.getElementById('song-lyrics-input');
+    
+    if (!titleInput || !artistInput || !keyInput || !lyricsInput) return;
+    
+    const title = titleInput.value.trim();
+    const artist = artistInput.value.trim();
+    const key = keyInput.value;
+    const lyrics = lyricsInput.value;
+    
+    if (!title || !artist || !lyrics) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    // Parse lyrics into song data format
+    const parsedSongData = parseLyricsWithChords(lyrics);
+    
+    // Create new song object
+    const newSong = {
+        title: title,
+        artist: artist,
+        key: key,
+        data: parsedSongData,
+        transposeSteps: 0,
+        currentIndex: 0
+    };
+    
+    // Add to library
+    songLibrary.push(newSong);
+    
+    // Switch to the new song
+    switchSong(songLibrary.length - 1);
+    
+    // Close the modal
+    const modal = document.getElementById('add-song-modal');
+    if (modal) modal.style.display = 'none';
+    
+    // Save to localStorage
+    saveSongLibrary();
+}
+
+// Edit an existing song
+function editSong(index) {
+    // Implement similar to addNewSong but pre-fill the form with existing data
+    // and update instead of add
+    alert('Edit functionality coming soon!');
+}
+
+// Delete a song from the library
+function deleteSong(index) {
+    if (confirm(`Are you sure you want to delete "${songLibrary[index].title}"?`)) {
+        songLibrary.splice(index, 1);
+        
+        // If we deleted the current song, switch to the first song
+        if (index === currentSongIndex) {
+            if (songLibrary.length > 0) {
+                switchSong(0);
+            } else {
+                // If no songs left, create an empty default
+                songLibrary.push({
+                    title: "No Song",
+                    artist: "Add a new song to get started",
+                    key: "C",
+                    data: [{ lyric: "No song data available. Add a new song to get started." }]
+                });
+                switchSong(0);
+            }
+        } else if (index < currentSongIndex) {
+            // If we deleted a song before the current one, adjust the index
+            currentSongIndex--;
+        }
+        
+        // Update the UI
+        updateSongSelector();
+        
+        // Save to localStorage
+        saveSongLibrary();
+    }
+}
+
+// Save song library to localStorage
+function saveSongLibrary() {
+    try {
+        localStorage.setItem('songLibrary', JSON.stringify(songLibrary));
+    } catch (e) {
+        console.error('Failed to save song library to localStorage:', e);
+    }
+}
+
+// Load song library from localStorage
+function loadSongLibrary() {
+    try {
+        const savedLibrary = localStorage.getItem('songLibrary');
+        if (savedLibrary) {
+            songLibrary = JSON.parse(savedLibrary);
+            
+            // If library is empty, add the default song
+            if (songLibrary.length === 0) {
+                songLibrary.push({
+                    title: songTitle,
+                    artist: songArtist,
+                    key: currentKey,
+                    data: songData
+                });
+            }
+            
+            // Load the first song
+            switchSong(0);
+        }
+    } catch (e) {
+        console.error('Failed to load song library from localStorage:', e);
+    }
+}
+
 // Initialize the app
 function init() {
     console.log("Initializing app...");
     
     // Set up event listeners first
     setupEventListeners();
+    
+    // Load song library from localStorage
+    loadSongLibrary();
+    
+    // Create song selector UI
+    createSongSelector();
     
     // Then display the lines
     displayCurrentLines();
