@@ -1,45 +1,138 @@
-// Song data - Fake Plastic Trees by Radiohead
+// Song data - Fake Plastic Trees by Radiohead with chord positions
 const songData = [
-    { chord: "A", lyric: "Her green plastic watering can" },
-    { chord: "E", lyric: "For her fake Chinese rubber plant" },
-    { chord: "F#m", lyric: "In the fake plastic earth" },
-    { chord: "", lyric: "" },
-    { chord: "A", lyric: "That she bought from a rubber man" },
-    { chord: "E", lyric: "In a town full of rubber plans" },
-    { chord: "F#m", lyric: "To get rid of itself" },
-    { chord: "", lyric: "" },
-    { chord: "C#m", lyric: "It wears her out" },
-    { chord: "D", lyric: "It wears her out" },
-    { chord: "A E", lyric: "It wears her out" },
-    { chord: "", lyric: "" },
-    { chord: "A", lyric: "She lives with a broken man" },
-    { chord: "E", lyric: "A cracked polystyrene man" },
-    { chord: "F#m", lyric: "Who just crumbles and burns" },
-    { chord: "", lyric: "" },
-    { chord: "A", lyric: "He used to do surgery" },
-    { chord: "E", lyric: "For girls in the eighties" },
-    { chord: "F#m", lyric: "But gravity always wins" },
-    { chord: "", lyric: "" },
-    { chord: "C#m", lyric: "It wears him out" },
-    { chord: "D", lyric: "It wears him out" },
-    { chord: "A E", lyric: "It wears him out" },
-    { chord: "", lyric: "" },
-    { chord: "F#m", lyric: "She looks like the real thing" },
-    { chord: "D", lyric: "She tastes like the real thing" },
-    { chord: "A", lyric: "My fake plastic love" },
-    { chord: "", lyric: "" },
-    { chord: "F#m", lyric: "But I can't help the feeling" },
-    { chord: "D", lyric: "I could blow through the ceiling" },
-    { chord: "A E", lyric: "If I just turn and run" },
-    { chord: "", lyric: "" },
-    { chord: "C#m", lyric: "It wears me out" },
-    { chord: "D", lyric: "It wears me out" },
-    { chord: "A E", lyric: "It wears me out" },
-    { chord: "", lyric: "" },
-    { chord: "F#m D A", lyric: "And if I could be who you wanted" },
-    { chord: "F#m D A", lyric: "If I could be who you wanted" },
-    { chord: "F#m D A", lyric: "All the time" },
-    { chord: "E", lyric: "All the time" },
+    { 
+        chords: [{ text: "A", position: 0 }],
+        lyric: "Her green plastic watering can" 
+    },
+    { 
+        chords: [{ text: "E", position: 0 }],
+        lyric: "For her fake Chinese rubber plant" 
+    },
+    { 
+        chords: [{ text: "F#m", position: 0 }],
+        lyric: "In the fake plastic earth" 
+    },
+    { lyric: "" },
+    { 
+        chords: [{ text: "A", position: 0 }],
+        lyric: "That she bought from a rubber man" 
+    },
+    { 
+        chords: [{ text: "E", position: 0 }],
+        lyric: "In a town full of rubber plans" 
+    },
+    { 
+        chords: [{ text: "F#m", position: 0 }],
+        lyric: "To get rid of itself" 
+    },
+    { lyric: "" },
+    { 
+        chords: [{ text: "C#m", position: 0 }],
+        lyric: "It wears her out" 
+    },
+    { 
+        chords: [{ text: "D", position: 0 }],
+        lyric: "It wears her out" 
+    },
+    { 
+        chords: [{ text: "A", position: 0 }, { text: "E", position: 10 }],
+        lyric: "It wears her out" 
+    },
+    { lyric: "" },
+    { 
+        chords: [{ text: "A", position: 0 }],
+        lyric: "She lives with a broken man" 
+    },
+    { 
+        chords: [{ text: "E", position: 0 }],
+        lyric: "A cracked polystyrene man" 
+    },
+    { 
+        chords: [{ text: "F#m", position: 0 }],
+        lyric: "Who just crumbles and burns" 
+    },
+    { lyric: "" },
+    { 
+        chords: [{ text: "A", position: 0 }],
+        lyric: "He used to do surgery" 
+    },
+    { 
+        chords: [{ text: "E", position: 0 }],
+        lyric: "For girls in the eighties" 
+    },
+    { 
+        chords: [{ text: "F#m", position: 0 }],
+        lyric: "But gravity always wins" 
+    },
+    { lyric: "" },
+    { 
+        chords: [{ text: "C#m", position: 0 }],
+        lyric: "It wears him out" 
+    },
+    { 
+        chords: [{ text: "D", position: 0 }],
+        lyric: "It wears him out" 
+    },
+    { 
+        chords: [{ text: "A", position: 0 }, { text: "E", position: 10 }],
+        lyric: "It wears him out" 
+    },
+    { lyric: "" },
+    { 
+        chords: [{ text: "F#m", position: 0 }],
+        lyric: "She looks like the real thing" 
+    },
+    { 
+        chords: [{ text: "D", position: 0 }],
+        lyric: "She tastes like the real thing" 
+    },
+    { 
+        chords: [{ text: "A", position: 0 }],
+        lyric: "My fake plastic love" 
+    },
+    { lyric: "" },
+    { 
+        chords: [{ text: "F#m", position: 0 }],
+        lyric: "But I can't help the feeling" 
+    },
+    { 
+        chords: [{ text: "D", position: 0 }],
+        lyric: "I could blow through the ceiling" 
+    },
+    { 
+        chords: [{ text: "A", position: 0 }, { text: "E", position: 15 }],
+        lyric: "If I just turn and run" 
+    },
+    { lyric: "" },
+    { 
+        chords: [{ text: "C#m", position: 0 }],
+        lyric: "It wears me out" 
+    },
+    { 
+        chords: [{ text: "D", position: 0 }],
+        lyric: "It wears me out" 
+    },
+    { 
+        chords: [{ text: "A", position: 0 }, { text: "E", position: 10 }],
+        lyric: "It wears me out" 
+    },
+    { lyric: "" },
+    { 
+        chords: [{ text: "F#m", position: 0 }, { text: "D", position: 15 }, { text: "A", position: 25 }],
+        lyric: "And if I could be who you wanted" 
+    },
+    { 
+        chords: [{ text: "F#m", position: 0 }, { text: "D", position: 15 }, { text: "A", position: 25 }],
+        lyric: "If I could be who you wanted" 
+    },
+    { 
+        chords: [{ text: "F#m", position: 0 }, { text: "D", position: 10 }, { text: "A", position: 15 }],
+        lyric: "All the time" 
+    },
+    { 
+        chords: [{ text: "E", position: 0 }],
+        lyric: "All the time" 
+    },
 ];
 
 // DOM elements
@@ -160,19 +253,65 @@ function displayCurrentLines() {
         if (lineIndex < songData.length) {
             const line = songData[lineIndex];
             
-            // Create chord line (if there is a chord)
-            if (line.chord) {
-                const chordElement = document.createElement('div');
-                chordElement.className = 'chord-line';
-                chordElement.textContent = transposeChord(line.chord);
-                lyricsContainer.appendChild(chordElement);
+            // Create a line container
+            const lineContainer = document.createElement('div');
+            lineContainer.className = 'line-container';
+            
+            if (line.chords && line.chords.length > 0 && line.lyric) {
+                // For lines with both chords and lyrics, we need to align them
+                
+                // Create a wrapper for proper alignment
+                const alignmentWrapper = document.createElement('div');
+                alignmentWrapper.className = 'alignment-wrapper';
+                
+                // Create chord container
+                const chordContainer = document.createElement('div');
+                chordContainer.className = 'chord-container';
+                
+                // Add each chord at its position
+                line.chords.forEach(chord => {
+                    const chordSpan = document.createElement('span');
+                    chordSpan.className = 'chord';
+                    chordSpan.textContent = transposeChord(chord.text);
+                    chordSpan.style.left = `${chord.position}ch`;
+                    chordContainer.appendChild(chordSpan);
+                });
+                
+                // Create lyric line
+                const lyricElement = document.createElement('div');
+                lyricElement.className = 'lyric-line';
+                lyricElement.textContent = line.lyric;
+                
+                // Add elements to the wrapper
+                alignmentWrapper.appendChild(chordContainer);
+                alignmentWrapper.appendChild(lyricElement);
+                lineContainer.appendChild(alignmentWrapper);
+            } else if (line.chords && line.chords.length > 0) {
+                // Only chord, no lyrics
+                const chordContainer = document.createElement('div');
+                chordContainer.className = 'chord-container chord-only';
+                
+                // Add each chord
+                line.chords.forEach(chord => {
+                    const chordSpan = document.createElement('span');
+                    chordSpan.className = 'chord';
+                    chordSpan.textContent = transposeChord(chord.text);
+                    if (chord.position > 0) {
+                        chordSpan.style.marginLeft = `${chord.position}ch`;
+                    }
+                    chordContainer.appendChild(chordSpan);
+                });
+                
+                lineContainer.appendChild(chordContainer);
+            } else {
+                // Only lyrics or empty line
+                const lyricElement = document.createElement('div');
+                lyricElement.className = 'lyric-line';
+                lyricElement.textContent = line.lyric;
+                lineContainer.appendChild(lyricElement);
             }
             
-            // Create lyric line
-            const lyricElement = document.createElement('div');
-            lyricElement.className = 'lyric-line';
-            lyricElement.textContent = line.lyric;
-            lyricsContainer.appendChild(lyricElement);
+            lyricsContainer.appendChild(lineContainer);
         }
     }
     
@@ -181,12 +320,12 @@ function displayCurrentLines() {
     nextBtn.disabled = currentIndex >= songData.length - linesToDisplay;
 }
 
-// Transpose a chord string (may contain multiple chords)
-function transposeChord(chordString) {
-    if (!chordString) return '';
+// Transpose a chord
+function transposeChord(chordText) {
+    if (!chordText) return '';
     
     // Split the chord string in case it contains multiple chords
-    const chords = chordString.split(' ');
+    const chords = chordText.split(' ');
     
     // Transpose each chord
     const transposedChords = chords.map(chord => {
