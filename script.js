@@ -182,6 +182,7 @@ let songLibrary = []; // Array to store multiple songs
 let currentSongIndex = 0; // Index of the currently displayed song
 let isAnimating = false; // Track if page turn animation is in progress
 let animationDirection = 0; // Direction of animation (1 for forward, -1 for backward)
+let chordColor = '#4a90e2'; // Default chord color
 
 // Initialize with the default song
 songLibrary.push({
@@ -580,7 +581,7 @@ function displayCurrentLines(animate = false) {
                     chordSpan.style.position = 'absolute';
                     chordSpan.style.left = `${chord.position * 0.6}em`; // Adjust multiplier for better spacing
                     chordSpan.style.top = '0';
-                    chordSpan.style.color = '#4a90e2'; // Make chords stand out
+                    chordSpan.style.color = chordColor; // Use the chord color from app state
                     chordSpan.style.fontWeight = 'bold';
                     
                     chordContainer.appendChild(chordSpan);
@@ -613,7 +614,7 @@ function displayCurrentLines(animate = false) {
                     const chordSpan = document.createElement('span');
                     chordSpan.className = 'chord';
                     chordSpan.textContent = getChordDisplayText(chord.text);
-                    chordSpan.style.color = '#4a90e2'; // Make chords stand out
+                    chordSpan.style.color = chordColor; // Use the chord color from app state
                     chordSpan.style.fontWeight = 'bold';
                     
                     if (chord.position > 0) {
@@ -1435,9 +1436,144 @@ function loadSongLibrary() {
     }
 }
 
+// Set chord color
+function setChordColor(color) {
+    chordColor = color;
+    
+    // Save the color preference to localStorage
+    try {
+        localStorage.setItem('chordColor', color);
+    } catch (e) {
+        console.error('Failed to save chord color to localStorage:', e);
+    }
+    
+    // Update the display
+    displayCurrentLines();
+}
+
+// Load chord color from localStorage
+function loadChordColor() {
+    try {
+        const savedColor = localStorage.getItem('chordColor');
+        if (savedColor) {
+            chordColor = savedColor;
+        }
+    } catch (e) {
+        console.error('Failed to load chord color from localStorage:', e);
+    }
+}
+
+// Create and add the chord color picker to the chords section
+function createChordColorPicker() {
+    const chordsSection = document.querySelector('.panel-section:nth-child(2) .controls');
+    if (!chordsSection) return;
+    
+    // Create a container for the color picker
+    const colorPickerContainer = document.createElement('div');
+    colorPickerContainer.className = 'color-picker-container';
+    colorPickerContainer.style.marginTop = '10px';
+    
+    // Add a label
+    const colorLabel = document.createElement('label');
+    colorLabel.textContent = 'Chord Color:';
+    colorLabel.style.display = 'block';
+    colorLabel.style.marginBottom = '5px';
+    colorPickerContainer.appendChild(colorLabel);
+    
+    // Create a flex container for color options
+    const colorOptions = document.createElement('div');
+    colorOptions.style.display = 'flex';
+    colorOptions.style.flexWrap = 'wrap';
+    colorOptions.style.gap = '5px';
+    
+    // Define high contrast color options
+    const highContrastColors = [
+        { name: 'Blue', value: '#4a90e2' },
+        { name: 'Red', value: '#e74c3c' },
+        { name: 'Green', value: '#2ecc71' },
+        { name: 'Purple', value: '#9b59b6' },
+        { name: 'Orange', value: '#e67e22' },
+        { name: 'Yellow', value: '#f1c40f' },
+        { name: 'Pink', value: '#e84393' },
+        { name: 'Cyan', value: '#00cec9' }
+    ];
+    
+    // Create color buttons
+    highContrastColors.forEach(color => {
+        const colorButton = document.createElement('button');
+        colorButton.className = 'color-option';
+        colorButton.setAttribute('aria-label', `Set chord color to ${color.name}`);
+        colorButton.style.width = '24px';
+        colorButton.style.height = '24px';
+        colorButton.style.backgroundColor = color.value;
+        colorButton.style.border = chordColor === color.value ? '2px solid white' : '1px solid #ccc';
+        colorButton.style.borderRadius = '4px';
+        colorButton.style.cursor = 'pointer';
+        
+        // Add click event
+        colorButton.addEventListener('click', () => {
+            // Update all button borders
+            document.querySelectorAll('.color-option').forEach(btn => {
+                btn.style.border = '1px solid #ccc';
+            });
+            
+            // Highlight selected button
+            colorButton.style.border = '2px solid white';
+            
+            // Set the chord color
+            setChordColor(color.value);
+        });
+        
+        colorOptions.appendChild(colorButton);
+    });
+    
+    // Add custom color picker
+    const customColorContainer = document.createElement('div');
+    customColorContainer.style.marginTop = '5px';
+    customColorContainer.style.display = 'flex';
+    customColorContainer.style.alignItems = 'center';
+    
+    const customColorInput = document.createElement('input');
+    customColorInput.type = 'color';
+    customColorInput.value = chordColor;
+    customColorInput.style.width = '24px';
+    customColorInput.style.height = '24px';
+    customColorInput.style.border = 'none';
+    customColorInput.style.padding = '0';
+    customColorInput.style.background = 'none';
+    
+    customColorInput.addEventListener('input', (e) => {
+        // Update all button borders
+        document.querySelectorAll('.color-option').forEach(btn => {
+            btn.style.border = '1px solid #ccc';
+        });
+        
+        // Set the chord color
+        setChordColor(e.target.value);
+    });
+    
+    const customColorLabel = document.createElement('span');
+    customColorLabel.textContent = 'Custom';
+    customColorLabel.style.marginLeft = '5px';
+    customColorLabel.style.fontSize = '0.9em';
+    
+    customColorContainer.appendChild(customColorInput);
+    customColorContainer.appendChild(customColorLabel);
+    
+    // Add elements to the container
+    colorPickerContainer.appendChild(colorOptions);
+    colorPickerContainer.appendChild(customColorContainer);
+    
+    // Add the container to the chords section
+    chordsSection.appendChild(colorPickerContainer);
+}
+
 // Initialize the app
 function init() {
     console.log("Initializing app...");
+    
+    // Load chord color from localStorage
+    loadChordColor();
     
     // Set up event listeners first
     setupEventListeners();
@@ -1447,6 +1583,9 @@ function init() {
     
     // Create song selector UI
     createSongSelector();
+    
+    // Create chord color picker
+    createChordColorPicker();
     
     // Then display the lines
     displayCurrentLines();
