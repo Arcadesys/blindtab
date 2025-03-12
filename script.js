@@ -731,8 +731,9 @@ function updateFontSize() {
 
 // Optimize text size to fill the viewport
 function optimizeTextSize() {
-    // Get the available height for the lyrics container
+    // Get the available height and width for the lyrics container
     const containerHeight = calculateAvailableHeight();
+    const containerWidth = lyricsContainer.offsetWidth - 60; // Account for padding
     
     // Start with a large font size and decrease until content fits
     let maxSize = 120; // Further reduced maximum font size for better consistency
@@ -749,9 +750,14 @@ function optimizeTextSize() {
         // Force layout recalculation
         void lyricsContainer.offsetHeight;
         
-        // Check if content fits
+        // Check if content fits both height and width
         const contentHeight = calculateContentHeight();
-        const fits = contentHeight <= containerHeight * 0.85; // Reduced margin for more consistent sizing
+        const contentWidth = calculateContentWidth();
+        
+        const heightFits = contentHeight <= containerHeight * 0.85; // Reduced margin for more consistent sizing
+        const widthFits = contentWidth <= containerWidth * 0.95; // Allow 95% of container width
+        
+        const fits = heightFits && widthFits;
         
         if (fits) {
             // This size fits, save it and try a larger one
@@ -805,6 +811,25 @@ function calculateContentHeight() {
     });
     
     return totalHeight || 300; // Default to 300px if no content
+}
+
+// Calculate the current content width
+function calculateContentWidth() {
+    // Get the fixed position container
+    const fixedContainer = lyricsContainer.querySelector('.fixed-position-container');
+    if (!fixedContainer) return 1000; // Default if not found
+    
+    // Get all line containers
+    const lineContainers = fixedContainer.querySelectorAll('.line-container');
+    let maxWidth = 0;
+    
+    // Find the widest line
+    lineContainers.forEach(container => {
+        const width = container.scrollWidth;
+        maxWidth = Math.max(maxWidth, width);
+    });
+    
+    return maxWidth || 1000; // Default to 1000px if no content
 }
 
 // Update the number of lines to display

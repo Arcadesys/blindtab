@@ -294,6 +294,7 @@ button:disabled {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    overflow-x: hidden; /* Prevent horizontal overflow */
 }
 
 .controls-panel.show + .lyrics-container {
@@ -305,8 +306,10 @@ button:disabled {
     margin-bottom: 1.5em;
     position: relative;
     width: 100%;
-    max-width: 90vw;
+    max-width: calc(100% - 10px); /* Ensure it doesn't overflow the container */
     text-align: left;
+    overflow-wrap: break-word; /* Allow long words to break */
+    word-wrap: break-word; /* Legacy support */
 }
 
 /* Wrapper for aligned chord-lyric pairs */
@@ -361,9 +364,11 @@ button:disabled {
 .lyric-line {
     position: relative;
     width: 100%;
-    white-space: pre;
+    white-space: pre-wrap; /* Change from pre to pre-wrap to allow wrapping */
     line-height: 1.5; /* Increased from default */
     padding-top: 0.3em; /* Use em units for better scaling */
+    overflow-wrap: break-word; /* Allow long words to break */
+    word-wrap: break-word; /* Legacy support */
 }
 
 /* For lyric-only lines */
