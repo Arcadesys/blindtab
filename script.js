@@ -277,7 +277,15 @@ function saveSettings() {
 
 // Display current lines based on the selected number of lines
 function displayCurrentLines() {
+    // Store the current height before clearing content
+    const oldHeight = lyricsContainer.offsetHeight;
+    
     lyricsContainer.innerHTML = '';
+    
+    // Preserve the height to prevent layout shifts
+    if (oldHeight > 0) {
+        lyricsContainer.style.minHeight = `${oldHeight}px`;
+    }
     
     // Display the selected number of lines at a time
     for (let i = 0; i < linesToDisplay; i++) {
@@ -715,7 +723,7 @@ function optimizeTextSize() {
     const containerHeight = calculateAvailableHeight();
     
     // Start with a large font size and decrease until content fits
-    let maxSize = 150; // Reduced maximum font size to avoid extreme scaling issues
+    let maxSize = 120; // Further reduced maximum font size for better consistency
     let minSize = 16;  // Minimum font size
     let currentSize = maxSize;
     let bestSize = minSize;  // Default to minimum if nothing fits
@@ -731,7 +739,7 @@ function optimizeTextSize() {
         
         // Check if content fits
         const contentHeight = calculateContentHeight();
-        const fits = contentHeight <= containerHeight * 0.9; // Reduced margin for more aggressive sizing
+        const fits = contentHeight <= containerHeight * 0.85; // Reduced margin for more consistent sizing
         
         if (fits) {
             // This size fits, save it and try a larger one
@@ -747,7 +755,7 @@ function optimizeTextSize() {
     }
     
     // Apply the best size found, but reduce it slightly to ensure it fits
-    fontSize = Math.floor(bestSize * 0.95); // Apply a small safety margin
+    fontSize = Math.floor(bestSize * 0.9); // Apply a larger safety margin for consistency
     updateFontSize();
     fontSizeSlider.value = fontSize;
     
