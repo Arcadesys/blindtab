@@ -178,6 +178,7 @@ button:disabled {
     flex-direction: column;
     justify-content: center;
     transition: min-height 0.3s ease;
+    font-family: 'Roboto Mono', 'Courier New', Courier, monospace; /* Google Fonts + fallbacks */
 }
 
 .controls-panel.show + .lyrics-container {
@@ -185,9 +186,10 @@ button:disabled {
 }
 
 .chord-line {
-    font-weight: bold;
+    font-weight: 700; /* Use the 700 weight we imported from Google Fonts */
     color: #4a90e2;
     margin-bottom: 5px;
+    letter-spacing: 0.05em; /* Slightly increase letter spacing for better readability */
 }
 
 .dark-theme .chord-line {
