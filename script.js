@@ -357,10 +357,10 @@ function displayCurrentLines() {
     
     // Optimize text size if auto-resize is enabled
     if (autoResizeText) {
-        // Use requestAnimationFrame to ensure DOM is updated first
-        requestAnimationFrame(() => {
+        // Use a longer timeout to ensure DOM is fully updated and rendered
+        setTimeout(() => {
             optimizeTextSize();
-        });
+        }, 50);
     }
 }
 
@@ -710,14 +710,15 @@ function optimizeTextSize() {
     const containerHeight = calculateAvailableHeight();
     
     // Start with a large font size and decrease until content fits
-    let testSize = 200; // Start with a large size
-    let step = 50;      // Initial step size
-    let bestSize = 16;  // Default to minimum if nothing fits
+    let maxSize = 200; // Maximum font size to try
+    let minSize = 16;  // Minimum font size
+    let currentSize = maxSize;
+    let bestSize = minSize;  // Default to minimum if nothing fits
     
-    // Try progressively smaller sizes until content fits
-    while (step >= 1) {
-        // Try current test size
-        fontSize = testSize;
+    // Binary search to find the optimal font size
+    while (maxSize - minSize > 1) {
+        // Try current size
+        fontSize = currentSize;
         updateFontSize();
         
         // Force layout recalculation
@@ -725,23 +726,19 @@ function optimizeTextSize() {
         
         // Check if content fits
         const contentHeight = calculateContentHeight();
-        const fits = contentHeight <= containerHeight;
+        const fits = contentHeight <= containerHeight * 0.95; // Allow for some margin
         
         if (fits) {
             // This size fits, save it and try a larger one
-            bestSize = testSize;
-            testSize += step;
+            bestSize = currentSize;
+            minSize = currentSize;
         } else {
             // Too big, try a smaller one
-            testSize -= step;
+            maxSize = currentSize;
         }
         
-        // Reduce step size for finer adjustments
-        if (testSize <= 0 || testSize > 300) {
-            // Reset if we went out of bounds
-            testSize = bestSize;
-            step = Math.floor(step / 2);
-        }
+        // Calculate new test size (midpoint)
+        currentSize = Math.floor((minSize + maxSize) / 2);
     }
     
     // Apply the best size found
@@ -757,13 +754,12 @@ function optimizeTextSize() {
 function calculateAvailableHeight() {
     const windowHeight = window.innerHeight;
     const headerHeight = document.querySelector('header').offsetHeight || 0;
-    const navigationHeight = document.querySelector('.navigation').offsetHeight || 0;
-    const controlsHeight = controlsVisible ? document.querySelector('.controls-panel').offsetHeight : 0;
+    const navigationHeight = 60; // Fixed height for navigation
     const songInfoHeight = document.querySelector('.song-info') ? document.querySelector('.song-info').offsetHeight : 0;
-    const containerPadding = 10; // Minimal padding
+    const containerPadding = 20; // Increased padding for better spacing
     
     // Calculate total height to subtract
-    const subtractHeight = headerHeight + navigationHeight + controlsHeight + songInfoHeight + containerPadding;
+    const subtractHeight = headerHeight + navigationHeight + songInfoHeight + containerPadding;
     
     return windowHeight - subtractHeight;
 }
@@ -1034,11 +1030,11 @@ function toggleAutoResize() {
     
     if (autoResizeText) {
         autoResizeToggle.classList.add('active');
-        // Apply auto-resize immediately with requestAnimationFrame
-        requestAnimationFrame(() => {
+        // Apply auto-resize immediately with a timeout to ensure DOM is updated
+        setTimeout(() => {
             optimizeTextSize();
             // Slider value will be updated by optimizeTextSize
-        });
+        }, 50);
     } else {
         autoResizeToggle.classList.remove('active');
         // Keep current font size when disabling

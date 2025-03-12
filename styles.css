@@ -290,7 +290,7 @@ button:disabled {
 
 /* Line container for proper chord-lyric alignment */
 .line-container {
-    margin-bottom: 15px; /* Reduced from 25px */
+    margin-bottom: 25px; /* Increased from 15px */
     position: relative;
     width: 100%; /* Full width */
     max-width: 90vw; /* Limit width to 90% of viewport to prevent overflow */
@@ -300,10 +300,10 @@ button:disabled {
 /* Wrapper for aligned chord-lyric pairs */
 .alignment-wrapper {
     position: relative;
-    min-height: 60px; /* Reduced from 70px */
+    min-height: 80px; /* Increased from 60px to give more space */
     display: flex;
     flex-direction: column;
-    margin-bottom: 5px; /* Reduced from 10px */
+    margin-bottom: 10px; /* Increased from 5px */
     width: 100%; /* Full width */
 }
 
@@ -311,11 +311,11 @@ button:disabled {
 .chord-container {
     position: relative;
     width: 100%;
-    height: 25px; /* Reduced from 30px */
+    height: 30px; /* Increased from 25px */
     font-weight: 700;
     color: #4a90e2;
     letter-spacing: 0.05em;
-    margin-bottom: 10px; /* Reduced from 15px */
+    margin-bottom: 5px; /* Reduced from 10px */
 }
 
 .dark-theme .chord-container {
@@ -326,6 +326,7 @@ button:disabled {
 .chord {
     position: absolute;
     white-space: nowrap;
+    top: 0; /* Ensure consistent vertical positioning */
 }
 
 .chord-only {
@@ -340,10 +341,13 @@ button:disabled {
     margin-right: 10px;
 }
 
+/* Lyric line */
 .lyric-line {
-    position: relative; /* Changed from absolute to relative */
+    position: relative;
     width: 100%;
     white-space: pre;
+    line-height: 1.5; /* Increased from default */
+    padding-top: 5px; /* Add some space between chord and lyric */
 }
 
 /* For lyric-only lines */
