@@ -184,9 +184,26 @@ const flatChords = ['A', 'Bb', 'B', 'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', '
 
 // Initialize the app
 function init() {
-    displayCurrentLines();
+    console.log("Initializing app...");
+    console.log("Song data length:", songData.length);
+    
+    // Ensure DOM elements are found
+    if (!lyricsContainer) {
+        console.error("Lyrics container not found!");
+    } else {
+        console.log("Lyrics container found:", lyricsContainer);
+    }
+    
+    // Set up event listeners first
     setupEventListeners();
+    
+    // Then display the lines
+    displayCurrentLines();
+    
+    // Highlight the selected key
     highlightSelectedKey();
+    
+    // Load settings last
     loadSettings();
     
     // Initialize slider background
@@ -194,8 +211,12 @@ function init() {
     
     // Initial text size optimization
     if (autoResizeText) {
-        optimizeTextSize();
+        setTimeout(() => {
+            optimizeTextSize();
+        }, 200); // Longer timeout to ensure DOM is fully rendered
     }
+    
+    console.log("Initialization complete");
 }
 
 // Load saved settings from localStorage
@@ -280,6 +301,10 @@ function saveSettings() {
 
 // Display current lines based on the selected number of lines
 function displayCurrentLines() {
+    console.log("Displaying lines starting from index:", currentIndex);
+    console.log("Number of lines to display:", linesToDisplay);
+    console.log("Total song data length:", songData.length);
+    
     // Clear the container
     lyricsContainer.innerHTML = '';
     
@@ -297,11 +322,20 @@ function displayCurrentLines() {
     fixedPositionContainer.style.flexDirection = 'column';
     fixedPositionContainer.style.alignItems = 'flex-start'; // Ensure left alignment
     fixedPositionContainer.style.justifyContent = 'flex-start'; // Align to top
-    fixedPositionContainer.style.padding = '0'; // Remove all padding
+    fixedPositionContainer.style.padding = '10px'; // Add some padding
     fixedPositionContainer.style.boxSizing = 'border-box'; // Ensure padding is included in width/height
     fixedPositionContainer.style.textAlign = 'left'; // Ensure text is left-aligned
     fixedPositionContainer.style.whiteSpace = 'nowrap'; // Prevent text wrapping
     fixedPositionContainer.style.overflowX = 'visible'; // Allow horizontal overflow
+    
+    // Add a fallback message if no lines are displayed
+    if (songData.length === 0) {
+        const noDataMessage = document.createElement('div');
+        noDataMessage.textContent = 'No song data available. Try importing a song.';
+        noDataMessage.style.fontSize = '24px';
+        noDataMessage.style.padding = '20px';
+        fixedPositionContainer.appendChild(noDataMessage);
+    }
     
     // Display the selected number of lines at a time
     for (let i = 0; i < linesToDisplay; i++) {
@@ -310,6 +344,7 @@ function displayCurrentLines() {
         // Check if we're still within the song data
         if (lineIndex < songData.length) {
             const line = songData[lineIndex];
+            console.log("Displaying line:", line);
             
             // Create a line container
             const lineContainer = document.createElement('div');

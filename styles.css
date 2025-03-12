@@ -326,6 +326,7 @@ button:disabled {
     flex-grow: 1;
     font-size: 24px;
     line-height: 1.4;
+    margin-top: 10px; /* Add margin at top */
     margin-bottom: 10px;
     min-height: 300px;
     display: flex;
@@ -339,7 +340,8 @@ button:disabled {
     width: 100%;
     max-width: 100vw;
     position: relative; /* Add relative positioning */
-    height: calc(100vh - 100px); /* Adjusted to account for just the footer */
+    height: calc(100vh - 120px); /* Adjusted to account for song info and footer */
+    border: 1px solid transparent; /* Add invisible border to ensure the container has dimensions */
 }
 
 /* Fixed position container for consistent text positioning */
