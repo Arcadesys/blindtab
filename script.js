@@ -808,8 +808,8 @@ function optimizeTextSize() {
     const containerWidth = lyricsContainer.offsetWidth; // No padding to account for
     
     // Start with a very large font size and decrease until content fits
-    let testSize = 500; // Start with an even larger font size
-    let step = 25; // Larger initial step size for faster convergence
+    let testSize = 600; // Start with an even larger font size (increased from 500)
+    let step = 30; // Larger initial step size for faster convergence (increased from 25)
     
     // First pass: quickly find an approximate size with larger steps
     while (testSize > 16) { // Don't go below 16px
@@ -825,8 +825,8 @@ function optimizeTextSize() {
         
         console.log(`Testing size ${testSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
         
-        // Prioritize width fitting over height - use a more aggressive width check (95%)
-        if (contentWidth <= containerWidth * 0.95) {
+        // Prioritize width fitting over height - use a more aggressive width check (98%)
+        if (contentWidth <= containerWidth * 0.98) {
             // Content width fits, check height as secondary concern
             if (contentHeight <= containerHeight * 0.99) {
                 // Both width and height fit, we found our size
@@ -849,8 +849,8 @@ function optimizeTextSize() {
         }
     }
     
-    // Apply a smaller safety margin (99% instead of 99.5%)
-    fontSize = Math.floor(testSize * 0.99);
+    // Apply a smaller safety margin (99.5% instead of 99%)
+    fontSize = Math.floor(testSize * 0.995);
     
     // Update the font size using the proper function to ensure all UI elements are updated
     updateFontSize();
@@ -883,8 +883,8 @@ function calculateContentHeight() {
         totalHeight += container.offsetHeight;
     });
     
-    // Add a small buffer for spacing
-    return totalHeight + 10;
+    // Add a smaller buffer for spacing (reduced from 10)
+    return totalHeight + 5;
 }
 
 // Calculate the current content width

@@ -40,11 +40,11 @@ body {
 
 header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start; /* Changed from space-between to align to left */
     align-items: center;
-    margin-bottom: 5px; /* Further reduced from 10px */
+    margin-bottom: 5px;
     position: relative;
-    height: 40px; /* Fixed height */
+    height: 30px; /* Reduced from 40px */
 }
 
 header h1 {
@@ -54,12 +54,17 @@ header h1 {
     font-size: 24px; /* Smaller font size */
 }
 
-.header-left, .header-right {
-    width: 30px; /* Reduced from 40px */
+.header-left {
+    width: 30px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start; /* Changed from center to align to left */
+    margin-left: 5px; /* Add a small margin */
+}
+
+.header-right {
+    display: none; /* Hide since we don't need it anymore */
 }
 
 /* Show controls button */
@@ -306,7 +311,7 @@ button:disabled {
     width: 100%;
     max-width: 100vw;
     position: relative; /* Add relative positioning */
-    height: calc(100vh - 180px); /* Adjusted to account for header, song info, and footer */
+    height: calc(100vh - 150px); /* Adjusted to account for smaller header and footer */
 }
 
 /* Fixed position container for consistent text positioning */
