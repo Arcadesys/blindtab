@@ -12,6 +12,7 @@ A simple, accessible web application for displaying song lyrics and chords with 
   - Tap/click on left/right sides to navigate
   - Previous/Next buttons
   - Keyboard navigation (arrow keys and spacebar)
+  - Auto-scroll with adjustable BPM (beats per minute)
 - **Accessibility Options**:
   - Adjustable font size
   - Light/Dark theme toggle
@@ -19,6 +20,7 @@ A simple, accessible web application for displaying song lyrics and chords with 
   - Full key selection dropdown with all musical keys
   - Toggle between sharps (#) and flats (♭)
 - **Responsive Design**: Works on both desktop and mobile browsers
+- **Persistent Settings**: User preferences are saved between sessions
 
 ## How to Use
 
@@ -27,10 +29,12 @@ A simple, accessible web application for displaying song lyrics and chords with 
    - The Previous/Next buttons
    - Clicking/tapping on the left or right side of the lyrics display
    - Using keyboard arrow keys (left/right or up/down) or spacebar
+   - Auto-scroll feature (toggle with the "Auto-Scroll" button or press 'P')
 3. Adjust font size with the A+/A- buttons
 4. Toggle between light and dark themes with the sun/moon button
 5. Click "Select Key" to open a dropdown menu with all available keys
 6. Toggle between sharps and flats notation with the "Use ♭" button
+7. Control auto-scroll speed by adjusting the BPM value
 
 ## Current Song
 

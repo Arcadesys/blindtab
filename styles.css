@@ -134,7 +134,70 @@ button:disabled {
 .navigation {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     margin-top: auto;
+}
+
+/* Auto-scroll controls */
+.auto-scroll-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#auto-scroll-toggle {
+    background-color: #5a6268;
+    min-width: 120px;
+}
+
+#auto-scroll-toggle:hover {
+    background-color: #444a4e;
+}
+
+#auto-scroll-toggle.active {
+    background-color: #28a745;
+}
+
+#auto-scroll-toggle.active:hover {
+    background-color: #218838;
+}
+
+.bpm-control {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.bpm-control label {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#bpm-input {
+    width: 50px;
+    text-align: center;
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.dark-theme #bpm-input {
+    background-color: #333;
+    color: #f0f0f0;
+    border-color: #666;
+}
+
+.bpm-buttons {
+    display: flex;
+    gap: 2px;
+}
+
+.bpm-buttons button {
+    padding: 4px 8px;
+    font-size: 14px;
+    min-width: 30px;
 }
 
 /* Key selector styles */
@@ -207,7 +270,23 @@ button:disabled {
         gap: 15px;
     }
     
+    .navigation {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
     .navigation button {
         padding: 12px 20px;
+        width: 100%;
+    }
+    
+    .auto-scroll-controls {
+        width: 100%;
+        margin: 10px 0;
+    }
+    
+    .bpm-control {
+        width: 100%;
+        justify-content: center;
     }
 } 

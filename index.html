@@ -61,6 +61,17 @@
         
         <div class="navigation">
             <button id="prev-btn" aria-label="Previous lines">Previous</button>
+            <div class="auto-scroll-controls">
+                <button id="auto-scroll-toggle" aria-label="Toggle auto-scroll">Auto-Scroll: Off</button>
+                <div class="bpm-control">
+                    <label for="bpm-input">BPM:</label>
+                    <input type="number" id="bpm-input" min="40" max="240" value="80" aria-label="Beats per minute">
+                    <div class="bpm-buttons">
+                        <button id="decrease-bpm" aria-label="Decrease BPM">-</button>
+                        <button id="increase-bpm" aria-label="Increase BPM">+</button>
+                    </div>
+                </div>
+            </div>
             <button id="next-btn" aria-label="Next lines">Next</button>
         </div>
     </div>

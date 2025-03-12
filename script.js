@@ -53,12 +53,19 @@ const keySelectBtn = document.getElementById('key-select-btn');
 const keyDropdown = document.getElementById('key-dropdown');
 const keyOptions = document.querySelectorAll('.key-option');
 const useFlatsBtn = document.getElementById('use-flats');
+const autoScrollToggle = document.getElementById('auto-scroll-toggle');
+const bpmInput = document.getElementById('bpm-input');
+const increaseBpm = document.getElementById('increase-bpm');
+const decreaseBpm = document.getElementById('decrease-bpm');
 
 // App state
 let currentIndex = 0;
 let fontSize = 24; // Default font size in pixels
 let transposeSteps = 0; // Default transposition (no change)
 let useFlats = false; // Default to using sharps
+let isAutoScrolling = false;
+let autoScrollInterval = null;
+let bpm = 80; // Default BPM
 
 // Chord mapping for transposition
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
@@ -69,6 +76,58 @@ function init() {
     displayCurrentLines();
     setupEventListeners();
     highlightSelectedKey();
+    loadSettings();
+}
+
+// Load saved settings from localStorage
+function loadSettings() {
+    if (localStorage.getItem('blindTabSettings')) {
+        try {
+            const settings = JSON.parse(localStorage.getItem('blindTabSettings'));
+            
+            // Apply saved settings if they exist
+            if (settings.fontSize) {
+                fontSize = settings.fontSize;
+                updateFontSize();
+            }
+            
+            if (settings.theme === 'dark') {
+                document.body.classList.remove('light-theme');
+                document.body.classList.add('dark-theme');
+                themeToggle.querySelector('.toggle-icon').textContent = '🌙';
+            }
+            
+            if (settings.transposeSteps !== undefined) {
+                setTransposition(settings.transposeSteps);
+            }
+            
+            if (settings.useFlats) {
+                useFlats = settings.useFlats;
+                useFlatsBtn.textContent = useFlats ? 'Use #' : 'Use ♭';
+                displayCurrentLines();
+            }
+            
+            if (settings.bpm) {
+                bpm = settings.bpm;
+                bpmInput.value = bpm;
+            }
+        } catch (e) {
+            console.error('Error loading settings:', e);
+        }
+    }
+}
+
+// Save current settings to localStorage
+function saveSettings() {
+    const settings = {
+        fontSize,
+        theme: document.body.classList.contains('dark-theme') ? 'dark' : 'light',
+        transposeSteps,
+        useFlats,
+        bpm
+    };
+    
+    localStorage.setItem('blindTabSettings', JSON.stringify(settings));
 }
 
 // Display current lines (2 at a time)
@@ -150,11 +209,20 @@ function setupEventListeners() {
     nextBtn.addEventListener('click', goToNextLines);
     
     // Theme toggle
-    themeToggle.addEventListener('click', toggleTheme);
+    themeToggle.addEventListener('click', () => {
+        toggleTheme();
+        saveSettings();
+    });
     
     // Font size controls
-    increaseFont.addEventListener('click', increaseFontSize);
-    decreaseFont.addEventListener('click', decreaseFontSize);
+    increaseFont.addEventListener('click', () => {
+        increaseFontSize();
+        saveSettings();
+    });
+    decreaseFont.addEventListener('click', () => {
+        decreaseFontSize();
+        saveSettings();
+    });
     
     // Key selection
     keySelectBtn.addEventListener('click', toggleKeyDropdown);
@@ -165,11 +233,34 @@ function setupEventListeners() {
             const transposeValue = parseInt(this.getAttribute('data-transpose'));
             setTransposition(transposeValue);
             toggleKeyDropdown(); // Close dropdown after selection
+            saveSettings();
         });
     });
     
     // Use flats toggle
-    useFlatsBtn.addEventListener('click', toggleUseFlats);
+    useFlatsBtn.addEventListener('click', () => {
+        toggleUseFlats();
+        saveSettings();
+    });
+    
+    // Auto-scroll toggle
+    autoScrollToggle.addEventListener('click', toggleAutoScroll);
+    
+    // BPM controls
+    bpmInput.addEventListener('change', () => {
+        updateBpm(parseInt(bpmInput.value));
+        saveSettings();
+    });
+    
+    increaseBpm.addEventListener('click', () => {
+        updateBpm(bpm + 5);
+        saveSettings();
+    });
+    
+    decreaseBpm.addEventListener('click', () => {
+        updateBpm(bpm - 5);
+        saveSettings();
+    });
     
     // Close dropdown when clicking outside
     document.addEventListener('click', function(event) {
@@ -183,6 +274,61 @@ function setupEventListeners() {
     
     // Touch navigation for the lyrics container
     lyricsContainer.addEventListener('click', handleContainerClick);
+}
+
+// Toggle auto-scroll
+function toggleAutoScroll() {
+    isAutoScrolling = !isAutoScrolling;
+    
+    if (isAutoScrolling) {
+        autoScrollToggle.textContent = 'Auto-Scroll: On';
+        autoScrollToggle.classList.add('active');
+        startAutoScroll();
+    } else {
+        autoScrollToggle.textContent = 'Auto-Scroll: Off';
+        autoScrollToggle.classList.remove('active');
+        stopAutoScroll();
+    }
+}
+
+// Start auto-scrolling
+function startAutoScroll() {
+    // Clear any existing interval
+    stopAutoScroll();
+    
+    // Calculate interval based on BPM (beats per minute)
+    // Assuming 1 line per beat, convert BPM to milliseconds
+    const intervalMs = (60 / bpm) * 1000;
+    
+    // Set up the interval
+    autoScrollInterval = setInterval(() => {
+        if (currentIndex < songData.length - 1) {
+            goToNextLines();
+        } else {
+            // Stop auto-scroll when we reach the end
+            toggleAutoScroll();
+        }
+    }, intervalMs);
+}
+
+// Stop auto-scrolling
+function stopAutoScroll() {
+    if (autoScrollInterval) {
+        clearInterval(autoScrollInterval);
+        autoScrollInterval = null;
+    }
+}
+
+// Update BPM value
+function updateBpm(newBpm) {
+    // Ensure BPM is within valid range
+    bpm = Math.max(40, Math.min(240, newBpm));
+    bpmInput.value = bpm;
+    
+    // Restart auto-scroll if it's active
+    if (isAutoScrolling) {
+        startAutoScroll();
+    }
 }
 
 // Toggle key selection dropdown
@@ -229,6 +375,9 @@ function goToNextLines() {
     if (currentIndex < songData.length - 1) {
         currentIndex += 1;
         displayCurrentLines();
+    } else if (isAutoScrolling) {
+        // Stop auto-scroll when we reach the end
+        toggleAutoScroll();
     }
 }
 
@@ -250,6 +399,10 @@ function handleKeyboardNavigation(event) {
         case 'ArrowLeft':
         case 'ArrowUp':
             goToPreviousLines();
+            break;
+        case 'p':
+        case 'P':
+            toggleAutoScroll(); // Toggle auto-scroll with 'p' key
             break;
     }
 }
