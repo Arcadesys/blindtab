@@ -9,8 +9,11 @@ body {
     font-family: 'Arial', sans-serif;
     transition: background-color 0.3s, color 0.3s;
     min-height: 100vh;
+    height: 100vh; /* Use full viewport height */
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* Prevent scrolling */
+    margin: 0;
 }
 
 /* Theme styles */
@@ -31,6 +34,8 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    height: 100vh; /* Use full viewport height */
+    overflow: hidden; /* Prevent scrolling */
 }
 
 header {
@@ -157,6 +162,22 @@ button:disabled {
     gap: 5px;
 }
 
+#auto-resize-toggle {
+    background-color: #5a6268;
+}
+
+#auto-resize-toggle:hover {
+    background-color: #444a4e;
+}
+
+#auto-resize-toggle.active {
+    background-color: #28a745;
+}
+
+#auto-resize-toggle.active:hover {
+    background-color: #218838;
+}
+
 .lines-display-controls {
     display: flex;
     align-items: center;
@@ -202,8 +223,9 @@ button:disabled {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    transition: min-height 0.3s ease;
+    transition: min-height 0.3s ease, font-size 0.3s ease;
     font-family: 'Roboto Mono', 'Courier New', Courier, monospace; /* Google Fonts + fallbacks */
+    overflow: hidden; /* Prevent scrolling within the container */
 }
 
 .controls-panel.show + .lyrics-container {

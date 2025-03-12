@@ -162,6 +162,7 @@ const saveSongBtn = document.getElementById('save-song-btn');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 const closeModalBtn = document.querySelector('.close-modal');
 const exportSongBtn = document.getElementById('export-song-btn');
+const autoResizeToggle = document.getElementById('auto-resize-toggle');
 
 // App state
 let currentIndex = 0;
@@ -176,6 +177,7 @@ let linesToDisplay = 2; // Default number of lines to display
 let songTitle = "Fake Plastic Trees";
 let songArtist = "Radiohead";
 let currentSongMarkdown = ""; // Store the current song in Markdown format
+let autoResizeText = true; // Enable auto-resizing by default
 
 // Chord mapping for transposition
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
@@ -187,6 +189,11 @@ function init() {
     setupEventListeners();
     highlightSelectedKey();
     loadSettings();
+    
+    // Initial text size optimization
+    if (autoResizeText) {
+        optimizeTextSize();
+    }
 }
 
 // Load saved settings from localStorage
@@ -198,7 +205,10 @@ function loadSettings() {
             // Apply saved settings if they exist
             if (settings.fontSize) {
                 fontSize = settings.fontSize;
-                updateFontSize();
+                // Only update font size if auto-resize is disabled
+                if (!autoResizeText) {
+                    updateFontSize();
+                }
             }
             
             if (settings.theme === 'dark') {
@@ -232,6 +242,17 @@ function loadSettings() {
                 linesToDisplay = settings.linesToDisplay;
                 linesToDisplaySelect.value = linesToDisplay;
             }
+            
+            // Load auto-resize setting
+            if (settings.autoResizeText !== undefined) {
+                autoResizeText = settings.autoResizeText;
+                // Update toggle button state
+                if (autoResizeText) {
+                    autoResizeToggle.classList.add('active');
+                } else {
+                    autoResizeToggle.classList.remove('active');
+                }
+            }
         } catch (e) {
             console.error('Error loading settings:', e);
         }
@@ -247,7 +268,8 @@ function saveSettings() {
         useFlats,
         bpm,
         controlsVisible,
-        linesToDisplay
+        linesToDisplay,
+        autoResizeText
     };
     
     localStorage.setItem('blindTabSettings', JSON.stringify(settings));
@@ -330,6 +352,12 @@ function displayCurrentLines() {
     // Update button states
     prevBtn.disabled = currentIndex === 0;
     nextBtn.disabled = currentIndex >= songData.length - linesToDisplay;
+    
+    // Optimize text size if auto-resize is enabled
+    if (autoResizeText) {
+        // Small delay to allow DOM to update
+        setTimeout(optimizeTextSize, 50);
+    }
 }
 
 // Transpose a chord
@@ -470,6 +498,19 @@ function setupEventListeners() {
         if (event.target === songEditorModal) {
             closeSongEditor();
         }
+    });
+    
+    // Window resize event for text optimization
+    window.addEventListener('resize', () => {
+        if (autoResizeText) {
+            optimizeTextSize();
+        }
+    });
+    
+    // Auto-resize toggle
+    autoResizeToggle.addEventListener('click', () => {
+        toggleAutoResize();
+        saveSettings();
     });
 }
 
@@ -651,27 +692,102 @@ function toggleTheme() {
 
 // Font size adjustment functions
 function increaseFontSize() {
-    if (fontSize < 40) {
+    // Disable auto-resize when manually changing font size
+    autoResizeText = false;
+    
+    if (fontSize < 100) { // Increased max font size
         fontSize += 2;
         updateFontSize();
     }
+    
+    saveSettings();
 }
 
 function decreaseFontSize() {
+    // Disable auto-resize when manually changing font size
+    autoResizeText = false;
+    
     if (fontSize > 16) {
         fontSize -= 2;
         updateFontSize();
     }
+    
+    saveSettings();
 }
 
 function updateFontSize() {
     lyricsContainer.style.fontSize = `${fontSize}px`;
 }
 
+// Optimize text size to fill the viewport
+function optimizeTextSize() {
+    // Get the available height for the lyrics container
+    const containerHeight = calculateAvailableHeight();
+    
+    // Get the current content height
+    const contentHeight = calculateContentHeight();
+    
+    // Calculate the ratio between available height and content height
+    const ratio = containerHeight / contentHeight;
+    
+    // Only adjust if the content doesn't already fill the container
+    if (ratio !== 1) {
+        // Calculate new font size based on the ratio
+        // Use a slightly more conservative ratio to avoid overflow
+        const adjustmentFactor = ratio * 0.95;
+        fontSize = Math.max(16, Math.min(100, Math.floor(fontSize * adjustmentFactor)));
+        
+        // Apply the new font size
+        updateFontSize();
+        
+        // Recalculate after a short delay to account for DOM updates
+        setTimeout(() => {
+            const newContentHeight = calculateContentHeight();
+            const newRatio = containerHeight / newContentHeight;
+            
+            // Fine-tune if needed
+            if (Math.abs(newRatio - 1) > 0.1) {
+                fontSize = Math.max(16, Math.min(100, Math.floor(fontSize * (newRatio * 0.95))));
+                updateFontSize();
+            }
+        }, 50);
+    }
+}
+
+// Calculate the available height for the lyrics container
+function calculateAvailableHeight() {
+    const windowHeight = window.innerHeight;
+    const headerHeight = document.querySelector('header').offsetHeight;
+    const navigationHeight = document.querySelector('.navigation').offsetHeight;
+    const containerPadding = 40; // Account for container padding
+    
+    return windowHeight - headerHeight - navigationHeight - containerPadding;
+}
+
+// Calculate the current content height
+function calculateContentHeight() {
+    // Get all line containers
+    const lineContainers = lyricsContainer.querySelectorAll('.line-container');
+    let totalHeight = 0;
+    
+    // Sum up the heights of all line containers
+    lineContainers.forEach(container => {
+        totalHeight += container.offsetHeight;
+    });
+    
+    return totalHeight || 300; // Default to 300px if no content
+}
+
 // Update the number of lines to display
 function updateLinesToDisplay(numLines) {
     linesToDisplay = numLines;
     displayCurrentLines();
+    
+    // Re-optimize text size if auto-resize is enabled
+    if (autoResizeText) {
+        // Small delay to allow DOM to update
+        setTimeout(optimizeTextSize, 50);
+    }
 }
 
 // Song editor functions
@@ -906,6 +1022,20 @@ function exportSongAsMarkdown() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }, 0);
+}
+
+// Toggle auto-resize feature
+function toggleAutoResize() {
+    autoResizeText = !autoResizeText;
+    
+    if (autoResizeText) {
+        autoResizeToggle.classList.add('active');
+        // Apply auto-resize immediately
+        optimizeTextSize();
+    } else {
+        autoResizeToggle.classList.remove('active');
+        // Keep current font size when disabling
+    }
 }
 
 // Initialize the app when the DOM is loaded
