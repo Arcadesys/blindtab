@@ -337,6 +337,38 @@ function displayCurrentLines() {
         fixedPositionContainer.appendChild(noDataMessage);
     }
     
+    // Only show title and artist if we're at the beginning of the song
+    if (currentIndex === 0) {
+        // Create a title container
+        const titleContainer = document.createElement('div');
+        titleContainer.className = 'line-container';
+        titleContainer.style.width = '100%';
+        titleContainer.style.textAlign = 'left';
+        titleContainer.style.display = 'flex';
+        titleContainer.style.flexDirection = 'column';
+        titleContainer.style.alignItems = 'flex-start';
+        titleContainer.style.marginBottom = '0.8em';
+        
+        // Add song title
+        const titleElement = document.createElement('div');
+        titleElement.className = 'lyric-line title-line';
+        titleElement.textContent = songTitle;
+        titleElement.style.fontWeight = 'bold';
+        titleElement.style.fontSize = '1.1em';
+        
+        // Add artist name
+        const artistElement = document.createElement('div');
+        artistElement.className = 'lyric-line artist-line';
+        artistElement.textContent = songArtist;
+        artistElement.style.fontSize = '0.9em';
+        artistElement.style.opacity = '0.8';
+        
+        // Add elements to the container
+        titleContainer.appendChild(titleElement);
+        titleContainer.appendChild(artistElement);
+        fixedPositionContainer.appendChild(titleContainer);
+    }
+    
     // Display the selected number of lines at a time
     for (let i = 0; i < linesToDisplay; i++) {
         const lineIndex = currentIndex + i;
@@ -996,11 +1028,11 @@ function saveSongChanges() {
 }
 
 function updateSongInfo() {
-    const songInfoTitle = document.querySelector('.song-info h2');
-    const songInfoArtist = document.querySelector('.song-info p');
-    
-    if (songInfoTitle) songInfoTitle.textContent = songTitle;
-    if (songInfoArtist) songInfoArtist.textContent = `by ${songArtist}`;
+    // Since we're now showing the title and artist in the lyrics container,
+    // we just need to refresh the display if we're at the beginning
+    if (currentIndex === 0) {
+        displayCurrentLines();
+    }
 }
 
 function handleFileImport(event) {
