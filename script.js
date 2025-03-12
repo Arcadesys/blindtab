@@ -2,45 +2,136 @@
 
 // Song data - Fake Plastic Trees by Radiohead with chord positions
 const songData = [
-    { 
-        chords: [{ text: "A", position: 0 }],
-        lyric: "Her green plastic watering can" 
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "Her green plastic watering can"
     },
-    { 
-        chords: [{ text: "E", position: 0 }],
-        lyric: "For her fake Chinese rubber plant" 
+    {
+        "chords": [{"text": "Em", "position": 0}],
+        "lyric": "For her fake Chinese rubber plant"
     },
-    { 
-        chords: [{ text: "F#m", position: 0 }],
-        lyric: "In the fake plastic earth" 
+    {
+        "chords": [{"text": "C", "position": 0}],
+        "lyric": "In the fake plastic earth"
     },
-    { lyric: "" },
-    { 
-        chords: [{ text: "A", position: 0 }],
-        lyric: "That she bought from a rubber man" 
+    {"lyric": ""},
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "That she bought from a rubber man"
     },
-    { 
-        chords: [{ text: "E", position: 0 }],
-        lyric: "In a town full of rubber plans" 
+    {
+        "chords": [{"text": "D", "position": 0}],
+        "lyric": "In a town full of rubber plans"
     },
-    { 
-        chords: [{ text: "F#m", position: 0 }],
-        lyric: "To get rid of itself" 
+    {
+        "chords": [{"text": "Am", "position": 0}],
+        "lyric": "To get rid of itself"
     },
-    { lyric: "" },
-    { 
-        chords: [{ text: "C#m", position: 0 }],
-        lyric: "It wears her out" 
+    {"lyric": ""},
+    {
+        "chords": [{"text": "Em", "position": 0}],
+        "lyric": "It wears her out"
     },
-    { 
-        chords: [{ text: "D", position: 0 }],
-        lyric: "It wears her out" 
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "It wears her out"
     },
-    { 
-        chords: [{ text: "A", position: 0 }, { text: "E", position: 10 }],
-        lyric: "It wears her out" 
+    {
+        "chords": [{"text": "Em", "position": 0}],
+        "lyric": "It wears her out"
+    },
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "It wears her out"
+    },
+    {"lyric": ""},
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "She lives with a broken man"
+    },
+    {
+        "chords": [{"text": "Em", "position": 0}],
+        "lyric": "A cracked polystyrene man"
+    },
+    {
+        "chords": [{"text": "C", "position": 0}],
+        "lyric": "Who just crumbles and burns"
+    },
+    {"lyric": ""},
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "He used to do surgery"
+    },
+    {
+        "chords": [{"text": "Em", "position": 0}],
+        "lyric": "For girls in the eighties"
+    },
+    {
+        "chords": [{"text": "C", "position": 0}],
+        "lyric": "But gravity always wins"
+    },
+    {"lyric": ""},
+    {
+        "chords": [{"text": "Am", "position": 0}],
+        "lyric": "It wears him out"
+    },
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "It wears him out"
+    },
+    {
+        "chords": [{"text": "Am", "position": 0}],
+        "lyric": "It wears him out"
+    },
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "It wears him out"
+    },
+    {"lyric": ""},
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "She looks like the real thing"
+    },
+    {
+        "chords": [{"text": "Em", "position": 0}],
+        "lyric": "She tastes like the real thing"
+    },
+    {
+        "chords": [{"text": "C", "position": 0}],
+        "lyric": "My fake plastic love"
+    },
+    {"lyric": ""},
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "But I can't help the feeling"
+    },
+    {
+        "chords": [{"text": "Em", "position": 0}],
+        "lyric": "I could blow through the ceiling"
+    },
+    {
+        "chords": [{"text": "C", "position": 0}],
+        "lyric": "If I just turn and run"
+    },
+    {"lyric": ""},
+    {
+        "chords": [{"text": "Gmaj7", "position": 0}],
+        "lyric": "And if I could be who you wanted"
+    },
+    {
+        "chords": [{"text": "Am7", "position": 0}],
+        "lyric": "If I could be who you wanted"
+    },
+    {
+        "chords": [{"text": "G", "position": 0}],
+        "lyric": "All the time"
+    },
+    {
+        "chords": [{"text": "Am", "position": 0}],
+        "lyric": "All the time"
     }
-];
+]
+
 
 // DOM elements
 const lyricsContainer = document.getElementById('lyrics-container');
