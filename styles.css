@@ -283,20 +283,20 @@ button:disabled {
     gap: 10px;
 }
 
-#auto-scroll-toggle {
+#auto-scroll-toggle, #metronome-toggle {
     background-color: #5a6268;
     min-width: 120px;
 }
 
-#auto-scroll-toggle:hover {
+#auto-scroll-toggle:hover, #metronome-toggle:hover {
     background-color: #444a4e;
 }
 
-#auto-scroll-toggle.active {
+#auto-scroll-toggle.active, #metronome-toggle.active {
     background-color: #28a745;
 }
 
-#auto-scroll-toggle.active:hover {
+#auto-scroll-toggle.active:hover, #metronome-toggle.active:hover {
     background-color: #218838;
 }
 
@@ -406,6 +406,40 @@ button:disabled {
 
 .dark-theme .key-option.selected {
     background-color: #357abd;
+}
+
+/* Metronome visual indicator */
+.metronome-visual {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+    height: 20px;
+}
+
+.beat-indicator {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background-color: #ccc;
+    transition: background-color 0.1s, transform 0.1s;
+}
+
+.beat-indicator[data-beat="0"] {
+    border: 2px solid #4a90e2;
+}
+
+.beat-indicator.active {
+    background-color: #4a90e2;
+    transform: scale(1.2);
+}
+
+.dark-theme .beat-indicator {
+    background-color: #555;
+}
+
+.dark-theme .beat-indicator.active {
+    background-color: #7ab5ff;
 }
 
 /* Responsive adjustments */

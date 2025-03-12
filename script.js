@@ -153,6 +153,9 @@ const decreaseBpm = document.getElementById('decrease-bpm');
 const showControlsBtn = document.getElementById('show-controls-btn');
 const controlsPanel = document.getElementById('controls-panel');
 const linesToDisplaySelect = document.getElementById('lines-to-display');
+const metronomeToggle = document.getElementById('metronome-toggle');
+const metronomeVisual = document.getElementById('metronome-visual');
+const beatIndicators = document.querySelectorAll('.beat-indicator');
 
 // App state
 let currentIndex = 0;
@@ -164,6 +167,9 @@ let autoScrollInterval = null;
 let bpm = 60; // Default BPM - slower default for better readability
 let controlsVisible = false; // Controls hidden by default
 let linesToDisplay = 2; // Default number of lines to display
+let isMetronomeOn = false; // Metronome state
+let metronomeInterval = null; // Interval for metronome ticks
+let audioContext = null; // Audio context for metronome sounds
 
 // Chord mapping for transposition
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
@@ -220,6 +226,11 @@ function loadSettings() {
                 linesToDisplay = settings.linesToDisplay;
                 linesToDisplaySelect.value = linesToDisplay;
             }
+            
+            // Load metronome state
+            if (settings.isMetronomeOn) {
+                toggleMetronome(true);
+            }
         } catch (e) {
             console.error('Error loading settings:', e);
         }
@@ -235,7 +246,8 @@ function saveSettings() {
         useFlats,
         bpm,
         controlsVisible,
-        linesToDisplay
+        linesToDisplay,
+        isMetronomeOn
     };
     
     localStorage.setItem('blindTabSettings', JSON.stringify(settings));
@@ -438,6 +450,12 @@ function setupEventListeners() {
     
     // Touch navigation for the lyrics container
     lyricsContainer.addEventListener('click', handleContainerClick);
+    
+    // Metronome toggle
+    metronomeToggle.addEventListener('click', () => {
+        toggleMetronome();
+        saveSettings();
+    });
 }
 
 // Toggle controls panel visibility
@@ -508,6 +526,11 @@ function updateBpm(newBpm) {
     // Restart auto-scroll if it's active
     if (isAutoScrolling) {
         startAutoScroll();
+    }
+    
+    // Update metronome if it's active
+    if (isMetronomeOn) {
+        startMetronome();
     }
 }
 
@@ -641,5 +664,116 @@ function updateLinesToDisplay(numLines) {
     displayCurrentLines();
 }
 
+// Metronome functions
+function toggleMetronome(setActive = null) {
+    // If setActive is provided, use that value, otherwise toggle
+    isMetronomeOn = setActive !== null ? setActive : !isMetronomeOn;
+    
+    if (isMetronomeOn) {
+        metronomeToggle.textContent = 'Metronome: On';
+        metronomeToggle.classList.add('active');
+        metronomeVisual.style.display = 'flex';
+        startMetronome();
+    } else {
+        metronomeToggle.textContent = 'Metronome: Off';
+        metronomeToggle.classList.remove('active');
+        metronomeVisual.style.display = 'none';
+        stopMetronome();
+        // Reset all beat indicators
+        beatIndicators.forEach(indicator => {
+            indicator.classList.remove('active');
+        });
+    }
+}
+
+function startMetronome() {
+    // Clear any existing interval
+    stopMetronome();
+    
+    // Initialize AudioContext if needed
+    if (!audioContext) {
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            console.error('Web Audio API is not supported in this browser');
+            return;
+        }
+    }
+    
+    // Calculate interval based on BPM
+    const intervalMs = (60 / bpm) * 1000;
+    
+    // Set up the interval for metronome ticks
+    let beat = 0;
+    metronomeInterval = setInterval(() => {
+        // Play a tick sound (higher pitch for the first beat of each measure)
+        const isFirstBeat = beat % 4 === 0;
+        playMetronomeTick(isFirstBeat);
+        
+        // Update visual indicators
+        updateBeatIndicators(beat);
+        
+        // Increment beat counter
+        beat = (beat + 1) % 4;
+    }, intervalMs);
+}
+
+function stopMetronome() {
+    if (metronomeInterval) {
+        clearInterval(metronomeInterval);
+        metronomeInterval = null;
+    }
+}
+
+function playMetronomeTick(isFirstBeat) {
+    if (!audioContext) return;
+    
+    // Create an oscillator for the tick sound
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    // Connect the oscillator to the gain node and the gain node to the destination
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Set the frequency and type based on whether it's the first beat
+    oscillator.frequency.value = isFirstBeat ? 1000 : 800; // Higher pitch for first beat
+    oscillator.type = 'sine';
+    
+    // Set the volume and duration
+    gainNode.gain.value = 0.1; // Low volume to avoid being too intrusive
+    
+    // Schedule the sound to start immediately and stop after a short duration
+    const now = audioContext.currentTime;
+    oscillator.start(now);
+    oscillator.stop(now + 0.05); // Short duration for a tick sound
+    
+    // Clean up
+    oscillator.onended = () => {
+        oscillator.disconnect();
+        gainNode.disconnect();
+    };
+}
+
+function updateBeatIndicators(currentBeat) {
+    // Remove active class from all indicators
+    beatIndicators.forEach(indicator => {
+        indicator.classList.remove('active');
+    });
+    
+    // Add active class to the current beat indicator
+    const currentIndicator = document.querySelector(`.beat-indicator[data-beat="${currentBeat}"]`);
+    if (currentIndicator) {
+        currentIndicator.classList.add('active');
+    }
+}
+
 // Initialize the app when the DOM is loaded
-document.addEventListener('DOMContentLoaded', init); 
+document.addEventListener('DOMContentLoaded', () => {
+    // Hide metronome visual initially
+    if (metronomeVisual) {
+        metronomeVisual.style.display = 'none';
+    }
+    
+    init();
+}); 
