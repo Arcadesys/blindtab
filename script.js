@@ -700,9 +700,23 @@ function toggleControls(setVisible = null) {
     if (controlsVisible) {
         controlsPanel.classList.add('show');
         showControlsBtn.classList.add('active');
+        
+        // Add overlay to capture clicks outside the panel
+        const overlay = document.createElement('div');
+        overlay.className = 'panel-overlay';
+        overlay.addEventListener('click', () => {
+            toggleControls(false);
+        });
+        document.body.appendChild(overlay);
     } else {
         controlsPanel.classList.remove('show');
         showControlsBtn.classList.remove('active');
+        
+        // Remove overlay if it exists
+        const overlay = document.querySelector('.panel-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
     }
 }
 
