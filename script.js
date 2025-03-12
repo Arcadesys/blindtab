@@ -260,10 +260,6 @@ function displayCurrentLines() {
             if (line.chords && line.chords.length > 0 && line.lyric) {
                 // For lines with both chords and lyrics, we need to align them
                 
-                // Create a wrapper for proper alignment
-                const alignmentWrapper = document.createElement('div');
-                alignmentWrapper.className = 'alignment-wrapper';
-                
                 // Create chord container
                 const chordContainer = document.createElement('div');
                 chordContainer.className = 'chord-container';
@@ -282,10 +278,9 @@ function displayCurrentLines() {
                 lyricElement.className = 'lyric-line';
                 lyricElement.textContent = line.lyric;
                 
-                // Add elements to the wrapper
-                alignmentWrapper.appendChild(chordContainer);
-                alignmentWrapper.appendChild(lyricElement);
-                lineContainer.appendChild(alignmentWrapper);
+                // Add elements to the container
+                lineContainer.appendChild(chordContainer);
+                lineContainer.appendChild(lyricElement);
             } else if (line.chords && line.chords.length > 0) {
                 // Only chord, no lyrics
                 const chordContainer = document.createElement('div');
