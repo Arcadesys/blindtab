@@ -30,7 +30,7 @@ body {
 .container {
     max-width: 100%; /* Use full width */
     margin: 0 auto;
-    padding: 10px 10px 60px 10px; /* Added bottom padding for fixed navigation */
+    padding: 10px 0 60px 0; /* Remove horizontal padding, keep vertical padding */
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -420,12 +420,11 @@ button:disabled {
     align-items: center;
     margin-top: auto;
     margin-bottom: 0; /* Ensure no bottom margin */
-    padding: 5px 0; /* Add minimal padding */
     width: 100%; /* Full width */
     position: fixed; /* Fix position */
     bottom: 10px; /* Position at bottom */
     left: 0; /* Align to left edge */
-    padding: 0 20px; /* Add horizontal padding */
+    padding: 0; /* Remove all padding */
     background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
     z-index: 900; /* Below controls panel but above content */
 }
@@ -440,6 +439,7 @@ button:disabled {
     min-width: 120px; /* Minimum width */
     border-radius: 30px; /* Rounded corners */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Add shadow for depth */
+    margin: 0 10px; /* Add horizontal margin to buttons instead of container padding */
 }
 
 .dark-theme .navigation button {
