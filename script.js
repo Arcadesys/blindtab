@@ -140,8 +140,7 @@ const lyricsContainer = document.getElementById('lyrics-container');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
 const themeToggle = document.getElementById('theme-toggle');
-const increaseFont = document.getElementById('increase-font');
-const decreaseFont = document.getElementById('decrease-font');
+const fontSizeSlider = document.getElementById('font-size-slider');
 const keySelectBtn = document.getElementById('key-select-btn');
 const keyDropdown = document.getElementById('key-dropdown');
 const keyOptions = document.querySelectorAll('.key-option');
@@ -205,6 +204,7 @@ function loadSettings() {
             // Apply saved settings if they exist
             if (settings.fontSize) {
                 fontSize = settings.fontSize;
+                fontSizeSlider.value = fontSize;
                 // Only update font size if auto-resize is disabled
                 if (!autoResizeText) {
                     updateFontSize();
@@ -416,12 +416,14 @@ function setupEventListeners() {
     });
     
     // Font size controls
-    increaseFont.addEventListener('click', () => {
-        increaseFontSize();
-        saveSettings();
-    });
-    decreaseFont.addEventListener('click', () => {
-        decreaseFontSize();
+    fontSizeSlider.addEventListener('input', () => {
+        // Disable auto-resize when manually changing font size
+        autoResizeText = false;
+        autoResizeToggle.classList.remove('active');
+        
+        // Update font size from slider
+        fontSize = parseInt(fontSizeSlider.value);
+        updateFontSize();
         saveSettings();
     });
     
@@ -698,30 +700,6 @@ function toggleTheme() {
 }
 
 // Font size adjustment functions
-function increaseFontSize() {
-    // Disable auto-resize when manually changing font size
-    autoResizeText = false;
-    
-    if (fontSize < 100) { // Increased max font size
-        fontSize += 2;
-        updateFontSize();
-    }
-    
-    saveSettings();
-}
-
-function decreaseFontSize() {
-    // Disable auto-resize when manually changing font size
-    autoResizeText = false;
-    
-    if (fontSize > 16) {
-        fontSize -= 2;
-        updateFontSize();
-    }
-    
-    saveSettings();
-}
-
 function updateFontSize() {
     lyricsContainer.style.fontSize = `${fontSize}px`;
 }
@@ -775,6 +753,7 @@ function optimizeTextSize() {
     // Apply the best size found
     fontSize = bestSize;
     updateFontSize();
+    fontSizeSlider.value = fontSize;
     
     // One final check with a slight adjustment if needed
     setTimeout(() => {
@@ -784,9 +763,11 @@ function optimizeTextSize() {
         if (ratio < 0.95) { // Still too big
             fontSize = Math.floor(fontSize * 0.95);
             updateFontSize();
+            fontSizeSlider.value = fontSize;
         } else if (ratio > 1.1) { // Still too small
             fontSize = Math.min(300, Math.floor(fontSize * 1.05));
             updateFontSize();
+            fontSizeSlider.value = fontSize;
         }
     }, 50);
 }
@@ -1075,6 +1056,7 @@ function toggleAutoResize() {
         // Apply auto-resize immediately with requestAnimationFrame
         requestAnimationFrame(() => {
             optimizeTextSize();
+            // Slider value will be updated by optimizeTextSize
         });
     } else {
         autoResizeToggle.classList.remove('active');
