@@ -157,6 +157,31 @@ button:disabled {
     gap: 5px;
 }
 
+.lines-display-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.lines-display-controls label {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.lines-display-controls select {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    font-size: 14px;
+}
+
+.dark-theme .lines-display-controls select {
+    background-color: #333;
+    color: #f0f0f0;
+    border-color: #666;
+}
+
 .song-info {
     text-align: center;
     margin-bottom: 30px;

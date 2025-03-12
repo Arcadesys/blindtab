@@ -59,6 +59,7 @@ const increaseBpm = document.getElementById('increase-bpm');
 const decreaseBpm = document.getElementById('decrease-bpm');
 const showControlsBtn = document.getElementById('show-controls-btn');
 const controlsPanel = document.getElementById('controls-panel');
+const linesToDisplaySelect = document.getElementById('lines-to-display');
 
 // App state
 let currentIndex = 0;
@@ -69,6 +70,7 @@ let isAutoScrolling = false;
 let autoScrollInterval = null;
 let bpm = 60; // Default BPM - slower default for better readability
 let controlsVisible = false; // Controls hidden by default
+let linesToDisplay = 2; // Default number of lines to display
 
 // Chord mapping for transposition
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
@@ -119,6 +121,12 @@ function loadSettings() {
             if (settings.controlsVisible) {
                 toggleControls(true);
             }
+            
+            // Load lines to display setting
+            if (settings.linesToDisplay) {
+                linesToDisplay = settings.linesToDisplay;
+                linesToDisplaySelect.value = linesToDisplay;
+            }
         } catch (e) {
             console.error('Error loading settings:', e);
         }
@@ -133,18 +141,19 @@ function saveSettings() {
         transposeSteps,
         useFlats,
         bpm,
-        controlsVisible
+        controlsVisible,
+        linesToDisplay
     };
     
     localStorage.setItem('blindTabSettings', JSON.stringify(settings));
 }
 
-// Display current lines (2 at a time)
+// Display current lines based on the selected number of lines
 function displayCurrentLines() {
     lyricsContainer.innerHTML = '';
     
-    // Display two lines at a time
-    for (let i = 0; i < 2; i++) {
+    // Display the selected number of lines at a time
+    for (let i = 0; i < linesToDisplay; i++) {
         const lineIndex = currentIndex + i;
         
         // Check if we're still within the song data
@@ -169,7 +178,7 @@ function displayCurrentLines() {
     
     // Update button states
     prevBtn.disabled = currentIndex === 0;
-    nextBtn.disabled = currentIndex >= songData.length - 2;
+    nextBtn.disabled = currentIndex >= songData.length - linesToDisplay;
 }
 
 // Transpose a chord string (may contain multiple chords)
@@ -230,6 +239,12 @@ function setupEventListeners() {
     });
     decreaseFont.addEventListener('click', () => {
         decreaseFontSize();
+        saveSettings();
+    });
+    
+    // Lines to display control
+    linesToDisplaySelect.addEventListener('change', () => {
+        updateLinesToDisplay(parseInt(linesToDisplaySelect.value));
         saveSettings();
     });
     
@@ -333,7 +348,7 @@ function startAutoScroll() {
     
     // Set up the interval
     autoScrollInterval = setInterval(() => {
-        if (currentIndex < songData.length - 1) {
+        if (currentIndex < songData.length - linesToDisplay) {
             goToNextLines();
         } else {
             // Stop auto-scroll when we reach the end
@@ -484,6 +499,12 @@ function decreaseFontSize() {
 
 function updateFontSize() {
     lyricsContainer.style.fontSize = `${fontSize}px`;
+}
+
+// Update the number of lines to display
+function updateLinesToDisplay(numLines) {
+    linesToDisplay = numLines;
+    displayCurrentLines();
 }
 
 // Initialize the app when the DOM is loaded
