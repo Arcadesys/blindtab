@@ -314,6 +314,9 @@ function displayCurrentLines() {
             // Create a line container
             const lineContainer = document.createElement('div');
             lineContainer.className = 'line-container';
+            lineContainer.style.flexGrow = '1';
+            lineContainer.style.display = 'flex';
+            lineContainer.style.flexDirection = 'column';
             
             if (line.chords && line.chords.length > 0 && line.lyric) {
                 // For lines with both chords and lyrics, we need to align them
@@ -321,6 +324,7 @@ function displayCurrentLines() {
                 // Create a wrapper for proper alignment
                 const alignmentWrapper = document.createElement('div');
                 alignmentWrapper.className = 'alignment-wrapper';
+                alignmentWrapper.style.flexGrow = '1';
                 
                 // Create chord container
                 const chordContainer = document.createElement('div');
@@ -739,52 +743,46 @@ function updateFontSize() {
 // Optimize text size to fill the viewport
 function optimizeTextSize() {
     // Get the available height and width for the lyrics container
-    const containerHeight = lyricsContainer.offsetHeight - 40; // Use actual container height minus padding
-    const containerWidth = lyricsContainer.offsetWidth - 60; // Account for padding
+    const containerHeight = lyricsContainer.offsetHeight - 40;
+    const containerWidth = lyricsContainer.offsetWidth - 40;
     
     // Start with a large font size and decrease until content fits
-    let maxSize = 200; // Increased maximum font size to better fill the space
-    let minSize = 16;  // Minimum font size
-    let currentSize = maxSize;
-    let bestSize = minSize;  // Default to minimum if nothing fits
+    let testSize = 250; // Start with a very large font size
+    let step = 10; // Initial step size
     
-    // Binary search to find the optimal font size
-    while (maxSize - minSize > 1) {
-        // Try current size
-        fontSize = currentSize;
+    // First pass: quickly find an approximate size with larger steps
+    while (testSize > 16) { // Don't go below 16px
+        fontSize = testSize;
         updateFontSize();
         
         // Force layout recalculation
         void lyricsContainer.offsetHeight;
         
-        // Check if content fits both height and width
+        // Check if content fits
         const contentHeight = calculateContentHeight();
         const contentWidth = calculateContentWidth();
         
-        // Debug info
-        console.log(`Testing size ${currentSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
+        console.log(`Testing size ${testSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
         
-        // Use more aggressive filling - allow up to 98% of container height and width
-        const heightFits = contentHeight <= containerHeight * 0.98;
-        const widthFits = contentWidth <= containerWidth * 0.98;
-        
-        const fits = heightFits && widthFits;
-        
-        if (fits) {
-            // This size fits, save it and try a larger one
-            bestSize = currentSize;
-            minSize = currentSize;
-        } else {
-            // Too big, try a smaller one
-            maxSize = currentSize;
+        if (contentHeight <= containerHeight * 0.95 && contentWidth <= containerWidth * 0.95) {
+            // Content fits, we found our size
+            break;
         }
         
-        // Calculate new test size (midpoint)
-        currentSize = Math.floor((minSize + maxSize) / 2);
+        // Reduce the test size
+        testSize -= step;
+        
+        // Reduce step size as we get closer to the optimal size
+        if (testSize < 100 && step > 5) {
+            step = 5;
+        }
+        if (testSize < 50 && step > 2) {
+            step = 2;
+        }
     }
     
-    // Apply the best size found with minimal safety margin
-    fontSize = Math.floor(bestSize * 0.98); // Apply a small safety margin for consistency
+    // Apply a small safety margin
+    fontSize = Math.floor(testSize * 0.98);
     updateFontSize();
     fontSizeSlider.value = fontSize;
     

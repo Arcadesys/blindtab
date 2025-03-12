@@ -313,6 +313,9 @@ button:disabled {
     text-align: left;
     overflow-wrap: break-word; /* Allow long words to break */
     word-wrap: break-word; /* Legacy support */
+    flex-grow: 1; /* Allow line containers to grow and fill space */
+    display: flex;
+    flex-direction: column;
 }
 
 /* Wrapper for aligned chord-lyric pairs */
@@ -325,6 +328,7 @@ button:disabled {
     margin-bottom: 20px; /* Increased from 10px for better spacing */
     width: 100%;
     align-items: flex-start; /* Ensure left alignment */
+    flex-grow: 1; /* Allow alignment wrapper to grow */
 }
 
 /* Chord container */
