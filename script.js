@@ -177,6 +177,7 @@ let currentSongMarkdown = ""; // Store the current song in Markdown format
 let autoResizeText = true; // Enable auto-resizing by default
 let showNumerals = false; // Default to showing chord names, not numerals
 let currentKey = 'G'; // Default key (G major for this song)
+let isPortraitMode = false; // Track if device is in portrait mode
 
 // Chord mapping for transposition
 const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
@@ -347,6 +348,10 @@ function updateContainerWidth() {
     lyricsContainer.style.width = `${containerWidth}px`;
     lyricsContainer.style.maxWidth = '100vw';
     
+    // Check if device is in portrait mode
+    isPortraitMode = window.innerHeight > window.innerWidth;
+    checkOrientation();
+    
     // If auto-resize is enabled, make sure the font-size style is removed
     if (autoResizeText) {
         lyricsContainer.style.removeProperty('font-size');
@@ -366,6 +371,70 @@ function updateContainerWidth() {
             // Update the CSS variable for font size
             document.documentElement.style.setProperty('--auto-resize-font-size', fontSizeValue);
         }
+    }
+}
+
+// Create and manage the rotate icon for portrait mode
+function checkOrientation() {
+    let rotateIcon = document.getElementById('rotate-icon');
+    
+    if (isPortraitMode) {
+        // Create rotate icon if it doesn't exist
+        if (!rotateIcon) {
+            rotateIcon = document.createElement('div');
+            rotateIcon.id = 'rotate-icon';
+            rotateIcon.innerHTML = `
+                <div class="rotate-icon-container">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                        <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5c-.51-6-5.66-10.69-11.95-10.36v1.5c1.8-.09 3.52.41 4.98.86zM7.52 21.48C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19 5.71 23.69 12 23.36v-1.5c-1.8.09-3.52-.41-4.98-.86zM16 9V4l-5 5h3v6h4V9h-2zm-8 8v-6H4v6h2v-4l5 5h-3z" fill="currentColor"/>
+                    </svg>
+                    <p>Rotate for better view</p>
+                </div>
+            `;
+            
+            // Style the rotate icon
+            rotateIcon.style.position = 'fixed';
+            rotateIcon.style.top = '0';
+            rotateIcon.style.left = '0';
+            rotateIcon.style.width = '100%';
+            rotateIcon.style.height = '100%';
+            rotateIcon.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            rotateIcon.style.color = 'white';
+            rotateIcon.style.display = 'flex';
+            rotateIcon.style.justifyContent = 'center';
+            rotateIcon.style.alignItems = 'center';
+            rotateIcon.style.zIndex = '9999';
+            rotateIcon.style.transition = 'opacity 0.3s ease';
+            
+            // Style the container
+            const container = rotateIcon.querySelector('.rotate-icon-container');
+            container.style.textAlign = 'center';
+            container.style.padding = '20px';
+            
+            // Style the text
+            const text = rotateIcon.querySelector('p');
+            text.style.margin = '10px 0 0';
+            text.style.fontSize = '18px';
+            
+            // Add click handler to dismiss
+            rotateIcon.addEventListener('click', () => {
+                rotateIcon.style.opacity = '0';
+                setTimeout(() => {
+                    if (rotateIcon.parentNode) {
+                        rotateIcon.parentNode.removeChild(rotateIcon);
+                    }
+                }, 300);
+            });
+            
+            document.body.appendChild(rotateIcon);
+        } else {
+            // Show existing rotate icon
+            rotateIcon.style.display = 'flex';
+            rotateIcon.style.opacity = '1';
+        }
+    } else if (rotateIcon) {
+        // Hide rotate icon in landscape mode
+        rotateIcon.style.display = 'none';
     }
 }
 
@@ -798,8 +867,9 @@ function setupEventListeners() {
         chordsSection.appendChild(numeralsToggle);
     }
     
-    // Handle window resize
+    // Handle window resize and orientation change
     window.addEventListener('resize', updateContainerWidth);
+    window.addEventListener('orientationchange', updateContainerWidth);
     
     // Close key dropdown when clicking outside
     document.addEventListener('click', (event) => {
