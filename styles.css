@@ -344,6 +344,14 @@ button:disabled {
     border: 1px solid transparent; /* Add invisible border to ensure the container has dimensions */
 }
 
+/* Auto-resize class for CSS-based text sizing */
+.lyrics-container.auto-resize {
+    /* Use viewport width for font size - adjust the multiplier as needed */
+    font-size: calc(4vw + 4vh);
+    /* Ensure minimum and maximum font sizes */
+    font-size: clamp(16px, calc(4vw + 4vh), 200px);
+}
+
 /* Fixed position container for consistent text positioning */
 .fixed-position-container {
     position: absolute;

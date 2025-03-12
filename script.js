@@ -209,21 +209,12 @@ function init() {
     // Initialize slider background
     updateSliderBackground(fontSize);
     
-    // Force layout calculation to ensure container dimensions are set
-    lyricsContainer.style.display = 'none';
-    void lyricsContainer.offsetHeight; // Force reflow
-    lyricsContainer.style.display = 'flex';
-    
-    // Initial text size optimization with a longer delay to ensure DOM is fully rendered
+    // Apply auto-resize if enabled
     if (autoResizeText) {
-        console.log("Scheduling initial text size optimization...");
-        // Single attempt after a longer delay
-        setTimeout(() => {
-            console.log("Running initial text size optimization...");
-            // Set a reasonable default size first
-            lyricsContainer.style.fontSize = '24px';
-            optimizeTextSize();
-        }, 300);
+        lyricsContainer.classList.add('auto-resize');
+    } else {
+        lyricsContainer.classList.remove('auto-resize');
+        updateFontSize();
     }
     
     console.log("Initialization complete");
@@ -492,14 +483,6 @@ function displayCurrentLines() {
     // Update button states
     prevBtn.disabled = currentIndex === 0;
     nextBtn.disabled = currentIndex >= songData.length - linesToDisplay;
-    
-    // Optimize text size if auto-resize is enabled
-    if (autoResizeText) {
-        // Use a longer timeout to ensure DOM is fully updated and rendered
-        setTimeout(() => {
-            optimizeTextSize();
-        }, 100); // Increased timeout for better reliability
-    }
 }
 
 // Transpose a chord
@@ -852,7 +835,10 @@ function toggleTheme() {
 
 // Font size adjustment functions
 function updateFontSize() {
-    lyricsContainer.style.fontSize = `${fontSize}px`;
+    // Only apply manual font size if auto-resize is disabled
+    if (!autoResizeText) {
+        lyricsContainer.style.fontSize = `${fontSize}px`;
+    }
     
     // Update the slider value in case it was set programmatically
     fontSizeSlider.value = fontSize;
@@ -878,137 +864,10 @@ function updateSliderBackground(value) {
     }
 }
 
-// Optimize text size to fill the viewport
-function optimizeTextSize() {
-    // Get the available height and width for the lyrics container
-    const containerHeight = lyricsContainer.offsetHeight;
-    const containerWidth = lyricsContainer.offsetWidth;
-    
-    console.log(`Container dimensions: ${containerWidth}px x ${containerHeight}px`);
-    
-    // Safety check - if container dimensions are too small, set a reasonable default and exit
-    if (containerHeight < 100 || containerWidth < 100) {
-        console.log("Container dimensions too small, setting reasonable default size");
-        fontSize = 24;
-        updateFontSize();
-        return;
-    }
-    
-    // Start with a very large font size and decrease until content fits
-    let testSize = 800;
-    let step = 40;
-    
-    // First pass: quickly find an approximate size with larger steps
-    while (testSize > 16) { // Don't go below 16px
-        fontSize = testSize;
-        lyricsContainer.style.fontSize = `${fontSize}px`; // Direct update for performance
-        
-        // Force layout recalculation
-        void lyricsContainer.offsetHeight;
-        
-        // Check if content fits
-        const contentHeight = calculateContentHeight();
-        const contentWidth = calculateContentWidth();
-        
-        console.log(`Testing size ${testSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
-        
-        // Prioritize width fitting over height - use a more aggressive width check (99%)
-        if (contentWidth <= containerWidth * 0.99) {
-            // Content width fits, check height as secondary concern
-            if (contentHeight <= containerHeight * 0.99) {
-                // Both width and height fit, we found our size
-                break;
-            }
-        }
-        
-        // Reduce the test size
-        testSize -= step;
-        
-        // Reduce step size as we get closer to the optimal size
-        if (testSize < 300 && step > 20) {
-            step = 20;
-        }
-        if (testSize < 200 && step > 10) {
-            step = 10;
-        }
-        if (testSize < 100 && step > 5) {
-            step = 5;
-        }
-        if (testSize < 50 && step > 2) {
-            step = 2;
-        }
-    }
-    
-    // Apply a smaller safety margin (99.8% instead of 99.5%)
-    fontSize = Math.floor(testSize * 0.998);
-    
-    // Update the font size using the proper function to ensure all UI elements are updated
-    updateFontSize();
-    
-    // Save the setting
-    saveSettings();
-    
-    // Show a brief visual indicator that auto-sizing has completed
-    const autoResizeButton = document.getElementById('auto-resize-toggle');
-    if (autoResizeButton) {
-        autoResizeButton.classList.add('pulse');
-        setTimeout(() => {
-            autoResizeButton.classList.remove('pulse');
-        }, 500);
-    }
-    
-    console.log(`Final font size: ${fontSize}px`);
-}
-
-// Calculate the current content height
-function calculateContentHeight() {
-    // Get the fixed position container
-    const fixedContainer = lyricsContainer.querySelector('.fixed-position-container');
-    if (!fixedContainer) return 300; // Default if not found
-    
-    // Get all line containers
-    const lineContainers = fixedContainer.querySelectorAll('.line-container');
-    let totalHeight = 0;
-    
-    // Sum up the heights of all line containers
-    lineContainers.forEach(container => {
-        totalHeight += container.offsetHeight;
-    });
-    
-    // Add a smaller buffer for spacing (reduced from 10)
-    return totalHeight + 5;
-}
-
-// Calculate the current content width
-function calculateContentWidth() {
-    // Get the fixed position container
-    const fixedContainer = lyricsContainer.querySelector('.fixed-position-container');
-    if (!fixedContainer) return 1000; // Default if not found
-    
-    // Get all line containers
-    const lineContainers = fixedContainer.querySelectorAll('.line-container');
-    let maxWidth = 0;
-    
-    // Find the widest line
-    lineContainers.forEach(container => {
-        const width = container.scrollWidth;
-        maxWidth = Math.max(maxWidth, width);
-    });
-    
-    // Add a small buffer for safety
-    return maxWidth + 10;
-}
-
 // Update the number of lines to display
 function updateLinesToDisplay(numLines) {
     linesToDisplay = numLines;
     displayCurrentLines();
-    
-    // Re-optimize text size if auto-resize is enabled
-    if (autoResizeText) {
-        // Small delay to allow DOM to update
-        setTimeout(optimizeTextSize, 50);
-    }
 }
 
 // Song editor functions
@@ -1251,15 +1110,20 @@ function toggleAutoResize() {
     
     if (autoResizeText) {
         autoResizeToggle.classList.add('active');
-        // Apply auto-resize immediately with a timeout to ensure DOM is updated
-        setTimeout(() => {
-            optimizeTextSize();
-            // Slider value will be updated by optimizeTextSize
-        }, 50);
+        // Apply CSS-based auto-resize
+        lyricsContainer.classList.add('auto-resize');
+        // Remove any inline font size
+        lyricsContainer.style.fontSize = '';
     } else {
         autoResizeToggle.classList.remove('active');
-        // Keep current font size when disabling
+        // Remove CSS-based auto-resize
+        lyricsContainer.classList.remove('auto-resize');
+        // Apply the manual font size
+        updateFontSize();
     }
+    
+    // Save settings
+    saveSettings();
 }
 
 // Initialize the app when the DOM is loaded
