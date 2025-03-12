@@ -956,6 +956,7 @@ function switchSong(index) {
     
     // Update current song index
     currentSongIndex = index;
+    BlindTabStorage.saveCurrentSongIndex(index);
     
     // Load the selected song
     const song = songLibrary[currentSongIndex];
@@ -1404,188 +1405,292 @@ function deleteSong(index) {
 
 // Save song library to localStorage
 function saveSongLibrary() {
-    try {
-        localStorage.setItem('songLibrary', JSON.stringify(songLibrary));
-    } catch (e) {
-        console.error('Failed to save song library to localStorage:', e);
-    }
+    BlindTabStorage.saveSongLibrary(songLibrary);
 }
 
 // Load song library from localStorage
 function loadSongLibrary() {
     try {
-        const savedLibrary = localStorage.getItem('songLibrary');
-        if (savedLibrary) {
-            songLibrary = JSON.parse(savedLibrary);
+        const savedLibrary = BlindTabStorage.loadSongLibrary();
+        if (savedLibrary && savedLibrary.length > 0) {
+            songLibrary = savedLibrary;
             
+            // Load the first song or the previously selected song
+            const savedIndex = BlindTabStorage.loadCurrentSongIndex();
+            switchSong(savedIndex < songLibrary.length ? savedIndex : 0);
+        } else {
             // If library is empty, add the default song
-            if (songLibrary.length === 0) {
-                songLibrary.push({
-                    title: songTitle,
-                    artist: songArtist,
-                    key: currentKey,
-                    data: songData
-                });
-            }
-            
-            // Load the first song
+            songLibrary = [{
+                title: songTitle,
+                artist: songArtist,
+                key: currentKey,
+                data: songData
+            }];
             switchSong(0);
         }
     } catch (e) {
-        console.error('Failed to load song library from localStorage:', e);
+        console.error('Failed to load song library:', e);
     }
 }
 
 // Set chord color
 function setChordColor(color) {
     chordColor = color;
-    
-    // Save the color preference to localStorage
-    try {
-        localStorage.setItem('chordColor', color);
-    } catch (e) {
-        console.error('Failed to save chord color to localStorage:', e);
-    }
-    
-    // Update the display
+    BlindTabStorage.saveChordColor(color);
     displayCurrentLines();
 }
 
 // Load chord color from localStorage
 function loadChordColor() {
-    try {
-        const savedColor = localStorage.getItem('chordColor');
-        if (savedColor) {
-            chordColor = savedColor;
+    chordColor = BlindTabStorage.loadChordColor();
+}
+
+// Save user settings
+function saveUserSettings() {
+    BlindTabStorage.saveSettings({
+        fontSize: fontSize,
+        theme: document.body.classList.contains('dark-theme') ? 'dark' : 'light',
+        autoResize: autoResizeText,
+        linesToDisplay: linesToDisplay,
+        useFlats: useFlats,
+        showNumerals: showNumerals,
+        transposeSteps: transposeSteps
+    });
+}
+
+// Load user settings
+function loadUserSettings() {
+    const settings = BlindTabStorage.loadSettings();
+    
+    // Apply loaded settings
+    if (settings) {
+        // Font size
+        if (settings.fontSize) {
+            fontSize = settings.fontSize;
+            if (fontSizeSlider) fontSizeSlider.value = fontSize;
+            updateSliderBackground(fontSize);
         }
-    } catch (e) {
-        console.error('Failed to load chord color from localStorage:', e);
+        
+        // Theme
+        if (settings.theme === 'dark') {
+            document.body.classList.add('dark-theme');
+            document.body.classList.remove('light-theme');
+            if (themeToggle) {
+                const toggleIcon = themeToggle.querySelector('.toggle-icon');
+                if (toggleIcon) toggleIcon.textContent = '🌙';
+            }
+        }
+        
+        // Auto resize
+        if (settings.autoResize !== undefined) {
+            autoResizeText = settings.autoResize;
+            if (autoResizeToggle) {
+                if (autoResizeText) {
+                    autoResizeToggle.classList.add('active');
+                    lyricsContainer.classList.add('auto-resize');
+                } else {
+                    autoResizeToggle.classList.remove('active');
+                    lyricsContainer.classList.remove('auto-resize');
+                }
+            }
+        }
+        
+        // Lines to display
+        if (settings.linesToDisplay) {
+            linesToDisplay = settings.linesToDisplay;
+            if (linesToDisplaySelect) linesToDisplaySelect.value = linesToDisplay;
+        }
+        
+        // Use flats
+        if (settings.useFlats !== undefined) {
+            useFlats = settings.useFlats;
+            if (useFlatsBtn) useFlatsBtn.textContent = useFlats ? 'Use #' : 'Use ♭';
+        }
+        
+        // Show numerals
+        if (settings.showNumerals !== undefined) {
+            showNumerals = settings.showNumerals;
+            const numeralsToggle = document.getElementById('numerals-toggle');
+            if (numeralsToggle) {
+                numeralsToggle.textContent = showNumerals ? 'Show Chords' : 'Show Numerals';
+                numeralsToggle.classList.toggle('active', showNumerals);
+            }
+        }
+        
+        // Transpose steps
+        if (settings.transposeSteps !== undefined) {
+            transposeSteps = settings.transposeSteps;
+            highlightSelectedKey();
+        }
     }
 }
 
-// Create and add the chord color picker to the chords section
-function createChordColorPicker() {
-    const chordsSection = document.querySelector('.panel-section:nth-child(2) .controls');
-    if (!chordsSection) return;
+// Add data export functionality
+function exportUserData() {
+    const jsonData = BlindTabStorage.exportData();
+    if (!jsonData) {
+        alert('Error exporting data. Please try again.');
+        return;
+    }
     
-    // Create a container for the color picker
-    const colorPickerContainer = document.createElement('div');
-    colorPickerContainer.className = 'color-picker-container';
-    colorPickerContainer.style.marginTop = '10px';
+    // Create a download link
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `blindtab_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
     
-    // Add a label
-    const colorLabel = document.createElement('label');
-    colorLabel.textContent = 'Chord Color:';
-    colorLabel.style.display = 'block';
-    colorLabel.style.marginBottom = '5px';
-    colorPickerContainer.appendChild(colorLabel);
+    // Clean up
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+}
+
+// Add data import functionality
+function importUserData(jsonData) {
+    if (!jsonData) {
+        alert('No data to import.');
+        return false;
+    }
     
-    // Create a flex container for color options
-    const colorOptions = document.createElement('div');
-    colorOptions.style.display = 'flex';
-    colorOptions.style.flexWrap = 'wrap';
-    colorOptions.style.gap = '5px';
+    const success = BlindTabStorage.importData(jsonData);
+    if (success) {
+        alert('Data imported successfully. The app will now reload.');
+        location.reload();
+        return true;
+    } else {
+        alert('Error importing data. Please check the file format and try again.');
+        return false;
+    }
+}
+
+// Create a data management UI
+function createDataManagementUI() {
+    // Check if the data management section already exists
+    let dataSection = document.querySelector('.data-management-section');
     
-    // Define high contrast color options
-    const highContrastColors = [
-        { name: 'Blue', value: '#4a90e2' },
-        { name: 'Red', value: '#e74c3c' },
-        { name: 'Green', value: '#2ecc71' },
-        { name: 'Purple', value: '#9b59b6' },
-        { name: 'Orange', value: '#e67e22' },
-        { name: 'Yellow', value: '#f1c40f' },
-        { name: 'Pink', value: '#e84393' },
-        { name: 'Cyan', value: '#00cec9' }
-    ];
-    
-    // Create color buttons
-    highContrastColors.forEach(color => {
-        const colorButton = document.createElement('button');
-        colorButton.className = 'color-option';
-        colorButton.setAttribute('aria-label', `Set chord color to ${color.name}`);
-        colorButton.style.width = '24px';
-        colorButton.style.height = '24px';
-        colorButton.style.backgroundColor = color.value;
-        colorButton.style.border = chordColor === color.value ? '2px solid white' : '1px solid #ccc';
-        colorButton.style.borderRadius = '4px';
-        colorButton.style.cursor = 'pointer';
+    if (!dataSection) {
+        // Create the data management section
+        dataSection = document.createElement('div');
+        dataSection.className = 'panel-section data-management-section';
         
-        // Add click event
-        colorButton.addEventListener('click', () => {
-            // Update all button borders
-            document.querySelectorAll('.color-option').forEach(btn => {
-                btn.style.border = '1px solid #ccc';
-            });
-            
-            // Highlight selected button
-            colorButton.style.border = '2px solid white';
-            
-            // Set the chord color
-            setChordColor(color.value);
+        // Create header
+        const header = document.createElement('h3');
+        header.textContent = 'Data Management';
+        dataSection.appendChild(header);
+        
+        // Create storage stats display
+        const statsContainer = document.createElement('div');
+        statsContainer.className = 'storage-stats';
+        statsContainer.style.marginBottom = '10px';
+        statsContainer.style.fontSize = '0.9em';
+        
+        // Update stats function
+        const updateStats = () => {
+            const stats = BlindTabStorage.getStorageStats();
+            statsContainer.innerHTML = `
+                <div>Storage used: ${stats.totalSize}KB (${stats.percentUsed}%)</div>
+                <div>Items stored: ${stats.itemCount}</div>
+            `;
+        };
+        
+        updateStats(); // Initial update
+        dataSection.appendChild(statsContainer);
+        
+        // Create buttons container
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.style.display = 'flex';
+        buttonsContainer.style.flexDirection = 'column';
+        buttonsContainer.style.gap = '8px';
+        
+        // Export button
+        const exportBtn = document.createElement('button');
+        exportBtn.textContent = 'Export All Data';
+        exportBtn.addEventListener('click', exportUserData);
+        buttonsContainer.appendChild(exportBtn);
+        
+        // Import button and file input
+        const importContainer = document.createElement('div');
+        importContainer.style.display = 'flex';
+        importContainer.style.flexDirection = 'column';
+        
+        const importBtn = document.createElement('button');
+        importBtn.textContent = 'Import Data';
+        
+        const importInput = document.createElement('input');
+        importInput.type = 'file';
+        importInput.id = 'import-data-input';
+        importInput.accept = '.json';
+        importInput.style.display = 'none';
+        
+        importBtn.addEventListener('click', () => importInput.click());
+        
+        importInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = (event) => {
+                    importUserData(event.target.result);
+                };
+                
+                reader.readAsText(file);
+            }
         });
         
-        colorOptions.appendChild(colorButton);
-    });
-    
-    // Add custom color picker
-    const customColorContainer = document.createElement('div');
-    customColorContainer.style.marginTop = '5px';
-    customColorContainer.style.display = 'flex';
-    customColorContainer.style.alignItems = 'center';
-    
-    const customColorInput = document.createElement('input');
-    customColorInput.type = 'color';
-    customColorInput.value = chordColor;
-    customColorInput.style.width = '24px';
-    customColorInput.style.height = '24px';
-    customColorInput.style.border = 'none';
-    customColorInput.style.padding = '0';
-    customColorInput.style.background = 'none';
-    
-    customColorInput.addEventListener('input', (e) => {
-        // Update all button borders
-        document.querySelectorAll('.color-option').forEach(btn => {
-            btn.style.border = '1px solid #ccc';
+        importContainer.appendChild(importBtn);
+        importContainer.appendChild(importInput);
+        buttonsContainer.appendChild(importContainer);
+        
+        // Clear data button
+        const clearBtn = document.createElement('button');
+        clearBtn.textContent = 'Clear All Data';
+        clearBtn.style.backgroundColor = '#e74c3c';
+        clearBtn.style.color = 'white';
+        
+        clearBtn.addEventListener('click', () => {
+            if (confirm('WARNING: This will delete all your songs and settings. This action cannot be undone. Continue?')) {
+                BlindTabStorage.clearAllData();
+                alert('All data cleared. The app will now reload.');
+                location.reload();
+            }
         });
         
-        // Set the chord color
-        setChordColor(e.target.value);
-    });
-    
-    const customColorLabel = document.createElement('span');
-    customColorLabel.textContent = 'Custom';
-    customColorLabel.style.marginLeft = '5px';
-    customColorLabel.style.fontSize = '0.9em';
-    
-    customColorContainer.appendChild(customColorInput);
-    customColorContainer.appendChild(customColorLabel);
-    
-    // Add elements to the container
-    colorPickerContainer.appendChild(colorOptions);
-    colorPickerContainer.appendChild(customColorContainer);
-    
-    // Add the container to the chords section
-    chordsSection.appendChild(colorPickerContainer);
+        buttonsContainer.appendChild(clearBtn);
+        dataSection.appendChild(buttonsContainer);
+        
+        // Add the data section to the controls panel
+        const controlsPanel = document.getElementById('controls-panel');
+        controlsPanel.appendChild(dataSection);
+    }
 }
 
 // Initialize the app
 function init() {
     console.log("Initializing app...");
     
-    // Load chord color from localStorage
+    // Initialize storage system
+    BlindTabStorage.init();
+    
+    // Load chord color from storage
     loadChordColor();
     
     // Set up event listeners first
     setupEventListeners();
     
-    // Load song library from localStorage
+    // Load user settings
+    loadUserSettings();
+    
+    // Load song library from storage
     loadSongLibrary();
     
-    // Create song selector UI
+    // Create UI components
     createSongSelector();
-    
-    // Create chord color picker
     createChordColorPicker();
+    createDataManagementUI();
     
     // Then display the lines
     displayCurrentLines();
