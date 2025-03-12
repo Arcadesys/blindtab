@@ -298,6 +298,7 @@ function displayCurrentLines() {
     fixedPositionContainer.style.alignItems = 'flex-start'; // Align to left instead of center
     fixedPositionContainer.style.justifyContent = 'flex-start'; // Align to top instead of center
     fixedPositionContainer.style.padding = '20px';
+    fixedPositionContainer.style.boxSizing = 'border-box'; // Ensure padding is included in width/height calculations
     
     // Preserve the height to prevent layout shifts
     if (oldHeight > 0) {
@@ -754,12 +755,12 @@ function updateFontSize() {
 // Optimize text size to fill the viewport
 function optimizeTextSize() {
     // Get the available height and width for the lyrics container
-    const containerHeight = lyricsContainer.offsetHeight - 40;
-    const containerWidth = lyricsContainer.offsetWidth - 40;
+    const containerHeight = lyricsContainer.offsetHeight - 40; // Account for padding (20px top + 20px bottom)
+    const containerWidth = lyricsContainer.offsetWidth - 40; // Account for padding (20px left + 20px right)
     
-    // Start with a large font size and decrease until content fits
-    let testSize = 200; // Start with a large font size (reduced from 250)
-    let step = 10; // Initial step size
+    // Start with a very large font size and decrease until content fits
+    let testSize = 400; // Start with a much larger font size
+    let step = 20; // Larger initial step size for faster convergence
     
     // First pass: quickly find an approximate size with larger steps
     while (testSize > 16) { // Don't go below 16px
@@ -775,7 +776,8 @@ function optimizeTextSize() {
         
         console.log(`Testing size ${testSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
         
-        if (contentHeight <= containerHeight * 0.9 && contentWidth <= containerWidth * 0.9) {
+        // Use a more aggressive fill ratio (95% instead of 90%)
+        if (contentHeight <= containerHeight * 0.95 && contentWidth <= containerWidth * 0.95) {
             // Content fits, we found our size
             break;
         }
@@ -784,6 +786,9 @@ function optimizeTextSize() {
         testSize -= step;
         
         // Reduce step size as we get closer to the optimal size
+        if (testSize < 200 && step > 10) {
+            step = 10;
+        }
         if (testSize < 100 && step > 5) {
             step = 5;
         }
@@ -792,8 +797,8 @@ function optimizeTextSize() {
         }
     }
     
-    // Apply a safety margin
-    fontSize = Math.floor(testSize * 0.95);
+    // Apply a smaller safety margin (98% instead of 95%)
+    fontSize = Math.floor(testSize * 0.98);
     updateFontSize();
     fontSizeSlider.value = fontSize;
     

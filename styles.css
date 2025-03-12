@@ -283,7 +283,7 @@ button:disabled {
     width: 100%;
     max-width: 100vw;
     position: relative; /* Add relative positioning */
-    height: calc(100vh - 150px); /* Explicitly set height to fill viewport minus header and footer */
+    height: calc(100vh - 180px); /* Adjusted to account for header, song info, and footer */
 }
 
 /* Fixed position container for consistent text positioning */
