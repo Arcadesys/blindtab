@@ -44,6 +44,7 @@ header {
     display: flex;
     gap: 15px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 button {
@@ -61,6 +62,11 @@ button:hover {
     background-color: #357abd;
 }
 
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
 #theme-toggle {
     background: none;
     border: 1px solid #ccc;
@@ -75,6 +81,14 @@ button:hover {
 
 .dark-theme #theme-toggle {
     border-color: #666;
+}
+
+#transpose-btn, #use-flats {
+    background-color: #5a6268;
+}
+
+#transpose-btn:hover, #use-flats:hover {
+    background-color: #444a4e;
 }
 
 .font-size-controls {

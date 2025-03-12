@@ -49,10 +49,18 @@ const nextBtn = document.getElementById('next-btn');
 const themeToggle = document.getElementById('theme-toggle');
 const increaseFont = document.getElementById('increase-font');
 const decreaseFont = document.getElementById('decrease-font');
+const transposeBtn = document.getElementById('transpose-btn');
+const useFlatsBtn = document.getElementById('use-flats');
 
 // App state
 let currentIndex = 0;
 let fontSize = 24; // Default font size in pixels
+let transposeSteps = 0; // Default transposition (no change)
+let useFlats = false; // Default to using sharps
+
+// Chord mapping for transposition
+const sharpChords = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
+const flatChords = ['A', 'Bb', 'B', 'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab'];
 
 // Initialize the app
 function init() {
@@ -76,7 +84,7 @@ function displayCurrentLines() {
             if (line.chord) {
                 const chordElement = document.createElement('div');
                 chordElement.className = 'chord-line';
-                chordElement.textContent = line.chord;
+                chordElement.textContent = transposeChord(line.chord);
                 lyricsContainer.appendChild(chordElement);
             }
             
@@ -93,6 +101,45 @@ function displayCurrentLines() {
     nextBtn.disabled = currentIndex >= songData.length - 2;
 }
 
+// Transpose a chord string (may contain multiple chords)
+function transposeChord(chordString) {
+    if (!chordString) return '';
+    
+    // Split the chord string in case it contains multiple chords
+    const chords = chordString.split(' ');
+    
+    // Transpose each chord
+    const transposedChords = chords.map(chord => {
+        // Handle complex chords (e.g., F#m, Cmaj7)
+        const rootNote = chord.match(/^[A-G][#b]?/);
+        if (!rootNote) return chord; // Not a valid chord
+        
+        const rootNoteStr = rootNote[0];
+        const chordSuffix = chord.substring(rootNoteStr.length);
+        
+        // Find the index of the root note
+        const chordSet = useFlats ? flatChords : sharpChords;
+        let noteIndex = chordSet.findIndex(note => note === rootNoteStr);
+        
+        if (noteIndex === -1) {
+            // Try to find equivalent in the other notation
+            const altChordSet = useFlats ? sharpChords : flatChords;
+            const altIndex = altChordSet.findIndex(note => note === rootNoteStr);
+            if (altIndex !== -1) {
+                noteIndex = altIndex;
+            } else {
+                return chord; // Can't transpose this chord
+            }
+        }
+        
+        // Apply transposition
+        const newIndex = (noteIndex + transposeSteps + 12) % 12;
+        return chordSet[newIndex] + chordSuffix;
+    });
+    
+    return transposedChords.join(' ');
+}
+
 // Set up event listeners
 function setupEventListeners() {
     // Navigation buttons
@@ -106,11 +153,40 @@ function setupEventListeners() {
     increaseFont.addEventListener('click', increaseFontSize);
     decreaseFont.addEventListener('click', decreaseFontSize);
     
+    // Transpose button
+    transposeBtn.addEventListener('click', cycleTransposition);
+    
+    // Use flats toggle
+    useFlatsBtn.addEventListener('click', toggleUseFlats);
+    
     // Keyboard navigation
     document.addEventListener('keydown', handleKeyboardNavigation);
     
     // Touch navigation for the lyrics container
     lyricsContainer.addEventListener('click', handleContainerClick);
+}
+
+// Cycle through transposition options
+function cycleTransposition() {
+    // Cycle through common transpositions: 0, +1, +2, -1, -2
+    const transpositions = [0, 1, 2, -1, -2];
+    const currentIndex = transpositions.indexOf(transposeSteps);
+    const nextIndex = (currentIndex + 1) % transpositions.length;
+    transposeSteps = transpositions[nextIndex];
+    
+    // Update button text to show current transposition
+    const sign = transposeSteps > 0 ? '+' : '';
+    transposeBtn.textContent = transposeSteps === 0 ? 'Transpose' : `Trans ${sign}${transposeSteps}`;
+    
+    // Refresh display
+    displayCurrentLines();
+}
+
+// Toggle between sharps and flats
+function toggleUseFlats() {
+    useFlats = !useFlats;
+    useFlatsBtn.textContent = useFlats ? 'Use #' : 'Use ♭';
+    displayCurrentLines();
 }
 
 // Navigation functions
