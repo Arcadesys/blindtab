@@ -38,55 +38,31 @@ body {
     overflow: hidden; /* Prevent scrolling */
 }
 
-header {
-    display: flex;
-    justify-content: flex-start; /* Changed from space-between to align to left */
-    align-items: center;
-    margin-bottom: 5px;
-    position: relative;
-    height: 30px; /* Reduced from 40px */
-}
-
-header h1 {
-    margin: 0;
-    text-align: center;
-    flex-grow: 1;
-    font-size: 24px; /* Smaller font size */
-}
-
-.header-left {
-    width: 30px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start; /* Changed from center to align to left */
-    margin-left: 5px; /* Add a small margin */
-}
-
-.header-right {
-    display: none; /* Hide since we don't need it anymore */
-}
-
-/* Show controls button */
-#show-controls-btn {
+/* Floating settings button */
+.floating-settings-btn {
+    position: fixed;
+    top: 10px;
+    left: 10px;
     background: none;
     border: 1px solid #ccc;
     border-radius: 50%;
-    width: 30px; /* Reduced from 40px */
-    height: 30px; /* Reduced from 40px */
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    z-index: 10;
+    z-index: 1000;
     transition: transform 0.3s;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-.dark-theme #show-controls-btn {
+.dark-theme .floating-settings-btn {
     border-color: #666;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
 }
 
-#show-controls-btn.active {
+.floating-settings-btn.active {
     transform: rotate(45deg);
 }
 
@@ -279,46 +255,6 @@ button:disabled {
     background-color: #333;
     color: #f0f0f0;
     border-color: #666;
-}
-
-.song-info {
-    text-align: center;
-    margin-bottom: 10px; /* Reduced from 30px */
-    width: 100%;
-    padding: 0 10px;
-}
-
-.song-info h2 {
-    font-size: 20px; /* Reduced from 24px */
-    margin-bottom: 2px; /* Reduced from 5px */
-}
-
-/* Floating settings button */
-.floating-settings-btn {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    background: none;
-    border: 1px solid #ccc;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    z-index: 1000;
-    transition: transform 0.3s;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.dark-theme .floating-settings-btn {
-    border-color: #666;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
-}
-
-.floating-settings-btn.active {
-    transform: rotate(45deg);
 }
 
 /* Maximize lyrics container when controls are hidden */
@@ -633,11 +569,6 @@ button:disabled {
     .lyrics-container {
         font-size: 20px;
         max-width: 95vw; /* Slightly wider on mobile */
-    }
-    
-    header {
-        flex-direction: row; /* Keep header in a row */
-        gap: 5px;
     }
     
     .navigation {
