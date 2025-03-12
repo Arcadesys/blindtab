@@ -10,93 +10,88 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="light-theme">
+    <!-- Floating settings button -->
+    <button id="show-controls-btn" aria-label="Show or hide controls" class="floating-settings-btn">
+        <span class="controls-icon">⚙️</span>
+    </button>
+    
     <div class="container">
-        <header>
-            <div class="header-left">
-                <button id="show-controls-btn" aria-label="Show or hide controls">
-                    <span class="controls-icon">⚙️</span>
+        <div id="controls-panel" class="controls-panel">
+            <div class="controls">
+                <button id="theme-toggle" aria-label="Toggle dark mode">
+                    <span class="toggle-icon">☀️</span>
                 </button>
+                <div class="font-size-controls">
+                    <span class="size-indicator small">A</span>
+                    <input type="range" id="font-size-slider" min="16" max="400" value="24" class="slider" aria-label="Font size slider">
+                    <span class="size-indicator large">A</span>
+                    <button id="auto-resize-toggle" class="active" aria-label="Toggle auto-resize">Auto-Fit</button>
+                </div>
+                <div class="lines-display-controls">
+                    <label for="lines-to-display">Lines:</label>
+                    <select id="lines-to-display" aria-label="Number of lines to display">
+                        <option value="1">1</option>
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+                <div class="key-selector">
+                    <button id="key-select-btn" aria-label="Open key selection menu">Select Key</button>
+                    <div id="key-dropdown" class="key-dropdown">
+                        <div class="key-option" data-transpose="0">Original Key</div>
+                        <div class="key-option" data-transpose="1">A♯/B♭</div>
+                        <div class="key-option" data-transpose="2">B</div>
+                        <div class="key-option" data-transpose="3">C</div>
+                        <div class="key-option" data-transpose="4">C♯/D♭</div>
+                        <div class="key-option" data-transpose="5">D</div>
+                        <div class="key-option" data-transpose="6">D♯/E♭</div>
+                        <div class="key-option" data-transpose="7">E</div>
+                        <div class="key-option" data-transpose="8">F</div>
+                        <div class="key-option" data-transpose="9">F♯/G♭</div>
+                        <div class="key-option" data-transpose="10">G</div>
+                        <div class="key-option" data-transpose="11">G♯/A♭</div>
+                        <div class="key-option" data-transpose="-1">G</div>
+                        <div class="key-option" data-transpose="-2">F♯/G♭</div>
+                        <div class="key-option" data-transpose="-3">F</div>
+                        <div class="key-option" data-transpose="-4">E</div>
+                        <div class="key-option" data-transpose="-5">D♯/E♭</div>
+                        <div class="key-option" data-transpose="-6">D</div>
+                        <div class="key-option" data-transpose="-7">C♯/D♭</div>
+                        <div class="key-option" data-transpose="-8">C</div>
+                        <div class="key-option" data-transpose="-9">B</div>
+                        <div class="key-option" data-transpose="-10">A♯/B♭</div>
+                        <div class="key-option" data-transpose="-11">A</div>
+                    </div>
+                </div>
+                <button id="use-flats" aria-label="Toggle between sharps and flats">Use ♭</button>
             </div>
-            <div class="header-right">
-                <!-- Moved settings button to header-left -->
+            
+            <div class="song-info">
+                <h2>Fake Plastic Trees</h2>
+                <p>by Radiohead</p>
             </div>
-            <div id="controls-panel" class="controls-panel">
-                <div class="controls">
-                    <button id="theme-toggle" aria-label="Toggle dark mode">
-                        <span class="toggle-icon">☀️</span>
-                    </button>
-                    <div class="font-size-controls">
-                        <span class="size-indicator small">A</span>
-                        <input type="range" id="font-size-slider" min="16" max="400" value="24" class="slider" aria-label="Font size slider">
-                        <span class="size-indicator large">A</span>
-                        <button id="auto-resize-toggle" class="active" aria-label="Toggle auto-resize">Auto-Fit</button>
+            
+            <div class="song-editor-controls">
+                <button id="edit-song-btn" aria-label="Edit current song">Edit Song</button>
+                <button id="import-song-btn" aria-label="Import a new song">Import Song</button>
+                <button id="export-song-btn" aria-label="Export song as Markdown">Export Song</button>
+                <input type="file" id="song-file-input" accept=".txt,.md" style="display: none;">
+            </div>
+            
+            <div class="auto-scroll-controls">
+                <button id="auto-scroll-toggle" aria-label="Toggle auto-scroll">Auto-Scroll: Off</button>
+                <div class="bpm-control">
+                    <label for="bpm-input">BPM:</label>
+                    <input type="number" id="bpm-input" min="40" max="200" value="60" aria-label="Beats per minute">
+                    <div class="bpm-buttons">
+                        <button id="decrease-bpm" aria-label="Decrease BPM">-</button>
+                        <button id="increase-bpm" aria-label="Increase BPM">+</button>
                     </div>
-                    <div class="lines-display-controls">
-                        <label for="lines-to-display">Lines:</label>
-                        <select id="lines-to-display" aria-label="Number of lines to display">
-                            <option value="1">1</option>
-                            <option value="2" selected>2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
-                        </select>
-                    </div>
-                    <div class="key-selector">
-                        <button id="key-select-btn" aria-label="Open key selection menu">Select Key</button>
-                        <div id="key-dropdown" class="key-dropdown">
-                            <div class="key-option" data-transpose="0">Original Key</div>
-                            <div class="key-option" data-transpose="1">A♯/B♭</div>
-                            <div class="key-option" data-transpose="2">B</div>
-                            <div class="key-option" data-transpose="3">C</div>
-                            <div class="key-option" data-transpose="4">C♯/D♭</div>
-                            <div class="key-option" data-transpose="5">D</div>
-                            <div class="key-option" data-transpose="6">D♯/E♭</div>
-                            <div class="key-option" data-transpose="7">E</div>
-                            <div class="key-option" data-transpose="8">F</div>
-                            <div class="key-option" data-transpose="9">F♯/G♭</div>
-                            <div class="key-option" data-transpose="10">G</div>
-                            <div class="key-option" data-transpose="11">G♯/A♭</div>
-                            <div class="key-option" data-transpose="-1">G</div>
-                            <div class="key-option" data-transpose="-2">F♯/G♭</div>
-                            <div class="key-option" data-transpose="-3">F</div>
-                            <div class="key-option" data-transpose="-4">E</div>
-                            <div class="key-option" data-transpose="-5">D♯/E♭</div>
-                            <div class="key-option" data-transpose="-6">D</div>
-                            <div class="key-option" data-transpose="-7">C♯/D♭</div>
-                            <div class="key-option" data-transpose="-8">C</div>
-                            <div class="key-option" data-transpose="-9">B</div>
-                            <div class="key-option" data-transpose="-10">A♯/B♭</div>
-                            <div class="key-option" data-transpose="-11">A</div>
-                        </div>
-                    </div>
-                    <button id="use-flats" aria-label="Toggle between sharps and flats">Use ♭</button>
-                </div>
-                
-                <div class="song-info">
-                    <h2>Fake Plastic Trees</h2>
-                    <p>by Radiohead</p>
-                </div>
-                
-                <div class="song-editor-controls">
-                    <button id="edit-song-btn" aria-label="Edit current song">Edit Song</button>
-                    <button id="import-song-btn" aria-label="Import a new song">Import Song</button>
-                    <button id="export-song-btn" aria-label="Export song as Markdown">Export Song</button>
-                    <input type="file" id="song-file-input" accept=".txt,.md" style="display: none;">
-                </div>
-                
-                <div class="auto-scroll-controls">
-                    <button id="auto-scroll-toggle" aria-label="Toggle auto-scroll">Auto-Scroll: Off</button>
-                    <div class="bpm-control">
-                        <label for="bpm-input">BPM:</label>
-                        <input type="number" id="bpm-input" min="40" max="200" value="60" aria-label="Beats per minute">
-                        <div class="bpm-buttons">
-                            <button id="decrease-bpm" aria-label="Decrease BPM">-</button>
-                            <button id="increase-bpm" aria-label="Increase BPM">+</button>
-                        </div>
-                        <small class="bpm-help">Lower = slower scroll</small>
-                    </div>
+                    <small class="bpm-help">Lower = slower scroll</small>
                 </div>
             </div>
-        </header>
+        </div>
         
         <div id="lyrics-container" class="lyrics-container">
             <!-- Lyrics will be displayed here -->

@@ -808,8 +808,8 @@ function optimizeTextSize() {
     const containerWidth = lyricsContainer.offsetWidth; // No padding to account for
     
     // Start with a very large font size and decrease until content fits
-    let testSize = 600; // Start with an even larger font size (increased from 500)
-    let step = 30; // Larger initial step size for faster convergence (increased from 25)
+    let testSize = 800; // Start with an even larger font size (increased from 600)
+    let step = 40; // Larger initial step size for faster convergence (increased from 30)
     
     // First pass: quickly find an approximate size with larger steps
     while (testSize > 16) { // Don't go below 16px
@@ -825,8 +825,8 @@ function optimizeTextSize() {
         
         console.log(`Testing size ${testSize}px - Content: ${contentHeight}px x ${contentWidth}px, Container: ${containerHeight}px x ${containerWidth}px`);
         
-        // Prioritize width fitting over height - use a more aggressive width check (98%)
-        if (contentWidth <= containerWidth * 0.98) {
+        // Prioritize width fitting over height - use a more aggressive width check (99%)
+        if (contentWidth <= containerWidth * 0.99) {
             // Content width fits, check height as secondary concern
             if (contentHeight <= containerHeight * 0.99) {
                 // Both width and height fit, we found our size
@@ -838,6 +838,9 @@ function optimizeTextSize() {
         testSize -= step;
         
         // Reduce step size as we get closer to the optimal size
+        if (testSize < 300 && step > 20) {
+            step = 20;
+        }
         if (testSize < 200 && step > 10) {
             step = 10;
         }
@@ -849,8 +852,8 @@ function optimizeTextSize() {
         }
     }
     
-    // Apply a smaller safety margin (99.5% instead of 99%)
-    fontSize = Math.floor(testSize * 0.995);
+    // Apply a smaller safety margin (99.8% instead of 99.5%)
+    fontSize = Math.floor(testSize * 0.998);
     
     // Update the font size using the proper function to ensure all UI elements are updated
     updateFontSize();
