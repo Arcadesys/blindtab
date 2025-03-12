@@ -357,7 +357,8 @@ function displayCurrentLines() {
                 lyricElement.textContent = line.lyric;
                 lyricElement.style.width = '100%';
                 lyricElement.style.textAlign = 'left'; // Ensure left alignment
-                lyricElement.style.lineHeight = '1.4'; // Slightly reduced line height
+                lyricElement.style.lineHeight = '1.2'; // Reduced line height
+                lyricElement.style.paddingTop = '0'; // Remove top padding
                 
                 // Add elements to the wrapper
                 alignmentWrapper.appendChild(chordContainer);
@@ -389,7 +390,8 @@ function displayCurrentLines() {
                 lyricElement.textContent = line.lyric;
                 lyricElement.style.width = '100%';
                 lyricElement.style.textAlign = 'left'; // Ensure left alignment
-                lyricElement.style.lineHeight = '1.4'; // Slightly reduced line height
+                lyricElement.style.lineHeight = '1.2'; // Reduced line height
+                lyricElement.style.paddingTop = '0'; // Remove top padding
                 lineContainer.appendChild(lyricElement);
             }
             
