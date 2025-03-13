@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useSong } from '../../contexts/SongContext';
 import ThemeToggle from './ThemeToggle';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
 
@@ -30,6 +31,34 @@ const Logo = styled.div`
     width: 24px;
     height: 24px;
   }
+`;
+
+const SongInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 1rem;
+  flex: 1;
+  overflow: hidden;
+  text-align: center;
+`;
+
+const SongTitle = styled.div`
+  font-weight: bold;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+`;
+
+const SongArtist = styled.div`
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 `;
 
 const Controls = styled.div`
@@ -77,6 +106,21 @@ const Header: React.FC<HeaderProps> = ({
   onStartTour
 }) => {
   const { isDarkTheme, toggleTheme } = useTheme();
+  const { songs } = useSong();
+  
+  // Get current song info
+  const currentSongId = songs.current;
+  const currentSong = currentSongId ? songs.loaded[currentSongId] : null;
+  const songTitle = currentSong?.songInfo.title || '';
+  const songArtist = currentSong?.songInfo.artist || '';
+  const songKey = currentSong?.songInfo.key || '';
+  const songTempo = currentSong?.songInfo.tempo || '';
+  
+  // Format song info for display
+  const songMetadata = [];
+  if (songKey) songMetadata.push(`Key: ${songKey}`);
+  if (songTempo) songMetadata.push(`Tempo: ${songTempo}`);
+  const metadataText = songMetadata.join(' · ');
   
   const handleAccessibilityClick = () => {
     if (onOpenAccessibilityMenu) {
@@ -112,6 +156,16 @@ const Header: React.FC<HeaderProps> = ({
           BlindTab
         </a>
       </Logo>
+      
+      {currentSong && (
+        <SongInfo>
+          <SongTitle>{songTitle}</SongTitle>
+          <SongArtist>
+            {songArtist}
+            {metadataText && ` · ${metadataText}`}
+          </SongArtist>
+        </SongInfo>
+      )}
       
       <Controls>
         <HeaderButton 
