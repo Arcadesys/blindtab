@@ -131,13 +131,14 @@ const ControlsPanel: React.FC<ControlsPanelProps> = ({
   };
   
   return (
-    <ControlsContainer>
+    <ControlsContainer className="controls-panel">
       <ControlGroup>
         <ControlButton 
           onClick={handlePrevious}
           disabled={!hasPrevious}
           aria-label="Previous section"
           title="Previous section"
+          className="previous-button"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path 
@@ -152,6 +153,7 @@ const ControlsPanel: React.FC<ControlsPanelProps> = ({
           disabled={!hasNext}
           aria-label="Next section"
           title="Next section"
+          className="next-button"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path 
@@ -163,7 +165,7 @@ const ControlsPanel: React.FC<ControlsPanelProps> = ({
       </ControlGroup>
       
       <ControlGroup>
-        <FontSizeControls>
+        <FontSizeControls className="font-size-controls">
           <ControlButton 
             onClick={() => handleFontSizeChange(-2)}
             aria-label="Decrease font size"
@@ -195,7 +197,7 @@ const ControlsPanel: React.FC<ControlsPanelProps> = ({
           </ControlButton>
         </FontSizeControls>
         
-        <LineControls>
+        <LineControls className="lines-controls">
           <ControlButton 
             onClick={() => handleLinesChange(-1)}
             aria-label="Decrease lines to display"
@@ -232,6 +234,7 @@ const ControlsPanel: React.FC<ControlsPanelProps> = ({
           $active={autoResize}
           aria-label={`${autoResize ? 'Disable' : 'Enable'} auto resize`}
           title={`${autoResize ? 'Disable' : 'Enable'} auto resize`}
+          className="auto-resize-button"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path 

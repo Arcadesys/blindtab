@@ -360,8 +360,16 @@ const AccessibilityModal: React.FC<AccessibilityModalProps> = ({ isOpen, onClose
                     <td><KeyboardKey>D</KeyboardKey></td>
                   </tr>
                   <tr>
-                    <td>Open Song List</td>
+                    <td>Open Song Library</td>
                     <td><KeyboardKey>O</KeyboardKey></td>
+                  </tr>
+                  <tr>
+                    <td>Open Song Manager</td>
+                    <td><KeyboardKey>L</KeyboardKey></td>
+                  </tr>
+                  <tr>
+                    <td>Start App Tour</td>
+                    <td><KeyboardKey>H</KeyboardKey></td>
                   </tr>
                 </tbody>
               </ShortcutTable>
