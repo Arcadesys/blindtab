@@ -68,33 +68,8 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Load available songs on mount with retry logic
-  useEffect(() => {
-    // Prevent multiple initializations
-    if (initialized) return;
-    
-    const loadInitialSongs = async () => {
-      try {
-        await refreshSongList();
-        // Don't try to load an initial song - this was causing the error
-        // Instead, we'll show the welcome message
-        setSongs(prev => ({
-          ...prev,
-          current: 'welcome' // Set welcome as the current song
-        }));
-        setInitialized(true);
-      } catch (err) {
-        console.error('Initial song list loading failed:', err);
-        // We'll handle this in refreshSongList
-        setInitialized(true);
-      }
-    };
-    
-    loadInitialSongs();
-  }, [initialized]);
-
-  // Function to check database connection
-  const checkDatabaseConnection = async (): Promise<boolean> => {
+  // Function to check database connection - memoized to prevent infinite loops
+  const checkDatabaseConnection = useCallback(async (): Promise<boolean> => {
     try {
       setIsLoading(true);
       const isConnected = await songOperations.checkConnection();
@@ -112,10 +87,10 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  // Function to refresh the song list with better error handling
-  const refreshSongList = async () => {
+  // Function to refresh the song list with better error handling - memoized to prevent infinite loops
+  const refreshSongList = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -150,9 +125,34 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [connectionAttempts, checkDatabaseConnection]);
 
-  const loadSong = async (songId: string): Promise<SongData | null> => {
+  // Load available songs on mount with retry logic
+  useEffect(() => {
+    // Prevent multiple initializations
+    if (initialized) return;
+    
+    const loadInitialSongs = async () => {
+      try {
+        await refreshSongList();
+        // Don't try to load an initial song - this was causing the error
+        // Instead, we'll show the welcome message
+        setSongs(prev => ({
+          ...prev,
+          current: 'welcome' // Set welcome as the current song
+        }));
+        setInitialized(true);
+      } catch (err) {
+        console.error('Initial song list loading failed:', err);
+        // We'll handle this in refreshSongList
+        setInitialized(true);
+      }
+    };
+    
+    loadInitialSongs();
+  }, [initialized, refreshSongList]);
+
+  const loadSong = useCallback(async (songId: string): Promise<SongData | null> => {
     // Special case for welcome song
     if (songId === 'welcome') {
       setSongs(prev => ({
@@ -202,9 +202,9 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [songs.loaded]);
 
-  const deleteSongById = async (songId: string): Promise<boolean> => {
+  const deleteSongById = useCallback(async (songId: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -237,9 +237,9 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const saveSongEdits = async (songId: string, markdown: string): Promise<boolean> => {
+  const saveSongEdits = useCallback(async (songId: string, markdown: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -251,27 +251,24 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Get the current song data
-      const currentSongData = songs.loaded[songId];
-      if (!currentSongData) {
-        setError(`Song data for ID ${songId} not loaded`);
-        return false;
-      }
-      
-      // Update the song in the database
-      const success = await songOperations.updateSong(songId, {
-        ...currentSongData,
-        songInfo: {
-          ...currentSongData.songInfo,
-          // You might want to parse the markdown to update title/artist
-        }
-      });
+      // Save the song
+      const success = await songOperations.updateSong(songId, markdown);
       
       if (success) {
         // Reload the song to get the updated data
-        await loadSong(songId);
-        // Refresh the song list to update any metadata changes
-        await refreshSongList();
+        const updatedSong = await songOperations.getSongById(songId);
+        
+        if (updatedSong) {
+          // Update the state
+          setSongs(prev => ({
+            ...prev,
+            loaded: {
+              ...prev.loaded,
+              [songId]: updatedSong
+            }
+          }));
+        }
+        
         return true;
       } else {
         setError(`Failed to save song ${songId}`);
@@ -284,21 +281,30 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [songs.available]);
 
-  const createNewSong = async (songData: SongData): Promise<string | null> => {
+  const createNewSong = useCallback(async (songData: SongData): Promise<string | null> => {
     try {
       setIsLoading(true);
       setError(null);
       
+      // Create the song
       const newSongId = await songOperations.createSong(songData);
       
       if (newSongId) {
         // Refresh the song list to include the new song
         await refreshSongList();
         
-        // Load the new song
-        await loadSong(newSongId);
+        // Add the song to loaded songs
+        setSongs(prev => ({
+          ...prev,
+          loaded: {
+            ...prev.loaded,
+            [newSongId]: songData
+          },
+          current: newSongId
+        }));
+        
         return newSongId;
       } else {
         setError('Failed to create new song');
@@ -311,15 +317,15 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [refreshSongList]);
 
   return (
-    <SongContext.Provider 
-      value={{ 
-        songs, 
-        loadSong, 
-        updateSongDisplay, 
-        deleteSongById, 
+    <SongContext.Provider
+      value={{
+        songs,
+        loadSong,
+        updateSongDisplay,
+        deleteSongById,
         saveSongEdits,
         createNewSong,
         refreshSongList,

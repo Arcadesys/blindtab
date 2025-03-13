@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useSong } from '../../contexts/SongContext';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
@@ -196,12 +196,16 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [timeoutError, setTimeoutError] = useState<string | null>(null);
   const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
+  const [hasInitialized, setHasInitialized] = useState(false);
   
-  // Refresh song list when component mounts
+  // Refresh song list when component mounts - but only once
   useEffect(() => {
-    refreshSongList();
-    setLoadStartTime(Date.now());
-  }, [refreshSongList]);
+    if (!hasInitialized) {
+      refreshSongList();
+      setLoadStartTime(Date.now());
+      setHasInitialized(true);
+    }
+  }, [refreshSongList, hasInitialized]);
   
   // Check for timeout
   useEffect(() => {
@@ -253,124 +257,147 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
     }
   };
   
+  const handleRetry = useCallback(() => {
+    refreshSongList();
+    setLoadStartTime(Date.now());
+    setTimeoutError(null);
+  }, [refreshSongList]);
+  
   // Filter songs based on search term
-  const filteredSongs = songs.available.filter(song => {
-    const searchLower = searchTerm.toLowerCase();
+  const filteredSongs = songs.available.filter(song => 
+    song.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    song.artist.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  // Render loading state
+  if (isLoading && !timeoutError && filteredSongs.length === 0) {
     return (
-      song.title.toLowerCase().includes(searchLower) ||
-      song.artist.toLowerCase().includes(searchLower)
+      <LibraryContainer>
+        <SearchBar>
+          <SearchInput 
+            placeholder="Search songs..." 
+            value={searchTerm}
+            onChange={handleSearchChange}
+            disabled={true}
+            aria-label="Search songs"
+          />
+        </SearchBar>
+        <LoadingState>
+          <Spinner />
+          <div>Loading songs...</div>
+        </LoadingState>
+      </LibraryContainer>
     );
-  });
+  }
   
-  // Determine if we should show the empty state
-  const showEmptyState = !isLoading && !error && filteredSongs.length === 0;
+  // Render error state
+  if ((error || timeoutError) && filteredSongs.length === 0) {
+    return (
+      <LibraryContainer>
+        <SearchBar>
+          <SearchInput 
+            placeholder="Search songs..." 
+            value={searchTerm}
+            onChange={handleSearchChange}
+            disabled={true}
+            aria-label="Search songs"
+          />
+        </SearchBar>
+        <ErrorState>
+          <div>{error || timeoutError}</div>
+          <RetryButton onClick={handleRetry}>
+            Retry
+          </RetryButton>
+        </ErrorState>
+      </LibraryContainer>
+    );
+  }
   
+  // Render empty state
+  if (filteredSongs.length === 0) {
+    return (
+      <LibraryContainer>
+        <SearchBar>
+          <SearchInput 
+            placeholder="Search songs..." 
+            value={searchTerm}
+            onChange={handleSearchChange}
+            aria-label="Search songs"
+          />
+        </SearchBar>
+        <EmptyState>
+          <div>No songs found</div>
+          {searchTerm ? (
+            <div>Try a different search term</div>
+          ) : (
+            <div>Add some songs to get started</div>
+          )}
+        </EmptyState>
+      </LibraryContainer>
+    );
+  }
+  
+  // Render song list
   return (
     <LibraryContainer>
       <SearchBar>
         <SearchInput 
-          type="text"
-          placeholder="Search songs..."
+          placeholder="Search songs..." 
           value={searchTerm}
           onChange={handleSearchChange}
-          aria-label="Search songs"
-          autoFocus
           disabled={isLoading}
+          aria-label="Search songs"
         />
       </SearchBar>
-      
       <SongListScroll>
+        {filteredSongs.map(song => (
+          <SongItem 
+            key={song.id}
+            className={selectedSongId === song.id ? 'selected' : ''}
+            onClick={() => handleSongSelect(song.id)}
+            disabled={isLoading}
+          >
+            <SongInfo disabled={isLoading}>
+              <SongTitle>{song.title}</SongTitle>
+              <SongArtist>{song.artist}</SongArtist>
+            </SongInfo>
+            <SongActions>
+              <ActionButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLoadSong(song.id);
+                }}
+                disabled={isLoading || loadingId === song.id}
+                aria-label={`Load ${song.title}`}
+                title={`Load ${song.title}`}
+              >
+                {loadingId === song.id ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                )}
+              </ActionButton>
+            </SongActions>
+          </SongItem>
+        ))}
+        {isLoading && (
+          <LoadingState>
+            <Spinner />
+            <div>Loading more songs...</div>
+          </LoadingState>
+        )}
         {timeoutError && (
           <ErrorState>
-            <p>{timeoutError}</p>
-            <RetryButton onClick={() => {
-              setTimeoutError(null);
-              setLoadStartTime(Date.now());
-              refreshSongList();
-            }}>
+            <div>{timeoutError}</div>
+            <RetryButton onClick={handleRetry}>
               Retry
             </RetryButton>
           </ErrorState>
-        )}
-        
-        {showEmptyState ? (
-          <EmptyState>
-            {songs.available.length === 0 ? (
-              <>
-                <p>No songs available.</p>
-                <p>Add songs to get started.</p>
-              </>
-            ) : (
-              <p>No songs match your search.</p>
-            )}
-          </EmptyState>
-        ) : (
-          // Always render the song list, even if it's empty
-          <>
-            {filteredSongs.map(song => (
-              <SongItem 
-                key={song.id}
-                className={selectedSongId === song.id ? 'selected' : ''}
-                disabled={isLoading}
-              >
-                <SongInfo 
-                  onClick={() => handleSongSelect(song.id)}
-                  disabled={isLoading}
-                >
-                  <SongTitle>{song.title}</SongTitle>
-                  <SongArtist>{song.artist}</SongArtist>
-                </SongInfo>
-                <SongActions>
-                  <ActionButton 
-                    onClick={() => handleLoadSong(song.id)}
-                    aria-label={`Load ${song.title}`}
-                    title={`Load ${song.title}`}
-                    disabled={loadingId === song.id || isLoading}
-                  >
-                    {loadingId === song.id ? (
-                      <Spinner style={{ width: '16px', height: '16px', margin: 0 }} />
-                    ) : (
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path 
-                          fill="currentColor" 
-                          d="M8 5v14l11-7z"
-                        />
-                      </svg>
-                    )}
-                  </ActionButton>
-                </SongActions>
-              </SongItem>
-            ))}
-            
-            {/* If we're loading but have cached songs, show them greyed out */}
-            {isLoading && filteredSongs.length === 0 && songs.available.length > 0 && (
-              songs.available.map(song => (
-                <SongItem 
-                  key={song.id}
-                  disabled={true}
-                >
-                  <SongInfo disabled={true}>
-                    <SongTitle>{song.title}</SongTitle>
-                    <SongArtist>{song.artist}</SongArtist>
-                  </SongInfo>
-                  <SongActions>
-                    <ActionButton 
-                      disabled={true}
-                      aria-label={`Load ${song.title}`}
-                      title={`Load ${song.title}`}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path 
-                          fill="currentColor" 
-                          d="M8 5v14l11-7z"
-                        />
-                      </svg>
-                    </ActionButton>
-                  </SongActions>
-                </SongItem>
-              ))
-            )}
-          </>
         )}
       </SongListScroll>
     </LibraryContainer>
