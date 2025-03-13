@@ -38,7 +38,7 @@ const Controls = styled.div`
   gap: 1rem;
 `;
 
-const AccessibilityButton = styled.button`
+const HeaderButton = styled.button`
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -67,15 +67,26 @@ const AccessibilityButton = styled.button`
 
 interface HeaderProps {
   onOpenAccessibilityMenu?: () => void;
+  onOpenSongLibrary?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onOpenAccessibilityMenu }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  onOpenAccessibilityMenu,
+  onOpenSongLibrary
+}) => {
   const { isDarkTheme, toggleTheme } = useTheme();
   
   const handleAccessibilityClick = () => {
     if (onOpenAccessibilityMenu) {
       onOpenAccessibilityMenu();
       announceToScreenReader('Accessibility menu opened');
+    }
+  };
+  
+  const handleSongLibraryClick = () => {
+    if (onOpenSongLibrary) {
+      onOpenSongLibrary();
+      announceToScreenReader('Song library opened');
     }
   };
   
@@ -94,9 +105,23 @@ const Header: React.FC<HeaderProps> = ({ onOpenAccessibilityMenu }) => {
       </Logo>
       
       <Controls>
-        <AccessibilityButton 
+        <HeaderButton 
+          onClick={handleSongLibraryClick}
+          aria-label="Open song library"
+          title="Open song library (O)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path 
+              fill="currentColor" 
+              d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"
+            />
+          </svg>
+        </HeaderButton>
+        
+        <HeaderButton 
           onClick={handleAccessibilityClick}
           aria-label="Open accessibility options"
+          title="Open accessibility options"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path 
@@ -104,7 +129,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAccessibilityMenu }) => {
               d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z"
             />
           </svg>
-        </AccessibilityButton>
+        </HeaderButton>
         
         <ThemeToggle 
           isDarkTheme={isDarkTheme} 

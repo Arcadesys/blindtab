@@ -1,12 +1,15 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Song, SongData, SongsState } from '../types/song';
+import { songOperations } from '../utils/db';
 
 type SongContextType = {
   songs: SongsState;
   loadSong: (songId: string) => Promise<SongData | null>;
   updateSongDisplay: (songData: SongData) => void;
-  deleteSongById: (songId: string) => void;
-  saveSongEdits: (songId: string, markdown: string) => void;
+  deleteSongById: (songId: string) => Promise<boolean>;
+  saveSongEdits: (songId: string, markdown: string) => Promise<boolean>;
+  createNewSong: (songData: SongData) => Promise<string | null>;
+  refreshSongList: () => Promise<void>;
 };
 
 const SongContext = createContext<SongContextType | undefined>(undefined);
@@ -18,24 +21,22 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loaded: {}
   });
 
-  // Mock function to load song from markdown file
-  const loadSongFromMarkdown = async (filename: string): Promise<SongData | null> => {
+  // Load available songs on mount
+  useEffect(() => {
+    refreshSongList();
+  }, []);
+
+  // Function to refresh the song list
+  const refreshSongList = async () => {
     try {
-      // In a real app, this would fetch from a server or database
-      // For now, we'll just return a mock response
-      return {
-        songData: [
-          { lyric: "This is a placeholder song" },
-          { lyric: "Replace with actual song loading logic" }
-        ],
-        songInfo: {
-          title: "Placeholder Song",
-          artist: "Demo Artist"
-        }
-      };
+      const availableSongs = await songOperations.getAllSongs();
+      
+      setSongs(prev => ({
+        ...prev,
+        available: availableSongs
+      }));
     } catch (error) {
-      console.error('Error loading song:', error);
-      return null;
+      console.error('Error loading songs:', error);
     }
   };
 
@@ -49,106 +50,120 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return songs.loaded[songId];
     }
     
-    // Find the song in available songs
-    const songInfo = songs.available.find(s => s.id === songId);
-    if (!songInfo) {
-      console.error(`Song with ID ${songId} not found`);
+    try {
+      // Load the song from the database
+      const songData = await songOperations.getSongById(songId);
+      
+      if (!songData) {
+        console.error(`Song with ID ${songId} not found`);
+        return null;
+      }
+      
+      // Store the loaded song
+      setSongs(prev => ({
+        ...prev,
+        loaded: {
+          ...prev.loaded,
+          [songId]: songData
+        },
+        current: songId
+      }));
+      
+      return songData;
+    } catch (error) {
+      console.error(`Error loading song ${songId}:`, error);
       return null;
     }
-    
-    // Load the song
-    const songData = await loadSongFromMarkdown(songInfo.filename);
-    if (!songData) {
-      return null;
-    }
-    
-    // Store the loaded song
-    setSongs(prev => ({
-      ...prev,
-      loaded: {
-        ...prev.loaded,
-        [songId]: songData
-      },
-      current: songId
-    }));
-    
-    return songData;
   };
 
   const updateSongDisplay = (songData: SongData) => {
     // This function would update the UI with the new song data
-    // In a real app, this might dispatch an action or update state
     console.log('Updating song display:', songData);
   };
 
-  const deleteSongById = (songId: string) => {
-    // Find the song index
-    const songIndex = songs.available.findIndex(s => s.id === songId);
-    if (songIndex === -1) {
-      console.error(`Song with ID ${songId} not found`);
-      return;
+  const deleteSongById = async (songId: string): Promise<boolean> => {
+    try {
+      const success = await songOperations.deleteSong(songId);
+      
+      if (success) {
+        // Update the state
+        setSongs(prev => {
+          const newAvailable = prev.available.filter(s => s.id !== songId);
+          const newLoaded = { ...prev.loaded };
+          delete newLoaded[songId];
+          
+          return {
+            ...prev,
+            available: newAvailable,
+            loaded: newLoaded,
+            current: prev.current === songId ? null : prev.current
+          };
+        });
+      }
+      
+      return success;
+    } catch (error) {
+      console.error(`Error deleting song ${songId}:`, error);
+      return false;
     }
-    
-    // Create a new available songs array without the deleted song
-    const newAvailable = [...songs.available];
-    newAvailable.splice(songIndex, 1);
-    
-    // Create a new loaded songs object without the deleted song
-    const newLoaded = { ...songs.loaded };
-    delete newLoaded[songId];
-    
-    // Update state
-    setSongs(prev => ({
-      ...prev,
-      available: newAvailable,
-      loaded: newLoaded,
-      // If this was the current song, set current to null
-      current: prev.current === songId ? null : prev.current
-    }));
   };
 
-  const saveSongEdits = (songId: string, markdown: string) => {
-    // In a real app, this would save to a server or database
-    console.log(`Saving markdown for ${songId}:`, markdown);
-    
-    // Mock implementation - parse the markdown and update the song
-    const songData: SongData = {
-      songData: [
-        { lyric: "This is updated song data" },
-        { lyric: "Replace with actual markdown parsing" }
-      ],
-      songInfo: {
-        title: "Updated Song",
-        artist: "Demo Artist"
+  const saveSongEdits = async (songId: string, markdown: string): Promise<boolean> => {
+    try {
+      // Find the song in available songs
+      const songInfo = songs.available.find(s => s.id === songId);
+      if (!songInfo) {
+        console.error(`Song with ID ${songId} not found`);
+        return false;
       }
-    };
-    
-    // Update the loaded song data
-    setSongs(prev => ({
-      ...prev,
-      loaded: {
-        ...prev.loaded,
-        [songId]: songData
+      
+      // Get the current song data
+      const currentSongData = songs.loaded[songId];
+      if (!currentSongData) {
+        console.error(`Song data for ID ${songId} not loaded`);
+        return false;
       }
-    }));
-    
-    // Update the song info in available songs
-    setSongs(prev => {
-      const songIndex = prev.available.findIndex(s => s.id === songId);
-      if (songIndex !== -1) {
-        const newAvailable = [...prev.available];
-        newAvailable[songIndex] = {
-          ...newAvailable[songIndex],
-          title: songData.songInfo.title,
-          artist: songData.songInfo.artist
-        };
-        return {
-          ...prev,
-          available: newAvailable
-        };
+      
+      // Update the song in the database
+      const success = await songOperations.updateSong(songId, {
+        ...currentSongData,
+        songInfo: {
+          ...currentSongData.songInfo,
+          // You might want to parse the markdown to update title/artist
+        }
+      });
+      
+      if (success) {
+        // Reload the song to get the updated data
+        await loadSong(songId);
+        // Refresh the song list to update any metadata changes
+        await refreshSongList();
       }
-      return prev;
-    });
+      
+      return success;
+    } catch (error) {
+      console.error(`Error saving song ${songId}:`, error);
+      return false;
+    }
+  };
+
+  const createNewSong = async (songData: SongData): Promise<string | null> => {
+    try {
+      const newSongId = await songOperations.createSong(songData);
+      
+      if (newSongId) {
+        // Refresh the song list to include the new song
+        await refreshSongList();
+        
+        // Load the new song
+        await loadSong(newSongId);
+      }
+      
+      return newSongId;
+    } catch (error) {
+      console.error('Error creating new song:', error);
+      return null;
+    }
   };
 
   return (
@@ -158,7 +173,9 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loadSong, 
         updateSongDisplay, 
         deleteSongById, 
-        saveSongEdits 
+        saveSongEdits,
+        createNewSong,
+        refreshSongList
       }}
     >
       {children}

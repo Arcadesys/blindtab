@@ -84,11 +84,16 @@ const EmptyState = styled.div`
 `;
 
 interface SongListProps {
-  onSongSelect?: (songId: string) => void;
+  onSongSelect: (songId: string) => void;
+  selectedSongId?: string | null;
   onClose?: () => void;
 }
 
-const SongList: React.FC<SongListProps> = ({ onSongSelect, onClose }) => {
+const SongList: React.FC<SongListProps> = ({ 
+  onSongSelect, 
+  selectedSongId,
+  onClose 
+}) => {
   const { songs } = useSong();
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -97,13 +102,7 @@ const SongList: React.FC<SongListProps> = ({ onSongSelect, onClose }) => {
   };
   
   const handleSongClick = (songId: string) => {
-    if (onSongSelect) {
-      onSongSelect(songId);
-    }
-    
-    if (onClose) {
-      onClose();
-    }
+    onSongSelect(songId);
     
     const song = songs.available.find(s => s.id === songId);
     if (song) {
@@ -137,7 +136,7 @@ const SongList: React.FC<SongListProps> = ({ onSongSelect, onClose }) => {
           filteredSongs.map(song => (
             <SongItem 
               key={song.id}
-              $isActive={songs.current === song.id}
+              $isActive={selectedSongId === song.id || songs.current === song.id}
               onClick={() => handleSongClick(song.id)}
               aria-label={`${song.title} by ${song.artist}`}
             >

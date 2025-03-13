@@ -66,12 +66,15 @@ const ChordSpan = styled.span`
 
 interface LeadsheetDisplayProps {
   songData: SongData | null;
+  currentLineIndex?: number;
 }
 
-const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({ songData }) => {
+const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({ 
+  songData,
+  currentLineIndex = 0
+}) => {
   const { fontSize, linesToDisplay, autoResize } = useDisplay();
   const [visibleLines, setVisibleLines] = useState<SongLine[]>([]);
-  const [currentLineIndex, setCurrentLineIndex] = useState(0);
   
   // Convert song lines to string array for auto-resize calculation
   const songLinesText = songData?.songData.map(line => line.lyric) || [];
@@ -126,6 +129,7 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({ songData }) => {
       <LeadsheetContainer ref={containerRef}>
         <LeadsheetContent $fontSize={autoResize ? calculatedFontSize : fontSize}>
           <p>No song loaded. Please select a song to display.</p>
+          <p>Click the song library button in the header or press 'O' to open the song library.</p>
         </LeadsheetContent>
       </LeadsheetContainer>
     );
@@ -148,6 +152,10 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({ songData }) => {
         <LyricsContainer>
           {visibleLines.map(renderLineWithChords)}
         </LyricsContainer>
+        
+        <div style={{ marginTop: '1rem', fontSize: '0.8em', color: 'var(--text-secondary)' }}>
+          Line {currentLineIndex + 1} of {songData.songData.length}
+        </div>
       </LeadsheetContent>
     </LeadsheetContainer>
   );
