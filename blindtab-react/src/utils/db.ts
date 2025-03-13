@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
 import { parseMarkdown, songDataToMarkdown } from './markdownParser';
-import { SongData, Song } from '../types/song';
+import { Song, SongData } from '../types/song';
+import { config, env, isDev } from './env';
 
 // Sample fallback data in case the database is unavailable
 const FALLBACK_SONGS: Song[] = [
@@ -32,132 +32,243 @@ const FALLBACK_SONG_DATA: SongData = {
   ]
 };
 
-// Initialize Prisma client with a safer approach
-let prisma: PrismaClient | null = null;
-let dbInitialized = false;
-
-// Try to initialize Prisma, but don't block the app if it fails
-const initPrisma = async () => {
-  if (dbInitialized) return;
-  
-  try {
-    prisma = new PrismaClient();
-    dbInitialized = true;
-    console.log('Database connection initialized successfully');
-    
-    // Add connection event handlers
-    prisma.$on('query', (e) => {
-      console.log('Query: ' + e.query);
-      console.log('Duration: ' + e.duration + 'ms');
-    });
-    
-    // Handle connection errors
-    prisma.$on('error', (e) => {
-      console.error('Prisma error:', e);
-      dbInitialized = false;
-      prisma = null;
-    });
-  } catch (error) {
-    console.error('Failed to initialize Prisma client:', error);
-    dbInitialized = false;
-    prisma = null;
+// Sample songs for the browser environment
+const SAMPLE_SONGS: Record<string, SongData> = {
+  'sample-1': {
+    songInfo: {
+      title: 'Imagine',
+      artist: 'John Lennon',
+      key: 'C',
+      tempo: 75
+    },
+    songData: [
+      { lyric: 'Imagine there\'s no heaven', chords: [{ text: 'C', position: 0 }, { text: 'F', position: 13 }] },
+      { lyric: 'It\'s easy if you try', chords: [{ text: 'C', position: 0 }, { text: 'F', position: 10 }] },
+      { lyric: 'No hell below us', chords: [{ text: 'C', position: 0 }, { text: 'F', position: 8 }] },
+      { lyric: 'Above us only sky', chords: [{ text: 'C', position: 0 }, { text: 'F', position: 10 }] },
+      { lyric: 'Imagine all the people', chords: [{ text: 'F', position: 0 }, { text: 'G', position: 10 }, { text: 'C', position: 17 }] },
+      { lyric: 'Living for today', chords: [{ text: 'F', position: 0 }, { text: 'G', position: 8 }, { text: 'C', position: 15 }] },
+    ]
+  },
+  'sample-2': {
+    songInfo: {
+      title: 'Wonderwall',
+      artist: 'Oasis',
+      key: 'F#m',
+      tempo: 86
+    },
+    songData: [
+      { lyric: 'Today is gonna be the day that they\'re gonna throw it back to you', chords: [{ text: 'F#m', position: 0 }, { text: 'A', position: 20 }, { text: 'E', position: 40 }] },
+      { lyric: 'By now you should\'ve somehow realized what you gotta do', chords: [{ text: 'F#m', position: 0 }, { text: 'A', position: 20 }, { text: 'E', position: 40 }] },
+      { lyric: 'I don\'t believe that anybody feels the way I do about you now', chords: [{ text: 'F#m', position: 0 }, { text: 'A', position: 20 }, { text: 'E', position: 40 }, { text: 'B', position: 55 }] },
+      { lyric: '' },
+      { lyric: 'Backbeat, the word is on the street that the fire in your heart is out', chords: [{ text: 'F#m', position: 0 }, { text: 'A', position: 20 }, { text: 'E', position: 40 }] },
+      { lyric: 'I\'m sure you\'ve heard it all before, but you never really had a doubt', chords: [{ text: 'F#m', position: 0 }, { text: 'A', position: 20 }, { text: 'E', position: 40 }] },
+      { lyric: 'I don\'t believe that anybody feels the way I do about you now', chords: [{ text: 'F#m', position: 0 }, { text: 'A', position: 20 }, { text: 'E', position: 40 }, { text: 'B', position: 55 }] },
+    ]
+  },
+  'sample-3': {
+    songInfo: {
+      title: 'Let It Be',
+      artist: 'The Beatles',
+      key: 'C',
+      tempo: 71
+    },
+    songData: [
+      { lyric: 'When I find myself in times of trouble', chords: [{ text: 'C', position: 0 }, { text: 'G', position: 15 }] },
+      { lyric: 'Mother Mary comes to me', chords: [{ text: 'Am', position: 0 }, { text: 'F', position: 15 }] },
+      { lyric: 'Speaking words of wisdom, let it be', chords: [{ text: 'C', position: 0 }, { text: 'G', position: 15 }, { text: 'F', position: 25 }, { text: 'C', position: 35 }] },
+      { lyric: 'And in my hour of darkness', chords: [{ text: 'C', position: 0 }, { text: 'G', position: 15 }] },
+      { lyric: 'She is standing right in front of me', chords: [{ text: 'Am', position: 0 }, { text: 'F', position: 20 }] },
+      { lyric: 'Speaking words of wisdom, let it be', chords: [{ text: 'C', position: 0 }, { text: 'G', position: 15 }, { text: 'F', position: 25 }, { text: 'C', position: 35 }] },
+    ]
   }
 };
 
-// Initialize Prisma in the background
-initPrisma().catch(error => {
-  console.error('Background Prisma initialization failed:', error);
-});
+// Browser-compatible database mock using localStorage
+class BrowserDB {
+  private initialized: boolean = false;
+  private songs: Record<string, Song> = {};
+  private songData: Record<string, SongData> = {};
+  private storagePrefix: string;
+  
+  constructor() {
+    // Use environment-specific storage prefix to avoid conflicts between environments
+    this.storagePrefix = config.storagePrefix;
+    this.init();
+  }
+  
+  init() {
+    try {
+      // Try to load from localStorage
+      const savedSongs = localStorage.getItem(`${this.storagePrefix}songs`);
+      const savedSongData = localStorage.getItem(`${this.storagePrefix}song_data`);
+      
+      if (savedSongs) {
+        this.songs = JSON.parse(savedSongs);
+      } else {
+        // Initialize with sample songs if nothing in localStorage
+        this.songs = {
+          'sample-1': { id: 'sample-1', title: 'Imagine', artist: 'John Lennon', filename: 'sample-1.md' },
+          'sample-2': { id: 'sample-2', title: 'Wonderwall', artist: 'Oasis', filename: 'sample-2.md' },
+          'sample-3': { id: 'sample-3', title: 'Let It Be', artist: 'The Beatles', filename: 'sample-3.md' }
+        };
+        localStorage.setItem(`${this.storagePrefix}songs`, JSON.stringify(this.songs));
+      }
+      
+      if (savedSongData) {
+        this.songData = JSON.parse(savedSongData);
+      } else {
+        // Initialize with sample song data
+        this.songData = SAMPLE_SONGS;
+        localStorage.setItem(`${this.storagePrefix}song_data`, JSON.stringify(this.songData));
+      }
+      
+      this.initialized = true;
+      console.log(`Browser database initialized successfully (${env} environment)`);
+    } catch (error) {
+      console.error('Failed to initialize browser database:', error);
+      this.initialized = false;
+    }
+  }
+  
+  isInitialized() {
+    return this.initialized;
+  }
+  
+  getAllSongs(): Song[] {
+    if (!this.initialized) {
+      return Object.values(FALLBACK_SONGS);
+    }
+    
+    return Object.values(this.songs);
+  }
+  
+  getSongById(id: string): SongData | null {
+    if (!this.initialized) {
+      return FALLBACK_SONG_DATA;
+    }
+    
+    return this.songData[id] || null;
+  }
+  
+  createSong(songData: SongData): string {
+    if (!this.initialized) {
+      return null;
+    }
+    
+    const id = `song-${Date.now()}`;
+    
+    // Create song entry
+    this.songs[id] = {
+      id,
+      title: songData.songInfo.title,
+      artist: songData.songInfo.artist,
+      filename: `${id}.md`
+    };
+    
+    // Store song data
+    this.songData[id] = songData;
+    
+    // Save to localStorage
+    localStorage.setItem(`${this.storagePrefix}songs`, JSON.stringify(this.songs));
+    localStorage.setItem(`${this.storagePrefix}song_data`, JSON.stringify(this.songData));
+    
+    return id;
+  }
+  
+  updateSong(id: string, songData: SongData): boolean {
+    if (!this.initialized || !this.songs[id]) {
+      return false;
+    }
+    
+    // Update song entry
+    this.songs[id] = {
+      ...this.songs[id],
+      title: songData.songInfo.title,
+      artist: songData.songInfo.artist
+    };
+    
+    // Update song data
+    this.songData[id] = songData;
+    
+    // Save to localStorage
+    localStorage.setItem(`${this.storagePrefix}songs`, JSON.stringify(this.songs));
+    localStorage.setItem(`${this.storagePrefix}song_data`, JSON.stringify(this.songData));
+    
+    return true;
+  }
+  
+  deleteSong(id: string): boolean {
+    if (!this.initialized || !this.songs[id]) {
+      return false;
+    }
+    
+    // Delete song entry and data
+    delete this.songs[id];
+    delete this.songData[id];
+    
+    // Save to localStorage
+    localStorage.setItem(`${this.storagePrefix}songs`, JSON.stringify(this.songs));
+    localStorage.setItem(`${this.storagePrefix}song_data`, JSON.stringify(this.songData));
+    
+    return true;
+  }
+  
+  checkConnection(): boolean {
+    return this.initialized;
+  }
+}
+
+// Create a single instance of the browser database
+const browserDB = new BrowserDB();
 
 // Helper function to safely execute database operations with fallback
 const safeDbOperation = async <T>(
-  operation: (client: PrismaClient) => Promise<T>,
+  operation: () => T,
   fallbackValue: T,
   operationName: string = 'database operation'
 ): Promise<T> => {
-  // If Prisma isn't initialized, return fallback immediately
-  if (!prisma || !dbInitialized) {
+  if (!browserDB.isInitialized()) {
     console.warn(`Database not initialized, using fallback for ${operationName}`);
     return fallbackValue;
   }
   
   try {
-    // Create a timeout promise
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`${operationName} timed out after 3000ms`)), 3000);
-    });
-    
-    // Execute the operation with a timeout
-    const result = await Promise.race([operation(prisma), timeoutPromise]);
-    return result as T;
-  } catch (error) {
-    console.error(`Error during ${operationName}:`, error);
-    
-    // If it's a connection error, try to reinitialize Prisma
-    if (error.message && (error.message.includes('timed out') || 
-        error.code === 'P1001' || error.code === 'P1002')) {
-      console.warn('Database connection issue detected, attempting to reconnect...');
-      dbInitialized = false;
-      prisma = null;
-      initPrisma().catch(e => console.error('Reconnection failed:', e));
+    // Add artificial delay to simulate network request (only in development)
+    if (isDev) {
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
     
+    // Execute the operation
+    const result = operation();
+    return result;
+  } catch (error) {
+    console.error(`Error during ${operationName}:`, error);
     return fallbackValue;
   }
 };
 
-// Song operations with improved error handling and fallbacks
+// Song operations with browser-compatible implementation
 export const songOperations = {
+  // Check database connection
+  checkConnection: async (): Promise<boolean> => {
+    return browserDB.isInitialized();
+  },
+  
   // Get all songs
   getAllSongs: async (): Promise<Song[]> => {
     return safeDbOperation(
-      async (client) => {
-        const songs = await client.song.findMany({
-          orderBy: { title: 'asc' },
-          include: { tags: true }
-        });
-        
-        return songs.map(song => ({
-          id: song.id,
-          title: song.title,
-          artist: song.artist,
-          filename: `${song.id}.md` // Virtual filename
-        }));
-      },
+      () => browserDB.getAllSongs(),
       FALLBACK_SONGS,
       'Get all songs'
     );
   },
   
-  // Get a song by ID with timeout and error handling
+  // Get a song by ID
   getSongById: async (id: string): Promise<SongData | null> => {
     return safeDbOperation(
-      async (client) => {
-        const song = await client.song.findUnique({
-          where: { id },
-          include: { tags: true }
-        });
-        
-        if (!song) return null;
-        
-        // Parse the markdown content to SongData
-        const songData = parseMarkdown(song.content);
-        
-        // Add any additional metadata from the database
-        if (song.key && !songData.songInfo.key) {
-          songData.songInfo.key = song.key;
-        }
-        
-        if (song.tempo && !songData.songInfo.tempo) {
-          songData.songInfo.tempo = song.tempo;
-        }
-        
-        if (song.timeSignature && !songData.songInfo.timeSignature) {
-          songData.songInfo.timeSignature = song.timeSignature;
-        }
-        
-        return songData;
-      },
+      () => browserDB.getSongById(id),
       id === 'fallback-1' || id === 'fallback-2' ? FALLBACK_SONG_DATA : null,
       `Get song ${id}`
     );
@@ -166,23 +277,7 @@ export const songOperations = {
   // Create a new song
   createSong: async (songData: SongData): Promise<string | null> => {
     return safeDbOperation(
-      async (client) => {
-        // Convert SongData to markdown
-        const markdown = songDataToMarkdown(songData);
-        
-        const song = await client.song.create({
-          data: {
-            title: songData.songInfo.title,
-            artist: songData.songInfo.artist,
-            content: markdown,
-            key: songData.songInfo.key,
-            tempo: songData.songInfo.tempo,
-            timeSignature: songData.songInfo.timeSignature
-          }
-        });
-        
-        return song.id;
-      },
+      () => browserDB.createSong(songData),
       null,
       'Create song'
     );
@@ -191,24 +286,7 @@ export const songOperations = {
   // Update an existing song
   updateSong: async (id: string, songData: SongData): Promise<boolean> => {
     return safeDbOperation(
-      async (client) => {
-        // Convert SongData to markdown
-        const markdown = songDataToMarkdown(songData);
-        
-        await client.song.update({
-          where: { id },
-          data: {
-            title: songData.songInfo.title,
-            artist: songData.songInfo.artist,
-            content: markdown,
-            key: songData.songInfo.key,
-            tempo: songData.songInfo.tempo,
-            timeSignature: songData.songInfo.timeSignature
-          }
-        });
-        
-        return true;
-      },
+      () => browserDB.updateSong(id, songData),
       false,
       `Update song ${id}`
     );
@@ -217,103 +295,36 @@ export const songOperations = {
   // Delete a song
   deleteSong: async (id: string): Promise<boolean> => {
     return safeDbOperation(
-      async (client) => {
-        await client.song.delete({
-          where: { id }
-        });
-        
-        return true;
-      },
+      () => browserDB.deleteSong(id),
       false,
       `Delete song ${id}`
     );
   },
   
-  // Add a tag to a song
+  // Add a tag to a song - simplified for browser
   addTagToSong: async (songId: string, tagName: string): Promise<boolean> => {
     return safeDbOperation(
-      async (client) => {
-        // Find or create the tag
-        const tag = await client.tag.upsert({
-          where: { name: tagName },
-          update: {},
-          create: { name: tagName }
-        });
-        
-        // Add the tag to the song
-        await client.song.update({
-          where: { id: songId },
-          data: {
-            tags: {
-              connect: { id: tag.id }
-            }
-          }
-        });
-        
-        return true;
-      },
+      () => true, // Simplified implementation
       false,
       `Add tag ${tagName} to song ${songId}`
     );
   },
   
-  // Remove a tag from a song
+  // Remove a tag from a song - simplified for browser
   removeTagFromSong: async (songId: string, tagName: string): Promise<boolean> => {
     return safeDbOperation(
-      async (client) => {
-        // Find the tag
-        const tag = await client.tag.findUnique({
-          where: { name: tagName }
-        });
-        
-        if (!tag) return false;
-        
-        // Remove the tag from the song
-        await client.song.update({
-          where: { id: songId },
-          data: {
-            tags: {
-              disconnect: { id: tag.id }
-            }
-          }
-        });
-        
-        return true;
-      },
+      () => true, // Simplified implementation
       false,
       `Remove tag ${tagName} from song ${songId}`
     );
   },
   
-  // Get all tags
+  // Get all tags - simplified for browser
   getAllTags: async () => {
     return safeDbOperation(
-      async (client) => {
-        return await client.tag.findMany({
-          orderBy: {
-            name: 'asc'
-          }
-        });
-      },
+      () => [], // Simplified implementation
       [],
       'Get all tags'
-    );
-  },
-  
-  // Check database connection
-  checkConnection: async (): Promise<boolean> => {
-    if (!prisma || !dbInitialized) {
-      await initPrisma();
-    }
-    
-    return safeDbOperation(
-      async (client) => {
-        // Simple query to check connection
-        await client.$queryRaw`SELECT 1`;
-        return true;
-      },
-      false,
-      'Check database connection'
     );
   }
 }; 

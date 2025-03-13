@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { Song, SongData, SongsState } from '../types/song';
 import { songOperations } from '../utils/db';
 
@@ -17,29 +17,81 @@ type SongContextType = {
 
 const SongContext = createContext<SongContextType | undefined>(undefined);
 
+// Create a welcome song to display when no song is loaded
+const WELCOME_SONG: SongData = {
+  songInfo: {
+    title: 'Welcome to BlindTab',
+    artist: 'React Edition',
+  },
+  songData: [
+    { lyric: 'Welcome to BlindTab!' },
+    { lyric: '' },
+    { lyric: 'To get started:' },
+    { lyric: '1. Click the "Song Library" button in the header' },
+    { lyric: '2. Or press "O" on your keyboard' },
+    { lyric: '' },
+    { lyric: 'Use arrow keys or the buttons below to navigate' },
+    { lyric: 'Press "H" for a guided tour of the app' },
+  ]
+};
+
+// Make the global function available for legacy code
+if (typeof window !== 'undefined') {
+  (window as any).updateSongDisplay = (data: any) => {
+    console.log('Window updateSongDisplay called:', data);
+  };
+}
+
 export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [songs, setSongs] = useState<SongsState>({
     current: null,
     available: [],
-    loaded: {}
+    loaded: {
+      'welcome': WELCOME_SONG // Add welcome song to loaded songs
+    }
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionAttempts, setConnectionAttempts] = useState<number>(0);
+  const [initialized, setInitialized] = useState<boolean>(false);
+
+  // Function to update song display - defined with useCallback to prevent infinite renders
+  const updateSongDisplay = useCallback((songData: SongData) => {
+    // This function would update the UI with the new song data
+    console.log('Context updateSongDisplay called:', songData);
+    
+    // Update the global function for legacy code
+    if (typeof window !== 'undefined') {
+      (window as any).updateSongDisplay = (data: any) => {
+        console.log('Window updateSongDisplay called:', data);
+      };
+    }
+  }, []);
 
   // Load available songs on mount with retry logic
   useEffect(() => {
+    // Prevent multiple initializations
+    if (initialized) return;
+    
     const loadInitialSongs = async () => {
       try {
         await refreshSongList();
+        // Don't try to load an initial song - this was causing the error
+        // Instead, we'll show the welcome message
+        setSongs(prev => ({
+          ...prev,
+          current: 'welcome' // Set welcome as the current song
+        }));
+        setInitialized(true);
       } catch (err) {
         console.error('Initial song list loading failed:', err);
         // We'll handle this in refreshSongList
+        setInitialized(true);
       }
     };
     
     loadInitialSongs();
-  }, []);
+  }, [initialized]);
 
   // Function to check database connection
   const checkDatabaseConnection = async (): Promise<boolean> => {
@@ -101,6 +153,15 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loadSong = async (songId: string): Promise<SongData | null> => {
+    // Special case for welcome song
+    if (songId === 'welcome') {
+      setSongs(prev => ({
+        ...prev,
+        current: 'welcome'
+      }));
+      return WELCOME_SONG;
+    }
+    
     // Check if we've already loaded this song
     if (songs.loaded[songId]) {
       setSongs(prev => ({
@@ -143,11 +204,6 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateSongDisplay = (songData: SongData) => {
-    // This function would update the UI with the new song data
-    console.log('Updating song display:', songData);
-  };
-
   const deleteSongById = async (songId: string): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -166,7 +222,7 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ...prev,
             available: newAvailable,
             loaded: newLoaded,
-            current: prev.current === songId ? null : prev.current
+            current: prev.current === songId ? 'welcome' : prev.current // Switch to welcome if current song was deleted
           };
         });
         return true;
