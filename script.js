@@ -132,6 +132,103 @@ const songData = [
     }
 ]
 
+// Replace the songData variable with a songs object to store multiple songs
+let songs = {
+    current: null,
+    available: [],
+    loaded: {}
+};
+
+// Function to load available songs
+async function loadAvailableSongs() {
+    const songFiles = [
+        { id: 'fake-plastic-trees', title: 'Fake Plastic Trees', artist: 'Radiohead', filename: 'fake-plastic-trees.md' },
+        { id: 'wonderwall', title: 'Wonderwall', artist: 'Oasis', filename: 'wonderwall.md' },
+        { id: 'hallelujah', title: 'Hallelujah', artist: 'Leonard Cohen', filename: 'hallelujah.md' }
+    ];
+    
+    songs.available = songFiles;
+    return songFiles;
+}
+
+async function loadSongFromMarkdown(filename) {
+    try {
+        const response = await fetch(`data/${filename}`);
+        if (!response.ok) {
+            throw new Error(`Failed to load ${filename}`);
+        }
+        const markdown = await response.text();
+        
+        // Use the appropriate parser based on the format
+        // Our markdown files use the chord-in-brackets format
+        const songLines = markdown.split('\n');
+        let metadataLines = '';
+        let contentLines = '';
+        let foundSeparator = false;
+        
+        // Extract metadata and content
+        for (const line of songLines) {
+            if (line.trim() === '---') {
+                foundSeparator = true;
+                continue;
+            }
+            
+            if (!foundSeparator && (line.startsWith('#') || line.startsWith('Artist:') || line.startsWith('Key:'))) {
+                metadataLines += line + '\n';
+            } else {
+                contentLines += line + '\n';
+            }
+        }
+        
+        // If we have metadata, use fromMarkdown, otherwise use fromChordInBrackets
+        let result;
+        if (metadataLines) {
+            result = MarkdownParser.fromMarkdown(markdown);
+        } else {
+            result = {
+                songData: MarkdownParser.fromChordInBrackets(contentLines),
+                songInfo: {
+                    title: 'Unknown',
+                    artist: 'Unknown',
+                    key: 'C'
+                }
+            };
+        }
+        
+        return result;
+    } catch (error) {
+        console.error('Error loading song:', error);
+        return null;
+    }
+}
+
+// Function to load a specific song by ID
+async function loadSong(songId) {
+    // Check if we've already loaded this song
+    if (songs.loaded[songId]) {
+        songs.current = songId;
+        return songs.loaded[songId];
+    }
+    
+    // Find the song in available songs
+    const songInfo = songs.available.find(s => s.id === songId);
+    if (!songInfo) {
+        console.error(`Song with ID ${songId} not found`);
+        return null;
+    }
+    
+    // Load the song
+    const songData = await loadSongFromMarkdown(songInfo.filename);
+    if (!songData) {
+        return null;
+    }
+    
+    // Store the loaded song
+    songs.loaded[songId] = songData;
+    songs.current = songId;
+    
+    return songData;
+}
 
 // DOM elements
 const lyricsContainer = document.getElementById('lyrics-container');
@@ -1113,159 +1210,249 @@ function showAddSongModal() {
         addSongModal = document.createElement('div');
         addSongModal.id = 'add-song-modal';
         addSongModal.className = 'modal';
-        addSongModal.style.display = 'none';
-        addSongModal.style.position = 'fixed';
-        addSongModal.style.zIndex = '10000';
-        addSongModal.style.left = '0';
-        addSongModal.style.top = '0';
-        addSongModal.style.width = '100%';
-        addSongModal.style.height = '100%';
-        addSongModal.style.overflow = 'auto';
-        addSongModal.style.backgroundColor = 'rgba(0,0,0,0.4)';
         
         // Create modal content
         const modalContent = document.createElement('div');
         modalContent.className = 'modal-content';
-        modalContent.style.backgroundColor = '#fefefe';
-        modalContent.style.margin = '15% auto';
-        modalContent.style.padding = '20px';
-        modalContent.style.border = '1px solid #888';
-        modalContent.style.width = '80%';
-        modalContent.style.maxWidth = '600px';
-        modalContent.style.borderRadius = '5px';
         
-        // Create close button
+        // Create header
+        const modalHeader = document.createElement('div');
+        modalHeader.className = 'modal-header';
+        
+        const modalTitle = document.createElement('h2');
+        modalTitle.textContent = 'Add New Song';
+        
         const closeBtn = document.createElement('span');
         closeBtn.className = 'close-modal';
         closeBtn.innerHTML = '&times;';
-        closeBtn.style.color = '#aaa';
-        closeBtn.style.float = 'right';
-        closeBtn.style.fontSize = '28px';
-        closeBtn.style.fontWeight = 'bold';
-        closeBtn.style.cursor = 'pointer';
         closeBtn.addEventListener('click', () => {
             addSongModal.style.display = 'none';
         });
         
+        modalHeader.appendChild(modalTitle);
+        modalHeader.appendChild(closeBtn);
+        
         // Create form
+        const modalBody = document.createElement('div');
+        modalBody.className = 'modal-body';
+        
         const form = document.createElement('form');
         form.id = 'add-song-form';
         
         // Title input
+        const titleGroup = document.createElement('div');
+        titleGroup.className = 'form-group';
+        
         const titleLabel = document.createElement('label');
-        titleLabel.textContent = 'Song Title:';
         titleLabel.htmlFor = 'song-title-input';
-        titleLabel.style.display = 'block';
-        titleLabel.style.marginTop = '10px';
+        titleLabel.textContent = 'Song Title:';
         
         const titleInput = document.createElement('input');
         titleInput.type = 'text';
         titleInput.id = 'song-title-input';
+        titleInput.className = 'form-control';
         titleInput.required = true;
-        titleInput.style.width = '100%';
-        titleInput.style.padding = '8px';
-        titleInput.style.marginBottom = '15px';
-        titleInput.style.boxSizing = 'border-box';
+        
+        titleGroup.appendChild(titleLabel);
+        titleGroup.appendChild(titleInput);
         
         // Artist input
+        const artistGroup = document.createElement('div');
+        artistGroup.className = 'form-group';
+        
         const artistLabel = document.createElement('label');
-        artistLabel.textContent = 'Artist:';
         artistLabel.htmlFor = 'song-artist-input';
-        artistLabel.style.display = 'block';
+        artistLabel.textContent = 'Artist:';
         
         const artistInput = document.createElement('input');
         artistInput.type = 'text';
         artistInput.id = 'song-artist-input';
+        artistInput.className = 'form-control';
         artistInput.required = true;
-        artistInput.style.width = '100%';
-        artistInput.style.padding = '8px';
-        artistInput.style.marginBottom = '15px';
-        artistInput.style.boxSizing = 'border-box';
+        
+        artistGroup.appendChild(artistLabel);
+        artistGroup.appendChild(artistInput);
         
         // Key input
+        const keyGroup = document.createElement('div');
+        keyGroup.className = 'form-group';
+        
         const keyLabel = document.createElement('label');
-        keyLabel.textContent = 'Key:';
         keyLabel.htmlFor = 'song-key-input';
-        keyLabel.style.display = 'block';
+        keyLabel.textContent = 'Key:';
         
         const keyInput = document.createElement('select');
         keyInput.id = 'song-key-input';
-        keyInput.style.width = '100%';
-        keyInput.style.padding = '8px';
-        keyInput.style.marginBottom = '15px';
-        keyInput.style.boxSizing = 'border-box';
+        keyInput.className = 'form-control';
         
-        // Add key options
-        const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const keys = ['C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab', 'A', 'A#/Bb', 'B'];
         keys.forEach(key => {
             const option = document.createElement('option');
-            option.value = key;
+            option.value = key.split('/')[0]; // Use the first key if there are alternates
             option.textContent = key;
             keyInput.appendChild(option);
         });
         
-        // Lyrics and chords textarea
-        const lyricsLabel = document.createElement('label');
-        lyricsLabel.textContent = 'Lyrics and Chords:';
-        lyricsLabel.htmlFor = 'song-lyrics-input';
-        lyricsLabel.style.display = 'block';
+        keyGroup.appendChild(keyLabel);
+        keyGroup.appendChild(keyInput);
         
-        const lyricsHelp = document.createElement('p');
-        lyricsHelp.style.fontSize = '0.8em';
-        lyricsHelp.style.color = '#666';
-        lyricsHelp.innerHTML = 'Format: Place chords in square brackets before the word they go with.<br>Example: [G]Her green [Em]plastic watering can';
+        // Content input
+        const contentGroup = document.createElement('div');
+        contentGroup.className = 'form-group';
         
-        const lyricsInput = document.createElement('textarea');
-        lyricsInput.id = 'song-lyrics-input';
-        lyricsInput.rows = '15';
-        lyricsInput.required = true;
-        lyricsInput.style.width = '100%';
-        lyricsInput.style.padding = '8px';
-        lyricsInput.style.marginBottom = '15px';
-        lyricsInput.style.boxSizing = 'border-box';
-        lyricsInput.style.fontFamily = 'monospace';
+        const contentLabel = document.createElement('label');
+        contentLabel.htmlFor = 'song-content-input';
+        contentLabel.textContent = 'Song Content:';
         
-        // Submit button
-        const submitBtn = document.createElement('button');
-        submitBtn.type = 'submit';
-        submitBtn.textContent = 'Add Song';
-        submitBtn.style.padding = '10px 15px';
-        submitBtn.style.backgroundColor = '#4a90e2';
-        submitBtn.style.color = 'white';
-        submitBtn.style.border = 'none';
-        submitBtn.style.borderRadius = '4px';
-        submitBtn.style.cursor = 'pointer';
+        const contentHelp = document.createElement('div');
+        contentHelp.className = 'form-help';
+        contentHelp.innerHTML = 'Enter lyrics with chords in [brackets] before the word they belong to.<br>Example: [G]Her green plastic [Em]watering can';
         
-        // Add elements to form
-        form.appendChild(titleLabel);
-        form.appendChild(titleInput);
-        form.appendChild(artistLabel);
-        form.appendChild(artistInput);
-        form.appendChild(keyLabel);
-        form.appendChild(keyInput);
-        form.appendChild(lyricsLabel);
-        form.appendChild(lyricsHelp);
-        form.appendChild(lyricsInput);
-        form.appendChild(submitBtn);
+        const contentInput = document.createElement('textarea');
+        contentInput.id = 'song-content-input';
+        contentInput.className = 'form-control';
+        contentInput.rows = 10;
+        contentInput.required = true;
         
-        // Add form submission handler
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            addNewSong();
+        contentGroup.appendChild(contentLabel);
+        contentGroup.appendChild(contentHelp);
+        contentGroup.appendChild(contentInput);
+        
+        // Add all form groups
+        form.appendChild(titleGroup);
+        form.appendChild(artistGroup);
+        form.appendChild(keyGroup);
+        form.appendChild(contentGroup);
+        
+        modalBody.appendChild(form);
+        
+        // Create footer with buttons
+        const modalFooter = document.createElement('div');
+        modalFooter.className = 'modal-footer';
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'btn btn-secondary';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', () => {
+            addSongModal.style.display = 'none';
         });
         
-        // Add elements to modal
-        modalContent.appendChild(closeBtn);
-        modalContent.appendChild(document.createElement('h2')).textContent = 'Add New Song';
-        modalContent.appendChild(form);
-        addSongModal.appendChild(modalContent);
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'btn btn-primary';
+        saveBtn.textContent = 'Add Song';
+        saveBtn.addEventListener('click', () => {
+            if (validateAddSongForm()) {
+                addNewSongFromForm();
+                addSongModal.style.display = 'none';
+            }
+        });
         
-        // Add modal to document
+        modalFooter.appendChild(cancelBtn);
+        modalFooter.appendChild(saveBtn);
+        
+        // Assemble the modal
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(modalBody);
+        modalContent.appendChild(modalFooter);
+        
+        addSongModal.appendChild(modalContent);
         document.body.appendChild(addSongModal);
     }
     
-    // Show the modal
+    // Reset form
+    const form = document.getElementById('add-song-form');
+    if (form) form.reset();
+    
+    // Show modal
     addSongModal.style.display = 'block';
+}
+
+// Validate the add song form
+function validateAddSongForm() {
+    const titleInput = document.getElementById('song-title-input');
+    const artistInput = document.getElementById('song-artist-input');
+    const contentInput = document.getElementById('song-content-input');
+    
+    let isValid = true;
+    
+    if (!titleInput.value.trim()) {
+        titleInput.classList.add('invalid');
+        isValid = false;
+    } else {
+        titleInput.classList.remove('invalid');
+    }
+    
+    if (!artistInput.value.trim()) {
+        artistInput.classList.add('invalid');
+        isValid = false;
+    } else {
+        artistInput.classList.remove('invalid');
+    }
+    
+    if (!contentInput.value.trim()) {
+        contentInput.classList.add('invalid');
+        isValid = false;
+    } else {
+        contentInput.classList.remove('invalid');
+    }
+    
+    return isValid;
+}
+
+// Add a new song from the form data
+function addNewSongFromForm() {
+    const title = document.getElementById('song-title-input').value.trim();
+    const artist = document.getElementById('song-artist-input').value.trim();
+    const key = document.getElementById('song-key-input').value;
+    const content = document.getElementById('song-content-input').value;
+    
+    // Generate a unique ID for the song
+    const id = generateSongId(title);
+    
+    // Generate filename
+    const filename = `${id}.md`;
+    
+    // Create markdown content
+    const markdown = `# ${title}\nArtist: ${artist}\nKey: ${key}\n\n${content}`;
+    
+    // Add to available songs
+    const newSong = {
+        id,
+        title,
+        artist,
+        filename
+    };
+    
+    songs.available.push(newSong);
+    
+    // Parse the markdown
+    const songData = MarkdownParser.fromMarkdown(markdown);
+    
+    // Store the loaded song
+    songs.loaded[id] = songData;
+    
+    // Save the markdown to a file
+    saveMarkdownToFile(id, markdown);
+    
+    // Update the song list
+    updateSongList();
+    
+    // Load the new song
+    songs.current = id;
+    updateSongDisplay(songData);
+}
+
+// Generate a unique ID for a song based on its title
+function generateSongId(title) {
+    // Convert title to lowercase, replace spaces with hyphens, remove special characters
+    const baseId = title.toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w-]/g, '');
+    
+    // Add a timestamp to ensure uniqueness
+    return `${baseId}-${Date.now()}`;
 }
 
 // Markdown Parser for Leadsheets
@@ -2133,8 +2320,21 @@ function createChordColorPicker() {
 }
 
 // Initialize the app
-function init() {
+async function init() {
     console.log("Initializing app...");
+    
+    // Load available songs
+    await loadAvailableSongs();
+    
+    // Load the initial song
+    const initialSongData = await loadSong('fake-plastic-trees');
+    if (!initialSongData) {
+        console.error('Failed to load initial song');
+        return;
+    }
+    
+    // Create song selection UI
+    createSongSelectionUI();
     
     // Load chord color from localStorage
     loadChordColor();
@@ -2177,7 +2377,420 @@ function init() {
     });
     
     console.log("Initialization complete");
+    
+    // Update the song display
+    updateSongDisplay(initialSongData);
 }
 
 // Initialize the app when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', init);
+
+// Create song selection UI with search and filtering
+function createSongSelectionUI() {
+    // Create the song selection modal
+    const modal = document.createElement('div');
+    modal.id = 'song-selection-modal';
+    modal.className = 'modal';
+    
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    
+    // Create header
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    
+    const modalTitle = document.createElement('h2');
+    modalTitle.textContent = 'Song Library';
+    
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'close-modal';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+    
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeBtn);
+    
+    // Create search and filter section
+    const searchSection = document.createElement('div');
+    searchSection.className = 'search-section';
+    
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.id = 'song-search';
+    searchInput.placeholder = 'Search songs...';
+    searchInput.className = 'song-search-input';
+    
+    const filterContainer = document.createElement('div');
+    filterContainer.className = 'filter-container';
+    
+    const sortByLabel = document.createElement('label');
+    sortByLabel.textContent = 'Sort by:';
+    sortByLabel.htmlFor = 'sort-by';
+    
+    const sortBySelect = document.createElement('select');
+    sortBySelect.id = 'sort-by';
+    
+    const sortOptions = [
+        { value: 'title-asc', text: 'Title (A-Z)' },
+        { value: 'title-desc', text: 'Title (Z-A)' },
+        { value: 'artist-asc', text: 'Artist (A-Z)' },
+        { value: 'artist-desc', text: 'Artist (Z-A)' },
+        { value: 'recent', text: 'Recently Added' }
+    ];
+    
+    sortOptions.forEach(option => {
+        const optionEl = document.createElement('option');
+        optionEl.value = option.value;
+        optionEl.textContent = option.text;
+        sortBySelect.appendChild(optionEl);
+    });
+    
+    filterContainer.appendChild(sortByLabel);
+    filterContainer.appendChild(sortBySelect);
+    
+    searchSection.appendChild(searchInput);
+    searchSection.appendChild(filterContainer);
+    
+    // Create song list container
+    const songListContainer = document.createElement('div');
+    songListContainer.className = 'song-list-container';
+    
+    const songList = document.createElement('div');
+    songList.id = 'song-list';
+    songList.className = 'song-list';
+    
+    songListContainer.appendChild(songList);
+    
+    // Create footer with buttons
+    const modalFooter = document.createElement('div');
+    modalFooter.className = 'modal-footer';
+    
+    const addSongBtn = document.createElement('button');
+    addSongBtn.id = 'add-song-btn';
+    addSongBtn.textContent = 'Add New Song';
+    addSongBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+        showAddSongModal();
+    });
+    
+    modalFooter.appendChild(addSongBtn);
+    
+    // Assemble the modal
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(searchSection);
+    modalContent.appendChild(songListContainer);
+    modalContent.appendChild(modalFooter);
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Create a button to open the song selection modal
+    const songSelectorBtn = document.createElement('button');
+    songSelectorBtn.id = 'song-selector-btn';
+    songSelectorBtn.className = 'song-selector-btn';
+    songSelectorBtn.textContent = 'Song Library';
+    songSelectorBtn.addEventListener('click', () => {
+        updateSongList();
+        modal.style.display = 'block';
+    });
+    
+    // Add the button to the song info section
+    const songInfoSection = document.getElementById('song-info');
+    songInfoSection.appendChild(songSelectorBtn);
+    
+    // Set up event listeners for search and sort
+    searchInput.addEventListener('input', updateSongList);
+    sortBySelect.addEventListener('change', updateSongList);
+    
+    return { modal, songList, searchInput, sortBySelect };
+}
+
+// Update the song list based on search and sort criteria
+function updateSongList() {
+    const songList = document.getElementById('song-list');
+    const searchInput = document.getElementById('song-search');
+    const sortBySelect = document.getElementById('sort-by');
+    
+    if (!songList || !searchInput || !sortBySelect) return;
+    
+    // Clear the current list
+    songList.innerHTML = '';
+    
+    // Get search term and sort option
+    const searchTerm = searchInput.value.toLowerCase();
+    const sortOption = sortBySelect.value;
+    
+    // Filter songs based on search term
+    let filteredSongs = songs.available.filter(song => {
+        return song.title.toLowerCase().includes(searchTerm) || 
+               song.artist.toLowerCase().includes(searchTerm);
+    });
+    
+    // Sort the filtered songs
+    filteredSongs = sortSongs(filteredSongs, sortOption);
+    
+    // Create song items
+    if (filteredSongs.length === 0) {
+        const noResults = document.createElement('div');
+        noResults.className = 'no-results';
+        noResults.textContent = 'No songs found';
+        songList.appendChild(noResults);
+    } else {
+        filteredSongs.forEach(song => {
+            const songItem = createSongListItem(song);
+            songList.appendChild(songItem);
+        });
+    }
+}
+
+// Sort songs based on the selected option
+function sortSongs(songsList, sortOption) {
+    const sortedSongs = [...songsList];
+    
+    switch (sortOption) {
+        case 'title-asc':
+            sortedSongs.sort((a, b) => a.title.localeCompare(b.title));
+            break;
+        case 'title-desc':
+            sortedSongs.sort((a, b) => b.title.localeCompare(a.title));
+            break;
+        case 'artist-asc':
+            sortedSongs.sort((a, b) => a.artist.localeCompare(b.artist));
+            break;
+        case 'artist-desc':
+            sortedSongs.sort((a, b) => b.artist.localeCompare(a.artist));
+            break;
+        case 'recent':
+            // Assuming the most recently added songs are at the end of the array
+            // This would need to be adjusted if you track creation dates
+            sortedSongs.reverse();
+            break;
+    }
+    
+    return sortedSongs;
+}
+
+// Create a song list item
+function createSongListItem(song) {
+    const songItem = document.createElement('div');
+    songItem.className = 'song-item';
+    songItem.dataset.id = song.id;
+    
+    // Highlight the current song
+    if (songs.current === song.id) {
+        songItem.classList.add('current');
+    }
+    
+    const songInfo = document.createElement('div');
+    songInfo.className = 'song-item-info';
+    
+    const songTitle = document.createElement('div');
+    songTitle.className = 'song-item-title';
+    songTitle.textContent = song.title;
+    
+    const songArtist = document.createElement('div');
+    songArtist.className = 'song-item-artist';
+    songArtist.textContent = song.artist;
+    
+    songInfo.appendChild(songTitle);
+    songInfo.appendChild(songArtist);
+    
+    const songActions = document.createElement('div');
+    songActions.className = 'song-item-actions';
+    
+    const playBtn = document.createElement('button');
+    playBtn.className = 'song-action-btn play-btn';
+    playBtn.innerHTML = '▶';
+    playBtn.title = 'Load Song';
+    playBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const songId = song.id;
+        const songData = await loadSong(songId);
+        if (songData) {
+            updateSongDisplay(songData);
+            document.getElementById('song-selection-modal').style.display = 'none';
+        }
+    });
+    
+    const editBtn = document.createElement('button');
+    editBtn.className = 'song-action-btn edit-btn';
+    editBtn.innerHTML = '✏️';
+    editBtn.title = 'Edit Song';
+    editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Implement edit functionality
+        editSongById(song.id);
+        document.getElementById('song-selection-modal').style.display = 'none';
+    });
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'song-action-btn delete-btn';
+    deleteBtn.innerHTML = '🗑️';
+    deleteBtn.title = 'Delete Song';
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Implement delete functionality
+        if (confirm(`Are you sure you want to delete "${song.title}"?`)) {
+            deleteSongById(song.id);
+            updateSongList();
+        }
+    });
+    
+    songActions.appendChild(playBtn);
+    songActions.appendChild(editBtn);
+    songActions.appendChild(deleteBtn);
+    
+    songItem.appendChild(songInfo);
+    songItem.appendChild(songActions);
+    
+    // Make the whole item clickable to load the song
+    songItem.addEventListener('click', async () => {
+        const songId = song.id;
+        const songData = await loadSong(songId);
+        if (songData) {
+            updateSongDisplay(songData);
+            document.getElementById('song-selection-modal').style.display = 'none';
+        }
+    });
+    
+    return songItem;
+}
+
+// Edit a song by ID
+function editSongById(songId) {
+    // Find the song in available songs
+    const songInfo = songs.available.find(s => s.id === songId);
+    if (!songInfo) {
+        console.error(`Song with ID ${songId} not found`);
+        return;
+    }
+    
+    // Load the song data if not already loaded
+    if (!songs.loaded[songId]) {
+        loadSongFromMarkdown(songInfo.filename)
+            .then(songData => {
+                if (songData) {
+                    songs.loaded[songId] = songData;
+                    openSongEditor(songId);
+                }
+            });
+    } else {
+        openSongEditor(songId);
+    }
+}
+
+// Open the song editor with a specific song
+function openSongEditor(songId) {
+    const songData = songs.loaded[songId];
+    const songInfo = songs.available.find(s => s.id === songId);
+    
+    if (!songData || !songInfo) {
+        console.error('Song data or info not found');
+        return;
+    }
+    
+    // Convert song data to markdown for editing
+    const markdown = MarkdownParser.toMarkdown(songData.songData, songData.songInfo);
+    
+    // Set the editor content
+    document.getElementById('song-markdown').value = markdown;
+    
+    // Show the editor modal
+    document.getElementById('song-editor-modal').style.display = 'block';
+    
+    // Set up save button to save this specific song
+    document.getElementById('save-song-btn').onclick = () => {
+        saveSongEdits(songId);
+    };
+}
+
+// Save edits to a song
+function saveSongEdits(songId) {
+    const markdown = document.getElementById('song-markdown').value;
+    
+    // Parse the edited markdown
+    const songData = MarkdownParser.fromMarkdown(markdown);
+    
+    // Update the loaded song data
+    songs.loaded[songId] = songData;
+    
+    // Update the song info in available songs
+    const songIndex = songs.available.findIndex(s => s.id === songId);
+    if (songIndex !== -1) {
+        songs.available[songIndex].title = songData.songInfo.title;
+        songs.available[songIndex].artist = songData.songInfo.artist;
+    }
+    
+    // Save the updated markdown to the file
+    saveMarkdownToFile(songId, markdown);
+    
+    // If this is the current song, update the display
+    if (songs.current === songId) {
+        updateSongDisplay(songData);
+    }
+    
+    // Hide the editor modal
+    document.getElementById('song-editor-modal').style.display = 'none';
+}
+
+// Save markdown to a file
+function saveMarkdownToFile(songId, markdown) {
+    const songInfo = songs.available.find(s => s.id === songId);
+    if (!songInfo) return;
+    
+    // In a real app, this would save to the server or database
+    // For now, we'll just log it
+    console.log(`Saving markdown for ${songInfo.title} to ${songInfo.filename}`);
+    console.log(markdown);
+    
+    // In a future implementation, this would use fetch to save to the server
+    // fetch(`/api/songs/${songId}`, {
+    //     method: 'PUT',
+    //     headers: {
+    //         'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify({ markdown }),
+    // });
+}
+
+// Delete a song by ID
+function deleteSongById(songId) {
+    // Find the song index
+    const songIndex = songs.available.findIndex(s => s.id === songId);
+    if (songIndex === -1) {
+        console.error(`Song with ID ${songId} not found`);
+        return;
+    }
+    
+    // Remove from available songs
+    songs.available.splice(songIndex, 1);
+    
+    // Remove from loaded songs
+    delete songs.loaded[songId];
+    
+    // If this was the current song, load another song
+    if (songs.current === songId) {
+        if (songs.available.length > 0) {
+            loadSong(songs.available[0].id).then(songData => {
+                if (songData) {
+                    updateSongDisplay(songData);
+                }
+            });
+        } else {
+            // No songs left
+            document.getElementById('song-title').textContent = 'No Songs Available';
+            document.getElementById('song-artist').textContent = 'Add a song to get started';
+            lyricsContainer.innerHTML = '';
+        }
+    }
+    
+    // In a real app, this would delete from the server or database
+    console.log(`Deleting song ${songId}`);
+    
+    // In a future implementation, this would use fetch to delete from the server
+    // fetch(`/api/songs/${songId}`, {
+    //     method: 'DELETE',
+    // });
+}
