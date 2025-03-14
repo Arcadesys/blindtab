@@ -1,45 +1,167 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { Song, SongData, SongsState } from '../types/song';
+import { songOperations } from '../utils/db';
 
 type SongContextType = {
   songs: SongsState;
   loadSong: (songId: string) => Promise<SongData | null>;
   updateSongDisplay: (songData: SongData) => void;
-  deleteSongById: (songId: string) => void;
-  saveSongEdits: (songId: string, markdown: string) => void;
+  deleteSongById: (songId: string) => Promise<boolean>;
+  saveSongEdits: (songId: string, markdown: string) => Promise<boolean>;
+  createNewSong: (songData: SongData) => Promise<string | null>;
+  refreshSongList: () => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
+  checkDatabaseConnection: () => Promise<boolean>;
 };
 
 const SongContext = createContext<SongContextType | undefined>(undefined);
+
+// Create a welcome song to display when no song is loaded
+const WELCOME_SONG: SongData = {
+  songInfo: {
+    title: 'Welcome to BlindTab',
+    artist: 'React Edition',
+  },
+  songData: [
+    { lyric: 'Welcome to BlindTab!' },
+    { lyric: '' },
+    { lyric: 'To get started:' },
+    { lyric: '1. Click the "Song Library" button in the header' },
+    { lyric: '2. Or press "O" on your keyboard' },
+    { lyric: '' },
+    { lyric: 'Use arrow keys or the buttons below to navigate' },
+    { lyric: 'Press "H" for a guided tour of the app' },
+  ]
+};
+
+// Make the global function available for legacy code
+if (typeof window !== 'undefined') {
+  (window as any).updateSongDisplay = (data: any) => {
+    console.log('Window updateSongDisplay called:', data);
+  };
+}
 
 export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [songs, setSongs] = useState<SongsState>({
     current: null,
     available: [],
-    loaded: {}
-  });
-
-  // Mock function to load song from markdown file
-  const loadSongFromMarkdown = async (filename: string): Promise<SongData | null> => {
-    try {
-      // In a real app, this would fetch from a server or database
-      // For now, we'll just return a mock response
-      return {
-        songData: [
-          { lyric: "This is a placeholder song" },
-          { lyric: "Replace with actual song loading logic" }
-        ],
-        songInfo: {
-          title: "Placeholder Song",
-          artist: "Demo Artist"
-        }
-      };
-    } catch (error) {
-      console.error('Error loading song:', error);
-      return null;
+    loaded: {
+      'welcome': WELCOME_SONG // Add welcome song to loaded songs
     }
-  };
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [connectionAttempts, setConnectionAttempts] = useState<number>(0);
+  const [initialized, setInitialized] = useState<boolean>(false);
 
-  const loadSong = async (songId: string): Promise<SongData | null> => {
+  // Function to update song display - defined with useCallback to prevent infinite renders
+  const updateSongDisplay = useCallback((songData: SongData) => {
+    // This function would update the UI with the new song data
+    console.log('Context updateSongDisplay called:', songData);
+    
+    // Update the global function for legacy code
+    if (typeof window !== 'undefined') {
+      (window as any).updateSongDisplay = (data: any) => {
+        console.log('Window updateSongDisplay called:', data);
+      };
+    }
+  }, []);
+
+  // Function to check database connection - memoized to prevent infinite loops
+  const checkDatabaseConnection = useCallback(async (): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const isConnected = await songOperations.checkConnection();
+      
+      if (isConnected) {
+        setError(null);
+      } else {
+        setError('Database connection failed. Using fallback data.');
+      }
+      
+      return isConnected;
+    } catch (err) {
+      setError('Database connection check failed. Using fallback data.');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Function to refresh the song list with better error handling - memoized to prevent infinite loops
+  const refreshSongList = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Check connection first if we've had previous errors
+      if (connectionAttempts > 0) {
+        const isConnected = await checkDatabaseConnection();
+        if (!isConnected) {
+          setError('Database connection failed. Using fallback data.');
+          setConnectionAttempts(prev => prev + 1);
+          return;
+        }
+      }
+      
+      const availableSongs = await songOperations.getAllSongs();
+      
+      // If we get fallback songs and this isn't the first attempt, show an error
+      if (availableSongs.length > 0 && availableSongs[0].id.startsWith('fallback-') && connectionAttempts > 0) {
+        setError('Database connection failed. Using fallback data.');
+      } else {
+        setError(null);
+      }
+      
+      setSongs(prev => ({
+        ...prev,
+        available: availableSongs
+      }));
+    } catch (error) {
+      console.error('Error loading songs:', error);
+      setError('Failed to load song list. Using fallback data.');
+      setConnectionAttempts(prev => prev + 1);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [connectionAttempts, checkDatabaseConnection]);
+
+  // Load available songs on mount with retry logic
+  useEffect(() => {
+    // Prevent multiple initializations
+    if (initialized) return;
+    
+    const loadInitialSongs = async () => {
+      try {
+        await refreshSongList();
+        // Don't try to load an initial song - this was causing the error
+        // Instead, we'll show the welcome message
+        setSongs(prev => ({
+          ...prev,
+          current: 'welcome' // Set welcome as the current song
+        }));
+        setInitialized(true);
+      } catch (err) {
+        console.error('Initial song list loading failed:', err);
+        // We'll handle this in refreshSongList
+        setInitialized(true);
+      }
+    };
+    
+    loadInitialSongs();
+  }, [initialized, refreshSongList]);
+
+  const loadSong = useCallback(async (songId: string): Promise<SongData | null> => {
+    // Special case for welcome song
+    if (songId === 'welcome') {
+      setSongs(prev => ({
+        ...prev,
+        current: 'welcome'
+      }));
+      return WELCOME_SONG;
+    }
+    
     // Check if we've already loaded this song
     if (songs.loaded[songId]) {
       setSongs(prev => ({
@@ -49,116 +171,167 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return songs.loaded[songId];
     }
     
-    // Find the song in available songs
-    const songInfo = songs.available.find(s => s.id === songId);
-    if (!songInfo) {
-      console.error(`Song with ID ${songId} not found`);
-      return null;
-    }
-    
-    // Load the song
-    const songData = await loadSongFromMarkdown(songInfo.filename);
-    if (!songData) {
-      return null;
-    }
-    
-    // Store the loaded song
-    setSongs(prev => ({
-      ...prev,
-      loaded: {
-        ...prev.loaded,
-        [songId]: songData
-      },
-      current: songId
-    }));
-    
-    return songData;
-  };
-
-  const updateSongDisplay = (songData: SongData) => {
-    // This function would update the UI with the new song data
-    // In a real app, this might dispatch an action or update state
-    console.log('Updating song display:', songData);
-  };
-
-  const deleteSongById = (songId: string) => {
-    // Find the song index
-    const songIndex = songs.available.findIndex(s => s.id === songId);
-    if (songIndex === -1) {
-      console.error(`Song with ID ${songId} not found`);
-      return;
-    }
-    
-    // Create a new available songs array without the deleted song
-    const newAvailable = [...songs.available];
-    newAvailable.splice(songIndex, 1);
-    
-    // Create a new loaded songs object without the deleted song
-    const newLoaded = { ...songs.loaded };
-    delete newLoaded[songId];
-    
-    // Update state
-    setSongs(prev => ({
-      ...prev,
-      available: newAvailable,
-      loaded: newLoaded,
-      // If this was the current song, set current to null
-      current: prev.current === songId ? null : prev.current
-    }));
-  };
-
-  const saveSongEdits = (songId: string, markdown: string) => {
-    // In a real app, this would save to a server or database
-    console.log(`Saving markdown for ${songId}:`, markdown);
-    
-    // Mock implementation - parse the markdown and update the song
-    const songData: SongData = {
-      songData: [
-        { lyric: "This is updated song data" },
-        { lyric: "Replace with actual markdown parsing" }
-      ],
-      songInfo: {
-        title: "Updated Song",
-        artist: "Demo Artist"
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Load the song from the database with a shorter timeout
+      const songData = await songOperations.getSongById(songId);
+      
+      if (!songData) {
+        setError(`Song with ID ${songId} not found`);
+        console.error(`Song with ID ${songId} not found`);
+        return null;
       }
-    };
-    
-    // Update the loaded song data
-    setSongs(prev => ({
-      ...prev,
-      loaded: {
-        ...prev.loaded,
-        [songId]: songData
+      
+      // Store the loaded song
+      setSongs(prev => ({
+        ...prev,
+        loaded: {
+          ...prev.loaded,
+          [songId]: songData
+        },
+        current: songId
+      }));
+      
+      return songData;
+    } catch (error) {
+      console.error(`Error loading song ${songId}:`, error);
+      setError(`Failed to load song. ${error.message || 'Unknown error'}`);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [songs.loaded]);
+
+  const deleteSongById = useCallback(async (songId: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const success = await songOperations.deleteSong(songId);
+      
+      if (success) {
+        // Update the state
+        setSongs(prev => {
+          const newAvailable = prev.available.filter(s => s.id !== songId);
+          const newLoaded = { ...prev.loaded };
+          delete newLoaded[songId];
+          
+          return {
+            ...prev,
+            available: newAvailable,
+            loaded: newLoaded,
+            current: prev.current === songId ? 'welcome' : prev.current // Switch to welcome if current song was deleted
+          };
+        });
+        return true;
+      } else {
+        setError(`Failed to delete song ${songId}`);
+        return false;
       }
-    }));
-    
-    // Update the song info in available songs
-    setSongs(prev => {
-      const songIndex = prev.available.findIndex(s => s.id === songId);
-      if (songIndex !== -1) {
-        const newAvailable = [...prev.available];
-        newAvailable[songIndex] = {
-          ...newAvailable[songIndex],
-          title: songData.songInfo.title,
-          artist: songData.songInfo.artist
-        };
-        return {
+    } catch (error) {
+      console.error(`Error deleting song ${songId}:`, error);
+      setError(`Error deleting song: ${error.message || 'Unknown error'}`);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const saveSongEdits = useCallback(async (songId: string, markdown: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Find the song in available songs
+      const songInfo = songs.available.find(s => s.id === songId);
+      if (!songInfo) {
+        setError(`Song with ID ${songId} not found`);
+        return false;
+      }
+      
+      // Save the song
+      const success = await songOperations.updateSong(songId, markdown);
+      
+      if (success) {
+        // Reload the song to get the updated data
+        const updatedSong = await songOperations.getSongById(songId);
+        
+        if (updatedSong) {
+          // Update the state
+          setSongs(prev => ({
+            ...prev,
+            loaded: {
+              ...prev.loaded,
+              [songId]: updatedSong
+            }
+          }));
+        }
+        
+        return true;
+      } else {
+        setError(`Failed to save song ${songId}`);
+        return false;
+      }
+    } catch (error) {
+      console.error(`Error saving song ${songId}:`, error);
+      setError(`Error saving song: ${error.message || 'Unknown error'}`);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [songs.available]);
+
+  const createNewSong = useCallback(async (songData: SongData): Promise<string | null> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Create the song
+      const newSongId = await songOperations.createSong(songData);
+      
+      if (newSongId) {
+        // Refresh the song list to include the new song
+        await refreshSongList();
+        
+        // Add the song to loaded songs
+        setSongs(prev => ({
           ...prev,
-          available: newAvailable
-        };
+          loaded: {
+            ...prev.loaded,
+            [newSongId]: songData
+          },
+          current: newSongId
+        }));
+        
+        return newSongId;
+      } else {
+        setError('Failed to create new song');
+        return null;
       }
-      return prev;
-    });
-  };
+    } catch (error) {
+      console.error('Error creating new song:', error);
+      setError(`Error creating song: ${error.message || 'Unknown error'}`);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshSongList]);
 
   return (
-    <SongContext.Provider 
-      value={{ 
-        songs, 
-        loadSong, 
-        updateSongDisplay, 
-        deleteSongById, 
-        saveSongEdits 
+    <SongContext.Provider
+      value={{
+        songs,
+        loadSong,
+        updateSongDisplay,
+        deleteSongById,
+        saveSongEdits,
+        createNewSong,
+        refreshSongList,
+        isLoading,
+        error,
+        checkDatabaseConnection
       }}
     >
       {children}

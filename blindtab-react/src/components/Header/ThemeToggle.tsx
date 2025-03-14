@@ -2,6 +2,12 @@ import React from 'react';
 import styled from 'styled-components';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
 
+interface ThemeToggleProps {
+  isDarkTheme: boolean;
+  toggleTheme: () => void;
+  className?: string;
+}
+
 const ToggleButton = styled.button`
   background: none;
   border: none;
@@ -29,22 +35,18 @@ const ToggleButton = styled.button`
   }
 `;
 
-interface ThemeToggleProps {
-  isDarkTheme: boolean;
-  toggleTheme: () => void;
-}
-
-const ThemeToggle: React.FC<ThemeToggleProps> = ({ isDarkTheme, toggleTheme }) => {
+const ThemeToggle: React.FC<ThemeToggleProps> = ({ isDarkTheme, toggleTheme, className }) => {
   const handleToggle = () => {
     toggleTheme();
-    announceToScreenReader(`Theme changed to ${isDarkTheme ? 'light' : 'dark'} mode`);
+    announceToScreenReader(`Switched to ${isDarkTheme ? 'light' : 'dark'} theme`);
   };
   
   return (
     <ToggleButton 
       onClick={handleToggle}
-      aria-label={`Switch to ${isDarkTheme ? 'light' : 'dark'} mode`}
-      title={`Switch to ${isDarkTheme ? 'light' : 'dark'} mode`}
+      aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+      title={`${isDarkTheme ? 'Light' : 'Dark'} mode (D)`}
+      className={className}
     >
       {isDarkTheme ? (
         <svg viewBox="0 0 24 24" aria-hidden="true">
