@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import SongLibrary from '../Navigation/SongLibrary';
 import { useSong } from '../../contexts/SongContext';
+import AddSongModal from './AddSongModal';
+import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -149,6 +151,42 @@ const InfoBanner = styled.div`
   text-align: center;
 `;
 
+const AddNewButton = styled.button`
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 5;
+  
+  &:hover, &:focus {
+    background-color: var(--primary-hover-color, #0056b3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  &:focus {
+    outline: 2px solid var(--focus-color);
+    outline-offset: 2px;
+  }
+  
+  transition: all 0.2s ease;
+  
+  svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+`;
+
 interface SongLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -163,6 +201,7 @@ const SongLibraryModal: React.FC<SongLibraryModalProps> = ({
   const { isLoading, error, refreshSongList, checkDatabaseConnection } = useSong();
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown');
+  const [addSongModalOpen, setAddSongModalOpen] = useState(false);
   
   // Check connection when modal opens
   useEffect(() => {
@@ -193,75 +232,109 @@ const SongLibraryModal: React.FC<SongLibraryModalProps> = ({
     await refreshSongList();
   };
   
+  const handleAddNewSong = () => {
+    setAddSongModalOpen(true);
+  };
+  
+  const handleSongSaved = async (songId: string) => {
+    await refreshSongList();
+    announceToScreenReader('Song created successfully');
+    // Optionally load the new song right away
+    onSongLoad(songId);
+    onClose();
+  };
+  
   if (!isOpen) return null;
   
   // Determine if we're using fallback data
   const usingFallbackData = error && error.includes('fallback data');
   
   return (
-    <ModalOverlay onClick={onClose}>
-      <ModalContent 
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-labelledby="song-library-title"
-        aria-modal="true"
-      >
-        <ModalHeader>
-          <ModalTitle id="song-library-title">
-            Song Library
-            {isLoading && <span> (Loading...)</span>}
-          </ModalTitle>
-          <CloseButton 
-            onClick={onClose}
-            aria-label="Close song library"
-          >
-            ×
-          </CloseButton>
-        </ModalHeader>
-        
-        {usingFallbackData && (
-          <InfoBanner>
-            Using fallback data. Some features may be limited.
-          </InfoBanner>
-        )}
-        
-        {error && (
-          <ErrorMessage>
-            <p>{error}</p>
-            <ButtonRow>
-              <ActionButton 
-                onClick={handleRetry}
-                disabled={isLoading || isCheckingConnection}
-              >
-                Retry
-              </ActionButton>
-              <ActionButton 
-                onClick={handleCheckConnection}
-                disabled={isLoading || isCheckingConnection}
-              >
-                Check Connection
-              </ActionButton>
-            </ButtonRow>
-          </ErrorMessage>
-        )}
-        
-        <ModalBody>
-          <SongLibrary 
-            onSongLoad={onSongLoad}
-            onClose={onClose}
-          />
+    <>
+      <ModalOverlay onClick={onClose}>
+        <ModalContent 
+          onClick={e => e.stopPropagation()}
+          role="dialog"
+          aria-labelledby="song-library-title"
+          aria-modal="true"
+        >
+          <ModalHeader>
+            <ModalTitle id="song-library-title">
+              Song Library
+              {isLoading && <span> (Loading...)</span>}
+            </ModalTitle>
+            <CloseButton 
+              onClick={onClose}
+              aria-label="Close song library"
+            >
+              ×
+            </CloseButton>
+          </ModalHeader>
           
-          {(isLoading || isCheckingConnection) && (
-            <LoadingOverlay>
-              <Spinner />
-              <LoadingText>
-                {isCheckingConnection ? 'Checking database connection...' : 'Loading songs...'}
-              </LoadingText>
-            </LoadingOverlay>
+          {usingFallbackData && (
+            <InfoBanner>
+              Using fallback data. Some features may be limited.
+            </InfoBanner>
           )}
-        </ModalBody>
-      </ModalContent>
-    </ModalOverlay>
+          
+          {error && (
+            <ErrorMessage>
+              <p>{error}</p>
+              <ButtonRow>
+                <ActionButton 
+                  onClick={handleRetry}
+                  disabled={isLoading || isCheckingConnection}
+                >
+                  Retry
+                </ActionButton>
+                <ActionButton 
+                  onClick={handleCheckConnection}
+                  disabled={isLoading || isCheckingConnection}
+                >
+                  Check Connection
+                </ActionButton>
+              </ButtonRow>
+            </ErrorMessage>
+          )}
+          
+          <ModalBody>
+            <SongLibrary 
+              onSongLoad={onSongLoad}
+              onClose={onClose}
+            />
+            
+            {(isLoading || isCheckingConnection) && (
+              <LoadingOverlay>
+                <Spinner />
+                <LoadingText>
+                  {isCheckingConnection ? 'Checking database connection...' : 'Loading songs...'}
+                </LoadingText>
+              </LoadingOverlay>
+            )}
+            
+            <AddNewButton
+              onClick={handleAddNewSong}
+              aria-label="Add new song"
+              title="Add new song"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path 
+                  fill="currentColor" 
+                  d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"
+                />
+              </svg>
+            </AddNewButton>
+          </ModalBody>
+        </ModalContent>
+      </ModalOverlay>
+      
+      <AddSongModal
+        isOpen={addSongModalOpen}
+        onClose={() => setAddSongModalOpen(false)}
+        isEditMode={false}
+        onSongSaved={handleSongSaved}
+      />
+    </>
   );
 };
 

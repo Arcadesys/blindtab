@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import SongList from '../Navigation/SongList';
 import { useSong } from '../../contexts/SongContext';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
-import SongEditorModal from './SongEditorModal';
+import AddSongModal from './AddSongModal';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -116,10 +116,10 @@ const SongListModal: React.FC<SongListModalProps> = ({
   onClose, 
   onSongSelect 
 }) => {
-  const { songs, deleteSongById } = useSong();
+  const { songs, deleteSongById, refreshSongList } = useSong();
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [isNewSong, setIsNewSong] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   
   if (!isOpen) return null;
@@ -137,14 +137,20 @@ const SongListModal: React.FC<SongListModalProps> = ({
   
   const handleEditSong = () => {
     if (selectedSongId) {
-      setIsNewSong(false);
+      setIsEditMode(true);
       setEditorOpen(true);
     }
   };
   
   const handleNewSong = () => {
-    setIsNewSong(true);
+    setIsEditMode(false);
     setEditorOpen(true);
+  };
+  
+  const handleSongSaved = async (songId: string) => {
+    await refreshSongList();
+    setSelectedSongId(songId);
+    announceToScreenReader(`Song ${isEditMode ? 'updated' : 'created'} successfully`);
   };
   
   const handleDeleteSong = async () => {
@@ -260,11 +266,12 @@ const SongListModal: React.FC<SongListModalProps> = ({
         </ModalContent>
       </ModalOverlay>
       
-      <SongEditorModal 
+      <AddSongModal 
         isOpen={editorOpen}
         onClose={() => setEditorOpen(false)}
-        songId={isNewSong ? undefined : selectedSongId || undefined}
-        isNewSong={isNewSong}
+        songId={isEditMode ? selectedSongId || undefined : undefined}
+        isEditMode={isEditMode}
+        onSongSaved={handleSongSaved}
       />
     </>
   );
