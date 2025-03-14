@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { SongData, SongLine } from '../../types/song';
 import { useDisplay } from '../../contexts/DisplayContext';
@@ -22,17 +22,27 @@ const LeadsheetContent = styled.div<{ $fontSize: number }>`
   line-height: 1.5;
   white-space: pre-wrap;
   overflow: hidden;
+  position: relative;
 `;
 
-const LyricsContainer = styled.div`
+// Container for both current and next/previous lines
+const AnimationContainer = styled.div`
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+`;
+
+// Container that will be animated
+const LyricsContainer = styled.div<{ $animationOffset: string }>`
+  position: relative;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: flex-start;
   padding-left: 5%;
+  transition: transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transform: translateY(${props => props.$animationOffset});
 `;
 
 // Using a monospace font for consistent character widths
@@ -90,13 +100,18 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
   songData,
   currentLineIndex = 0
 }) => {
-  const { fontSize, linesToDisplay, autoResize } = useDisplay();
+  const { fontSize, linesToDisplay, autoResize, enableAnimations } = useDisplay();
   const [visibleLines, setVisibleLines] = useState<SongLine[]>([]);
+  const [animationOffset, setAnimationOffset] = useState('0');
+  const [prevLineIndex, setPrevLineIndex] = useState(currentLineIndex);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lineHeightRef = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Convert song lines to string array for auto-resize calculation
   const songLinesText = songData?.songData.map(line => line.lyric) || [];
   
-  const { containerRef, calculatedFontSize } = useAutoResize(
+  const { calculatedFontSize } = useAutoResize(
     songLinesText,
     {
       minFontSize: 16,
@@ -104,21 +119,103 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
     }
   );
   
-  // Update visible lines when current line or lines to display changes
+  // Clean up any pending animations on unmount
+  useEffect(() => {
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  // Calculate approximate line height based on font size
+  useEffect(() => {
+    const currentFontSize = autoResize ? calculatedFontSize : fontSize;
+    // Line height is typically 1.5 times the font size
+    lineHeightRef.current = currentFontSize * 1.5;
+  }, [fontSize, calculatedFontSize, autoResize]);
+  
+  // Handle line navigation with animation
   useEffect(() => {
     if (!songData) {
       setVisibleLines([]);
       return;
     }
     
-    const startIndex = Math.max(0, currentLineIndex);
-    const endIndex = Math.min(
-      songData.songData.length,
-      startIndex + (linesToDisplay || 2)
-    );
+    // Load more lines than we need to display for smooth scrolling
+    const extraLines = 2; // Extra lines for animation buffer
+    const totalLinesToLoad = linesToDisplay + extraLines;
     
-    setVisibleLines(songData.songData.slice(startIndex, endIndex));
-  }, [songData, currentLineIndex, linesToDisplay]);
+    // If animations are disabled or it's the initial load, just update the visible lines
+    if (!enableAnimations || currentLineIndex === prevLineIndex) {
+      // Load lines without animation
+      const startIndex = Math.max(0, currentLineIndex);
+      const endIndex = Math.min(
+        songData.songData.length,
+        startIndex + linesToDisplay
+      );
+      
+      setVisibleLines(songData.songData.slice(startIndex, endIndex));
+      setAnimationOffset('0');
+      setPrevLineIndex(currentLineIndex);
+      return;
+    }
+    
+    // Determine if we're moving forward or backward
+    const isMovingForward = currentLineIndex > prevLineIndex;
+    
+    if (isMovingForward) {
+      // Moving forward: load current line + next lines
+      const startIndex = Math.max(0, currentLineIndex - 1); // Include previous line for smooth transition
+      const endIndex = Math.min(
+        songData.songData.length,
+        currentLineIndex + linesToDisplay + 1 // Add extra line at the end
+      );
+      
+      // Set lines first
+      setVisibleLines(songData.songData.slice(startIndex, endIndex));
+      
+      // Start with offset showing the previous position
+      // Use a consistent offset for smooth animation
+      setAnimationOffset(`${lineHeightRef.current}px`);
+      
+      // After a tiny delay to ensure the DOM has updated, animate to the new position
+      requestAnimationFrame(() => {
+        // Small delay to make the animation more noticeable
+        setTimeout(() => {
+          setAnimationOffset('0');
+        }, 30);
+      });
+    } else {
+      // Moving backward: load previous lines + current line
+      const startIndex = Math.max(0, currentLineIndex - 1); // Include extra line at the beginning
+      const endIndex = Math.min(
+        songData.songData.length,
+        currentLineIndex + linesToDisplay
+      );
+      
+      // Set lines first
+      setVisibleLines(songData.songData.slice(startIndex, endIndex));
+      
+      // Start with offset showing the next position
+      // Use a consistent offset for smooth animation
+      setAnimationOffset(`-${lineHeightRef.current}px`);
+      
+      // After a tiny delay to ensure the DOM has updated, animate to the new position
+      requestAnimationFrame(() => {
+        // Small delay to make the animation more noticeable
+        setTimeout(() => {
+          setAnimationOffset('0');
+        }, 30);
+      });
+    }
+    
+    // Update the previous line index after animation completes
+    animationTimeoutRef.current = setTimeout(() => {
+      setPrevLineIndex(currentLineIndex);
+    }, 850); // Slightly longer than the CSS transition duration
+    
+  }, [songData, currentLineIndex, prevLineIndex, linesToDisplay, enableAnimations, calculatedFontSize]);
   
   // Render a line with chords
   const renderLineWithChords = (line: SongLine, index: number) => {
@@ -166,9 +263,11 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
   return (
     <LeadsheetContainer ref={containerRef}>
       <LeadsheetContent $fontSize={autoResize ? calculatedFontSize : fontSize}>
-        <LyricsContainer>
-          {visibleLines.map(renderLineWithChords)}
-        </LyricsContainer>
+        <AnimationContainer>
+          <LyricsContainer $animationOffset={animationOffset}>
+            {visibleLines.map(renderLineWithChords)}
+          </LyricsContainer>
+        </AnimationContainer>
         
         <LineCounter>
           {currentLineIndex + 1}/{songData.songData.length}

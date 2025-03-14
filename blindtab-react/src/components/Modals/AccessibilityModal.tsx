@@ -211,7 +211,9 @@ const AccessibilityModal: React.FC<AccessibilityModalProps> = ({ isOpen, onClose
     linesToDisplay, 
     setLinesToDisplay, 
     autoResize, 
-    toggleAutoResize 
+    toggleAutoResize,
+    enableAnimations,
+    toggleAnimations
   } = useDisplay();
   
   const { isDarkTheme, toggleTheme } = useTheme();
@@ -238,6 +240,11 @@ const AccessibilityModal: React.FC<AccessibilityModalProps> = ({ isOpen, onClose
   const handleThemeToggle = () => {
     toggleTheme();
     announceToScreenReader(`${!isDarkTheme ? 'Dark' : 'Light'} theme enabled`);
+  };
+  
+  const handleAnimationsToggle = () => {
+    toggleAnimations();
+    announceToScreenReader(`Animations ${!enableAnimations ? 'enabled' : 'disabled'}`);
   };
   
   return (
@@ -320,6 +327,23 @@ const AccessibilityModal: React.FC<AccessibilityModalProps> = ({ isOpen, onClose
               </ToggleSwitch>
               <label htmlFor="dark-theme">Dark Theme</label>
             </div>
+          </SettingGroup>
+          
+          <SettingGroup>
+            <SettingTitle>Scroll Animations</SettingTitle>
+            <SettingDescription>
+              Enable smooth scrolling animations when navigating through songs.
+              Disabling may improve performance and reduce motion for users sensitive to animations.
+            </SettingDescription>
+            <ToggleSwitch>
+              <input 
+                type="checkbox" 
+                checked={enableAnimations}
+                onChange={handleAnimationsToggle}
+                aria-label="Toggle animations"
+              />
+              <span></span>
+            </ToggleSwitch>
           </SettingGroup>
           
           <SettingGroup>

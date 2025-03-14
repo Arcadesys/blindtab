@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { useDisplay } from '../../contexts/DisplayContext';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
+import Slider from '../common/Slider';
 
 const ControlsContainer = styled.div`
   display: flex;
@@ -63,7 +64,12 @@ const AutoResizeButton = styled(ControlButton)<{ $active: boolean }>`
 const FontSizeControls = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
+  width: 180px;
+`;
+
+const FontSizeSlider = styled(Slider)`
+  width: 100%;
 `;
 
 const LineControls = styled.div`
@@ -77,18 +83,29 @@ const ValueDisplay = styled.span`
   text-align: center;
 `;
 
+const NavigationSlider = styled(Slider)`
+  width: 200px;
+  margin: 0 0.5rem;
+`;
+
 interface ControlsPanelProps {
   onPrevious?: () => void;
   onNext?: () => void;
   hasPrevious: boolean;
   hasNext: boolean;
+  currentLineIndex: number;
+  totalLines: number;
+  onSliderChange: (value: number) => void;
 }
 
 const ControlsPanel: React.FC<ControlsPanelProps> = ({
   onPrevious,
   onNext,
   hasPrevious,
-  hasNext
+  hasNext,
+  currentLineIndex,
+  totalLines,
+  onSliderChange
 }) => {
   const { 
     fontSize, 
@@ -148,6 +165,16 @@ const ControlsPanel: React.FC<ControlsPanelProps> = ({
           </svg>
         </ControlButton>
         
+        <NavigationSlider
+          min={0}
+          max={Math.max(0, totalLines - 1)}
+          value={currentLineIndex}
+          onChange={onSliderChange}
+          disabled={totalLines <= 1}
+          ariaLabel="Song navigation"
+          valueFormat={(value, max) => `${value + 1}/${max + 1}`}
+        />
+        
         <ControlButton 
           onClick={handleNext}
           disabled={!hasNext}
@@ -166,35 +193,18 @@ const ControlsPanel: React.FC<ControlsPanelProps> = ({
       
       <ControlGroup>
         <FontSizeControls className="font-size-controls">
-          <ControlButton 
-            onClick={() => handleFontSizeChange(-2)}
-            aria-label="Decrease font size"
-            title="Decrease font size"
-            disabled={autoResize || fontSize <= 12}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path 
-                fill="currentColor" 
-                d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"
-              />
-            </svg>
-          </ControlButton>
-          
-          <ValueDisplay>{fontSize}px</ValueDisplay>
-          
-          <ControlButton 
-            onClick={() => handleFontSizeChange(2)}
-            aria-label="Increase font size"
-            title="Increase font size"
-            disabled={autoResize || fontSize >= 72}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path 
-                fill="currentColor" 
-                d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"
-              />
-            </svg>
-          </ControlButton>
+          <FontSizeSlider
+            min={12}
+            max={72}
+            value={fontSize}
+            onChange={(newSize) => {
+              setFontSize(newSize);
+              announceToScreenReader(`Font size changed to ${newSize} pixels`);
+            }}
+            disabled={autoResize}
+            ariaLabel="Font size"
+            valueFormat={(value) => `${value}px`}
+          />
         </FontSizeControls>
         
         <LineControls className="lines-controls">

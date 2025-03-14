@@ -182,6 +182,9 @@ const AppContent = () => {
           onNext={handleNext}
           hasPrevious={currentLineIndex > 0}
           hasNext={currentSong ? currentLineIndex < currentSong.songData.length - 1 : false}
+          currentLineIndex={currentLineIndex}
+          totalLines={currentSong ? currentSong.songData.length : 0}
+          onSliderChange={setCurrentLineIndex}
         />
         
         <AccessibilityModal 
