@@ -6,15 +6,16 @@
   "scripts": {
     "dev": "vite --mode development",
     "dev:staging": "vite --mode staging",
-    "build": "tsc -b && vite build --mode production",
-    "build:staging": "tsc -b && vite build --mode staging",
-    "build:dev": "tsc -b && vite build --mode development",
+    "build": "vite build --mode production",
+    "build:staging": "vite build --mode staging",
+    "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
     "seed": "node prisma/seed.js",
     "seed:staging": "NODE_ENV=staging node prisma/seed.js",
     "seed:prod": "NODE_ENV=production node prisma/seed.js",
-    "setup-env": "node scripts/setup-env.js"
+    "setup-env": "node scripts/setup-env.js",
+    "typecheck": "tsc -b"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
