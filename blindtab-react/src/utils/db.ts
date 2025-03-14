@@ -284,12 +284,31 @@ export const songOperations = {
   },
   
   // Update an existing song
-  updateSong: async (id: string, songData: SongData): Promise<boolean> => {
-    return safeDbOperation(
-      () => browserDB.updateSong(id, songData),
-      false,
-      `Update song ${id}`
-    );
+  updateSong: async (id: string, markdown: string): Promise<boolean> => {
+    try {
+      // Parse the markdown string into SongData
+      const songData = parseMarkdown(markdown);
+      
+      // Additional validation
+      if (!songData.songInfo || !songData.songData) {
+        console.error('Invalid song data structure: missing songInfo or songData');
+        return false;
+      }
+      
+      if (!songData.songInfo.title || !songData.songInfo.artist) {
+        console.error('Invalid song data: missing title or artist');
+        return false;
+      }
+      
+      return safeDbOperation(
+        () => browserDB.updateSong(id, songData),
+        false,
+        `Update song ${id}`
+      );
+    } catch (error) {
+      console.error('Error parsing markdown for song update:', error);
+      return false;
+    }
   },
   
   // Delete a song

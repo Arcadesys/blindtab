@@ -279,6 +279,7 @@ Time: 4/4
       // Validate the markdown
       const songData = parseMarkdown(markdown);
       
+      // Check for required metadata
       if (!songData.songInfo.title || songData.songInfo.title === 'Untitled') {
         setError('Song must have a title (use "# Title" at the top)');
         setIsSaving(false);
@@ -287,6 +288,37 @@ Time: 4/4
       
       if (!songData.songInfo.artist || songData.songInfo.artist === 'Unknown') {
         setError('Song must have an artist (use "## Artist" after the title)');
+        setIsSaving(false);
+        return;
+      }
+      
+      // Check if there are any lyrics
+      if (!songData.songData || songData.songData.length === 0) {
+        setError('Song must have lyrics content');
+        setIsSaving(false);
+        return;
+      }
+      
+      // Check if there's at least one non-empty lyric line
+      const hasLyrics = songData.songData.some(line => line.lyric && line.lyric.trim() !== '');
+      if (!hasLyrics) {
+        setError('Song must have at least one line of lyrics');
+        setIsSaving(false);
+        return;
+      }
+      
+      // Validate chord positions if chords exist
+      const invalidChordLines = songData.songData
+        .filter(line => line.chords && line.chords.length > 0)
+        .filter(line => {
+          // Check if any chord has a position beyond the lyric length
+          return line.chords.some(chord => 
+            chord.position > (line.lyric ? line.lyric.length : 0)
+          );
+        });
+      
+      if (invalidChordLines.length > 0) {
+        setError('Some chord positions are invalid (positioned beyond the end of lyrics)');
         setIsSaving(false);
         return;
       }
