@@ -184,6 +184,121 @@ const Spinner = styled.div`
   }
 `;
 
+// Enhanced styling for the song list to make it more like a picklist
+const SongPicklist = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: var(--bg-primary);
+  margin-top: 0.5rem;
+`;
+
+const PicklistItem = styled.div<{ $isSelected: boolean; disabled?: boolean }>`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: ${props => props.$isSelected ? 'var(--primary-color)' : props.disabled ? 'var(--bg-disabled, #e9e9e9)' : 'transparent'};
+  color: ${props => props.$isSelected ? 'white' : 'var(--text-primary)'};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  opacity: ${props => props.disabled ? 0.7 : 1};
+  transition: background-color 0.2s;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &:hover {
+    background-color: ${props => props.disabled ? 'var(--bg-disabled, #e9e9e9)' : props.$isSelected ? 'var(--primary-hover-color)' : 'var(--bg-hover)'};
+  }
+`;
+
+const PicklistInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const PicklistTitle = styled.div`
+  font-weight: bold;
+`;
+
+const PicklistArtist = styled.div`
+  font-size: 0.85rem;
+  opacity: 0.8;
+`;
+
+const PicklistActions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const LoadButton = styled.button<{ $isLoading?: boolean }>`
+  padding: 0.5rem 1rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  &:hover, &:focus {
+    background-color: var(--primary-hover-color);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`;
+
+const CategoryHeader = styled.div`
+  font-weight: bold;
+  padding: 0.5rem;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  margin-top: 1rem;
+  border-radius: 4px 4px 0 0;
+`;
+
+const RefreshButton = styled.button`
+  padding: 0.5rem;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  
+  &:hover, &:focus {
+    background-color: var(--bg-hover);
+  }
+  
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`;
+
+const SearchHeader = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
 interface SongLibraryProps {
   onSongLoad: (songId: string) => void;
   onClose?: () => void;
@@ -198,14 +313,21 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
   const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   
+  // Memoize the refreshSongList function to prevent infinite loops
+  const handleRefreshSongList = useCallback(() => {
+    refreshSongList();
+    setLoadStartTime(Date.now());
+    setTimeoutError(null);
+    announceToScreenReader('Refreshing song list');
+  }, [refreshSongList]);
+  
   // Refresh song list when component mounts - but only once
   useEffect(() => {
     if (!hasInitialized) {
-      refreshSongList();
-      setLoadStartTime(Date.now());
+      handleRefreshSongList();
       setHasInitialized(true);
     }
-  }, [refreshSongList, hasInitialized]);
+  }, [handleRefreshSongList, hasInitialized]);
   
   // Check for timeout
   useEffect(() => {
@@ -258,10 +380,8 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
   };
   
   const handleRetry = useCallback(() => {
-    refreshSongList();
-    setLoadStartTime(Date.now());
-    setTimeoutError(null);
-  }, [refreshSongList]);
+    handleRefreshSongList();
+  }, [handleRefreshSongList]);
   
   // Filter songs based on search term
   const filteredSongs = songs.available.filter(song => 
@@ -269,11 +389,23 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
     song.artist.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
+  // Group songs by artist for better organization
+  const songsByArtist = filteredSongs.reduce((acc, song) => {
+    if (!acc[song.artist]) {
+      acc[song.artist] = [];
+    }
+    acc[song.artist].push(song);
+    return acc;
+  }, {} as Record<string, Song[]>);
+  
+  // Sort artists alphabetically
+  const sortedArtists = Object.keys(songsByArtist).sort();
+  
   // Render loading state
   if (isLoading && !timeoutError && filteredSongs.length === 0) {
     return (
       <LibraryContainer>
-        <SearchBar>
+        <SearchHeader>
           <SearchInput 
             placeholder="Search songs..." 
             value={searchTerm}
@@ -281,10 +413,10 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
             disabled={true}
             aria-label="Search songs"
           />
-        </SearchBar>
+        </SearchHeader>
         <LoadingState>
           <Spinner />
-          <div>Loading songs...</div>
+          <div>Loading songs from database...</div>
         </LoadingState>
       </LibraryContainer>
     );
@@ -294,7 +426,7 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
   if ((error || timeoutError) && filteredSongs.length === 0) {
     return (
       <LibraryContainer>
-        <SearchBar>
+        <SearchHeader>
           <SearchInput 
             placeholder="Search songs..." 
             value={searchTerm}
@@ -302,7 +434,7 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
             disabled={true}
             aria-label="Search songs"
           />
-        </SearchBar>
+        </SearchHeader>
         <ErrorState>
           <div>{error || timeoutError}</div>
           <RetryButton onClick={handleRetry}>
@@ -317,14 +449,26 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
   if (filteredSongs.length === 0) {
     return (
       <LibraryContainer>
-        <SearchBar>
+        <SearchHeader>
           <SearchInput 
             placeholder="Search songs..." 
             value={searchTerm}
             onChange={handleSearchChange}
             aria-label="Search songs"
           />
-        </SearchBar>
+          <RefreshButton 
+            onClick={handleRefreshSongList}
+            aria-label="Refresh song list"
+            title="Refresh song list"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+              <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
+            </svg>
+          </RefreshButton>
+        </SearchHeader>
         <EmptyState>
           <div>No songs found</div>
           {searchTerm ? (
@@ -337,10 +481,10 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
     );
   }
   
-  // Render song list
+  // Render song picklist
   return (
     <LibraryContainer>
-      <SearchBar>
+      <SearchHeader>
         <SearchInput 
           placeholder="Search songs..." 
           value={searchTerm}
@@ -348,49 +492,127 @@ const SongLibrary: React.FC<SongLibraryProps> = ({ onSongLoad, onClose }) => {
           disabled={isLoading}
           aria-label="Search songs"
         />
-      </SearchBar>
+        <RefreshButton 
+          onClick={handleRefreshSongList}
+          aria-label="Refresh song list"
+          title="Refresh song list"
+          disabled={isLoading}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
+          </svg>
+        </RefreshButton>
+      </SearchHeader>
+      
       <SongListScroll>
-        {filteredSongs.map(song => (
-          <SongItem 
-            key={song.id}
-            className={selectedSongId === song.id ? 'selected' : ''}
-            onClick={() => handleSongSelect(song.id)}
-            disabled={isLoading}
-          >
-            <SongInfo disabled={isLoading}>
-              <SongTitle>{song.title}</SongTitle>
-              <SongArtist>{song.artist}</SongArtist>
-            </SongInfo>
-            <SongActions>
-              <ActionButton
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLoadSong(song.id);
-                }}
-                disabled={isLoading || loadingId === song.id}
-                aria-label={`Load ${song.title}`}
-                title={`Load ${song.title}`}
+        {searchTerm ? (
+          // When searching, show a flat list
+          <SongPicklist>
+            {filteredSongs.map(song => (
+              <PicklistItem 
+                key={song.id}
+                $isSelected={selectedSongId === song.id}
+                onClick={() => handleSongSelect(song.id)}
+                disabled={isLoading}
               >
-                {loadingId === song.id ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v6l4 2" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
-                )}
-              </ActionButton>
-            </SongActions>
-          </SongItem>
-        ))}
+                <PicklistInfo>
+                  <PicklistTitle>{song.title}</PicklistTitle>
+                  <PicklistArtist>{song.artist}</PicklistArtist>
+                </PicklistInfo>
+                <PicklistActions>
+                  <LoadButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLoadSong(song.id);
+                    }}
+                    disabled={isLoading || loadingId === song.id}
+                    aria-label={`Load ${song.title}`}
+                    title={`Load ${song.title}`}
+                    $isLoading={loadingId === song.id}
+                  >
+                    {loadingId === song.id ? (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 6v6l4 2" />
+                        </svg>
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg>
+                        Load
+                      </>
+                    )}
+                  </LoadButton>
+                </PicklistActions>
+              </PicklistItem>
+            ))}
+          </SongPicklist>
+        ) : (
+          // When not searching, group by artist
+          sortedArtists.map(artist => (
+            <div key={artist}>
+              <CategoryHeader>{artist}</CategoryHeader>
+              <SongPicklist>
+                {songsByArtist[artist].map(song => (
+                  <PicklistItem 
+                    key={song.id}
+                    $isSelected={selectedSongId === song.id}
+                    onClick={() => handleSongSelect(song.id)}
+                    disabled={isLoading}
+                  >
+                    <PicklistInfo>
+                      <PicklistTitle>{song.title}</PicklistTitle>
+                    </PicklistInfo>
+                    <PicklistActions>
+                      <LoadButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLoadSong(song.id);
+                        }}
+                        disabled={isLoading || loadingId === song.id}
+                        aria-label={`Load ${song.title}`}
+                        title={`Load ${song.title}`}
+                        $isLoading={loadingId === song.id}
+                      >
+                        {loadingId === song.id ? (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10" />
+                              <path d="M12 6v6l4 2" />
+                            </svg>
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            Load
+                          </>
+                        )}
+                      </LoadButton>
+                    </PicklistActions>
+                  </PicklistItem>
+                ))}
+              </SongPicklist>
+            </div>
+          ))
+        )}
+        
         {isLoading && (
           <LoadingState>
             <Spinner />
             <div>Loading more songs...</div>
           </LoadingState>
         )}
+        
         {timeoutError && (
           <ErrorState>
             <div>{timeoutError}</div>
