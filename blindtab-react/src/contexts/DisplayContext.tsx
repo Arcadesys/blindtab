@@ -4,9 +4,11 @@ type DisplayContextType = {
   fontSize: number;
   linesToDisplay: number;
   autoResize: boolean;
+  enableAnimations: boolean;
   setFontSize: (size: number) => void;
   setLinesToDisplay: (lines: number) => void;
   toggleAutoResize: () => void;
+  toggleAnimations: () => void;
 };
 
 const DisplayContext = createContext<DisplayContextType | undefined>(undefined);
@@ -26,6 +28,11 @@ export const DisplayProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const savedAutoResize = localStorage.getItem('autoResize');
     return savedAutoResize ? savedAutoResize === 'true' : true;
   });
+  
+  const [enableAnimations, setEnableAnimations] = useState(() => {
+    const savedAnimations = localStorage.getItem('enableAnimations');
+    return savedAnimations ? savedAnimations === 'true' : true;
+  });
 
   useEffect(() => {
     localStorage.setItem('fontSize', fontSize.toString());
@@ -38,9 +45,17 @@ export const DisplayProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem('autoResize', autoResize.toString());
   }, [autoResize]);
+  
+  useEffect(() => {
+    localStorage.setItem('enableAnimations', enableAnimations.toString());
+  }, [enableAnimations]);
 
   const toggleAutoResize = () => {
     setAutoResize(prev => !prev);
+  };
+  
+  const toggleAnimations = () => {
+    setEnableAnimations(prev => !prev);
   };
 
   return (
@@ -49,9 +64,11 @@ export const DisplayProvider: React.FC<{ children: React.ReactNode }> = ({ child
         fontSize, 
         linesToDisplay, 
         autoResize, 
+        enableAnimations,
         setFontSize, 
         setLinesToDisplay, 
-        toggleAutoResize 
+        toggleAutoResize,
+        toggleAnimations
       }}
     >
       {children}
