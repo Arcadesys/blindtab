@@ -83,7 +83,7 @@ export function ImportSong() {
   const [songText, setSongText] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const { createNewSong } = useSong();
+  const { createNewSong, refreshSongList } = useSong();
 
   const handleImport = async () => {
     try {
@@ -98,12 +98,15 @@ export function ImportSong() {
       const songId = await createNewSong(songData);
       
       if (songId) {
+        // Refresh the song list to show the new song
+        await refreshSongList();
         setStatus('success');
         setSongText('');
       } else {
         throw new Error('Failed to save song');
       }
     } catch (error) {
+      console.error('Import error:', error);
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Failed to import song');
     }
