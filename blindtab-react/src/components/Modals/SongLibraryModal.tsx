@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import SongLibrary from '../Navigation/SongLibrary';
 import { useSong } from '../../contexts/SongContext';
 import AddSongModal from './AddSongModal';
+import { ImportSong } from '../ImportSong';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
 
 const ModalOverlay = styled.div`
@@ -187,6 +188,72 @@ const AddNewButton = styled.button`
   }
 `;
 
+const TabContainer = styled.div`
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 1rem;
+`;
+
+const Tab = styled.button<{ $active: boolean }>`
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: none;
+  color: ${props => props.$active ? 'var(--text-color)' : 'var(--text-secondary)'};
+  border-bottom: 2px solid ${props => props.$active ? 'var(--primary-color)' : 'transparent'};
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    color: var(--text-color);
+  }
+`;
+
+const ErrorContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+`;
+
+const RetryButton = styled.button`
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  
+  &:hover, &:focus {
+    background: var(--primary-color-dark, #0056b3);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const AddButton = styled.button`
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  
+  &:hover, &:focus {
+    background: var(--primary-color-dark, #0056b3);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 interface SongLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -198,10 +265,11 @@ const SongLibraryModal: React.FC<SongLibraryModalProps> = ({
   onClose, 
   onSongLoad 
 }) => {
-  const { isLoading, error, refreshSongList, checkDatabaseConnection } = useSong();
+  const { isLoading, error, refreshSongList, checkDatabaseConnection, isConnected } = useSong();
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown');
   const [addSongModalOpen, setAddSongModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'library' | 'import'>('library');
   
   // Check connection when modal opens
   useEffect(() => {
@@ -271,69 +339,56 @@ const SongLibraryModal: React.FC<SongLibraryModalProps> = ({
             </CloseButton>
           </ModalHeader>
           
-          {usingFallbackData && (
-            <InfoBanner>
-              Using fallback data. Some features may be limited.
-            </InfoBanner>
-          )}
-          
-          {error && (
-            <ErrorMessage>
-              <p>{error}</p>
-              <ButtonRow>
-                <ActionButton 
-                  onClick={handleRetry}
-                  disabled={isLoading || isCheckingConnection}
-                >
-                  Retry
-                </ActionButton>
-                <ActionButton 
-                  onClick={handleCheckConnection}
-                  disabled={isLoading || isCheckingConnection}
-                >
-                  Check Connection
-                </ActionButton>
-              </ButtonRow>
-            </ErrorMessage>
-          )}
-          
-          <ModalBody>
-            <SongLibrary 
-              onSongLoad={onSongLoad}
-              onClose={onClose}
-            />
-            
-            {(isLoading || isCheckingConnection) && (
-              <LoadingOverlay>
-                <Spinner />
-                <LoadingText>
-                  {isCheckingConnection ? 'Checking database connection...' : 'Loading songs...'}
-                </LoadingText>
-              </LoadingOverlay>
-            )}
-            
-            <AddNewButton
-              onClick={handleAddNewSong}
-              aria-label="Add new song"
-              title="Add new song"
+          <TabContainer>
+            <Tab 
+              $active={activeTab === 'library'} 
+              onClick={() => setActiveTab('library')}
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path 
-                  fill="currentColor" 
-                  d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"
+              Library
+            </Tab>
+            <Tab 
+              $active={activeTab === 'import'} 
+              onClick={() => setActiveTab('import')}
+            >
+              Import from Web
+            </Tab>
+          </TabContainer>
+          
+          {activeTab === 'library' ? (
+            <>
+              {!isConnected ? (
+                <ErrorContainer>
+                  <ErrorMessage>
+                    Unable to connect to the song library. Please check your connection and try again.
+                  </ErrorMessage>
+                  <RetryButton onClick={handleRetry}>
+                    Retry Connection
+                  </RetryButton>
+                </ErrorContainer>
+              ) : (
+                <SongLibrary 
+                  onSongLoad={onSongLoad}
+                  onClose={onClose}
                 />
-              </svg>
-            </AddNewButton>
-          </ModalBody>
+              )}
+              <AddButton onClick={handleAddNewSong}>
+                + Add New Song
+              </AddButton>
+            </>
+          ) : (
+            <ImportSong />
+          )}
         </ModalContent>
       </ModalOverlay>
       
-      <AddSongModal
-        isOpen={addSongModalOpen}
-        onClose={() => setAddSongModalOpen(false)}
-        isEditMode={false}
-        onSongSaved={handleSongSaved}
-      />
+      {addSongModalOpen && (
+        <AddSongModal
+          isOpen={addSongModalOpen}
+          onClose={() => setAddSongModalOpen(false)}
+          isEditMode={false}
+          onSongSaved={handleSongSaved}
+        />
+      )}
     </>
   );
 };
