@@ -1,9 +1,25 @@
 import express from 'express';
 import cors from 'cors';
-import { PrismaClient } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
 import { SongData } from './src/types/song';
 
-const prisma = new PrismaClient();
+// In-memory storage
+const songs = new Map<string, any>();
+
+// Add a test song
+const testSong = {
+  id: 'test-song-1',
+  title: 'Test Song',
+  artist: 'Test Artist',
+  content: [
+    {
+      lyric: 'This is a test song',
+      chords: [{ text: 'C', position: 0 }]
+    }
+  ]
+};
+songs.set(testSong.id, testSong);
+
 const app = express();
 const port = 3000;
 
@@ -13,108 +29,102 @@ app.use(express.json());
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Get all songs
-app.get('/api/songs', async (req, res) => {
+app.get('/api/songs', (req, res) => {
   try {
     console.log('Fetching all songs...');
-    const songs = await prisma.song.findMany({
-      select: {
-        id: true,
-        title: true,
-        artist: true,
-        content: true
-      }
-    });
-    console.log(`Found ${songs.length} songs`);
-    // Parse the content back to an object
-    const songsWithParsedContent = songs.map(song => ({
-      ...song,
-      content: JSON.parse(song.content)
-    }));
-    res.json(songsWithParsedContent);
+    const songList = Array.from(songs.values());
+    console.log(`Found ${songList.length} songs`);
+    res.json(songList);
   } catch (error) {
     console.error('Error getting songs:', error);
-    res.status(500).json({ error: 'Failed to get songs', details: error.message });
+    res.status(500).json({ error: 'Failed to get songs' });
   }
 });
 
 // Get a song by ID
-app.get('/api/songs/:id', async (req, res) => {
+app.get('/api/songs/:id', (req, res) => {
   try {
     console.log(`Fetching song with ID: ${req.params.id}`);
-    const song = await prisma.song.findUnique({
-      where: { id: req.params.id },
-      include: { tags: true }
-    });
+    const song = songs.get(req.params.id);
     if (!song) {
       return res.status(404).json({ error: 'Song not found' });
     }
     res.json(song);
   } catch (error) {
     console.error('Error getting song:', error);
-    res.status(500).json({ error: 'Failed to get song', details: error.message });
+    res.status(500).json({ error: 'Failed to get song' });
   }
 });
 
 // Create a song
-app.post('/api/songs', async (req, res) => {
+app.post('/api/songs', (req, res) => {
   try {
     console.log('Creating new song:', req.body);
     const songData = req.body;
-    const song = await prisma.song.create({
-      data: {
-        title: songData.songInfo.title,
-        artist: songData.songInfo.artist,
-        key: songData.songInfo.key,
-        tempo: songData.songInfo.tempo,
-        timeSignature: songData.songInfo.timeSignature,
-        content: JSON.stringify(songData.songData)
-      }
-    });
+    const id = uuidv4();
+    const song = {
+      id,
+      title: songData.songInfo.title,
+      artist: songData.songInfo.artist,
+      key: songData.songInfo.key,
+      tempo: songData.songInfo.tempo,
+      timeSignature: songData.songInfo.timeSignature,
+      content: songData.songData
+    };
+    songs.set(id, song);
     res.status(201).json(song);
   } catch (error) {
     console.error('Error creating song:', error);
-    res.status(500).json({ error: 'Failed to create song', details: error.message });
+    res.status(500).json({ error: 'Failed to create song' });
   }
 });
 
 // Update a song
-app.put('/api/songs/:id', async (req, res) => {
+app.put('/api/songs/:id', (req, res) => {
   try {
-    console.log(`Updating song with ID: ${req.params.id}`);
+    const id = req.params.id;
+    console.log(`Updating song with ID: ${id}`);
+    if (!songs.has(id)) {
+      return res.status(404).json({ error: 'Song not found' });
+    }
     const songData = req.body;
-    const song = await prisma.song.update({
-      where: { id: req.params.id },
-      data: {
-        title: songData.songInfo.title,
-        artist: songData.songInfo.artist,
-        key: songData.songInfo.key,
-        tempo: songData.songInfo.tempo,
-        timeSignature: songData.songInfo.timeSignature,
-        content: songData.songData
-      }
-    });
+    const song = {
+      id,
+      title: songData.songInfo.title,
+      artist: songData.songInfo.artist,
+      key: songData.songInfo.key,
+      tempo: songData.songInfo.tempo,
+      timeSignature: songData.songInfo.timeSignature,
+      content: songData.songData
+    };
+    songs.set(id, song);
     res.json(song);
   } catch (error) {
     console.error('Error updating song:', error);
-    res.status(500).json({ error: 'Failed to update song', details: error.message });
+    res.status(500).json({ error: 'Failed to update song' });
   }
 });
 
 // Delete a song
-app.delete('/api/songs/:id', async (req, res) => {
+app.delete('/api/songs/:id', (req, res) => {
   try {
-    console.log(`Deleting song with ID: ${req.params.id}`);
-    await prisma.song.delete({
-      where: { id: req.params.id }
-    });
+    const id = req.params.id;
+    console.log(`Deleting song with ID: ${id}`);
+    if (!songs.has(id)) {
+      return res.status(404).json({ error: 'Song not found' });
+    }
+    songs.delete(id);
     res.status(204).end();
   } catch (error) {
     console.error('Error deleting song:', error);
-    res.status(500).json({ error: 'Failed to delete song', details: error.message });
+    res.status(500).json({ error: 'Failed to delete song' });
   }
 });
 
@@ -182,21 +192,20 @@ app.delete('/api/songs/:id/tags/:tagName', async (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error', details: err.message });
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // Start server
 const server = app.listen(port, () => {
   console.log(`API server running at http://localhost:${port}`);
   console.log('Environment:', process.env.NODE_ENV);
-  console.log('Database URL:', process.env.DATABASE_URL?.replace(/\/\/.*@/, '//<credentials>@'));
-})
+  console.log('Songs in memory:', songs.size);
+});
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down gracefully...');
-  server.close(async () => {
-    await prisma.$disconnect();
+  server.close(() => {
     console.log('Server closed');
     process.exit(0);
   });

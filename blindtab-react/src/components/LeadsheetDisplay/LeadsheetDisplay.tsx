@@ -109,7 +109,7 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Convert song lines to string array for auto-resize calculation
-  const songLinesText = songData?.songData.map(line => line.lyric) || [];
+  const songLinesText = songData?.songData?.map(line => line.lyric) || [];
   
   const { calculatedFontSize } = useAutoResize(
     songLinesText,
@@ -222,7 +222,7 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
     if (!line.chords || line.chords.length === 0) {
       return (
         <LyricLine key={index} $hasChords={false}>
-          <LyricText>{line.lyric}</LyricText>
+          <LyricText>{line.lyric || ''}</LyricText>
         </LyricLine>
       );
     }
@@ -242,19 +242,18 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
             );
           })}
         </ChordContainer>
-        <LyricText>{line.lyric}</LyricText>
+        <LyricText>{line.lyric || ''}</LyricText>
       </LyricLine>
     );
   };
   
-  if (!songData) {
+  if (!songData?.songData) {
     return (
       <LeadsheetContainer ref={containerRef}>
         <LeadsheetContent $fontSize={autoResize ? calculatedFontSize : fontSize}>
-          <div style={{ textAlign: 'center' }}>
-            <p>No song loaded. Please select a song to display.</p>
-            <p>Click the song library button in the header or press 'O' to open the song library.</p>
-          </div>
+          <LyricLine $hasChords={false}>
+            <LyricText>No song loaded</LyricText>
+          </LyricLine>
         </LeadsheetContent>
       </LeadsheetContainer>
     );
@@ -265,12 +264,11 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
       <LeadsheetContent $fontSize={autoResize ? calculatedFontSize : fontSize}>
         <AnimationContainer>
           <LyricsContainer $animationOffset={animationOffset}>
-            {visibleLines.map(renderLineWithChords)}
+            {visibleLines.map((line, index) => renderLineWithChords(line, index))}
           </LyricsContainer>
         </AnimationContainer>
-        
         <LineCounter>
-          {currentLineIndex + 1}/{songData.songData.length}
+          {currentLineIndex + 1} / {songData.songData.length}
         </LineCounter>
       </LeadsheetContent>
     </LeadsheetContainer>

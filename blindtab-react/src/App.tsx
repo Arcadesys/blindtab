@@ -16,6 +16,7 @@ import { TourGuide } from './components/common';
 import GlobalStyles from './styles/GlobalStyles';
 import { SongData } from './types/song';
 import { checkDevSequence } from './utils/devMode';
+import { announceToScreenReader, initializeAccessibility } from './utils/accessibility';
 
 const AppContainer = styled.div`
   display: flex;
@@ -30,6 +31,9 @@ const MainContent = styled.main`
   flex-direction: column;
   overflow: hidden;
 `;
+
+// Initialize accessibility features when the app starts
+initializeAccessibility();
 
 // Tour steps for the onboarding guide
 const tourSteps = [
@@ -100,6 +104,11 @@ const AppContent = () => {
   // Get the current song data
   const currentSong = songs.current ? songs.loaded[songs.current] : null;
   
+  // Reset line index when song changes
+  useEffect(() => {
+    setCurrentLineIndex(0);
+  }, [songs.current]);
+  
   // Check for dev sequence
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -138,7 +147,7 @@ const AppContent = () => {
   };
   
   const handleNext = () => {
-    if (currentSong && currentLineIndex < currentSong.songData.length - 1) {
+    if (currentSong?.songData && currentLineIndex < currentSong.songData.length - 1) {
       setCurrentLineIndex(currentLineIndex + 1);
     }
   };
@@ -149,14 +158,11 @@ const AppContent = () => {
       const songData = await loadSong(songId);
       if (songData) {
         setCurrentLineIndex(0); // Reset to the beginning of the song
-        // Announce success to screen reader
-        const songTitle = songData.songInfo.title;
-        const songArtist = songData.songInfo.artist;
-        announceToScreenReader(`Loaded song: ${songTitle} by ${songArtist}`);
+        announceToScreenReader(`Loaded song: ${songData.songInfo.title} by ${songData.songInfo.artist}`);
       }
     } catch (error) {
       console.error(`Error loading song ${songId}:`, error);
-      announceToScreenReader(`Error loading song. ${error.message || 'Unknown error'}`);
+      announceToScreenReader(`Error loading song. ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
   
@@ -181,9 +187,9 @@ const AppContent = () => {
           onPrevious={handlePrevious}
           onNext={handleNext}
           hasPrevious={currentLineIndex > 0}
-          hasNext={currentSong ? currentLineIndex < currentSong.songData.length - 1 : false}
+          hasNext={currentSong?.songData ? currentLineIndex < currentSong.songData.length - 1 : false}
           currentLineIndex={currentLineIndex}
-          totalLines={currentSong ? currentSong.songData.length : 0}
+          totalLines={currentSong?.songData?.length || 0}
           onSliderChange={setCurrentLineIndex}
         />
         
