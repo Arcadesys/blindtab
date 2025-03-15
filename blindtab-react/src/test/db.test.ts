@@ -114,4 +114,28 @@ describe('Database Operations', () => {
     const allSongs = await songOperations.getAllSongs();
     expect(allSongs).toHaveLength(2);
   });
+});
+
+describe('Database Connection', () => {
+  it('should connect to the Neon database', async () => {
+    // Simple test to verify we can connect and query
+    const result = await prisma.$queryRaw`SELECT 1 as test`;
+    expect(Array.isArray(result)).toBe(true);
+    expect(result[0]).toHaveProperty('test', 1);
+  });
+
+  it('should be able to read songs from the database', async () => {
+    // Query the songs table
+    const songs = await prisma.song.findMany({
+      take: 5, // Limit to 5 songs for the test
+    });
+
+    expect(Array.isArray(songs)).toBe(true);
+    // Each song should have these properties
+    if (songs.length > 0) {
+      expect(songs[0]).toHaveProperty('id');
+      expect(songs[0]).toHaveProperty('title');
+      expect(songs[0]).toHaveProperty('artist');
+    }
+  });
 }); 

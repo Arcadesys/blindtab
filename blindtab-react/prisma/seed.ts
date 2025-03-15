@@ -73,24 +73,25 @@ Somebody to [G]lean on
 ];
 
 async function main() {
-  console.log(`Start seeding ...`);
-  
-  for (const song of sampleSongs) {
-    const createdSong = await prisma.song.create({
-      data: song
-    });
-    console.log(`Created song with ID: ${createdSong.id}`);
+  try {
+    // Create a test song
+    const song = await prisma.song.create({
+      data: {
+        title: 'Test Song',
+        artist: 'Test Artist',
+        content: '# Test Song\n## Test Artist\nTest lyrics',
+        key: 'C',
+        tempo: 120,
+        timeSignature: '4/4'
+      },
+    })
+
+    console.log('Created test song:', song)
+  } catch (error) {
+    console.error('Error seeding database:', error)
+  } finally {
+    await prisma.$disconnect()
   }
-  
-  console.log(`Seeding finished.`);
 }
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  }); 
+main().catch(console.error) 

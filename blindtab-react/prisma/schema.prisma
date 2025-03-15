@@ -1,36 +1,38 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")      // Uses connection pooling
-  directUrl = env("DATABASE_URL_UNPOOLED") // Used for migrations/direct connections
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+  schemas   = ["public"]
 }
 
 model Song {
-  id        String   @id @default(uuid())
-  title     String
-  artist    String
-  content   String   // Markdown content of the song
-  key       String?
-  tempo     Int?
+  id            String   @id @default(uuid())
+  title         String
+  artist        String
+  content       String
+  key           String?
+  tempo         Int?
   timeSignature String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tags      Tag[]    // Relation to tags
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tags          Tag[]    @relation("SongToTag")
+
+  @@map("song")
+  @@schema("public")
 }
 
 model Tag {
   id        String   @id @default(uuid())
   name      String   @unique
-  songs     Song[]   // Relation to songs
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  songs     Song[]   @relation("SongToTag")
+
+  @@map("tag")
+  @@schema("public")
 }

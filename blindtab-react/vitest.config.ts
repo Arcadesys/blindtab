@@ -14,7 +14,8 @@ export default defineConfig({
     },
     env: {
       VITE_APP_ENV: 'test',
-      DATABASE_URL: 'file:./test.db'
+      DATABASE_URL: "postgresql://blindtab-db_owner:npg_9ALt6mIzdneM@ep-ancient-art-a5wk9396-pooler.us-east-2.aws.neon.tech/blindtab-db?sslmode=require",
+      DATABASE_URL_UNPOOLED: "postgresql://blindtab-db_owner:npg_9ALt6mIzdneM@ep-ancient-art-a5wk9396.us-east-2.aws.neon.tech/blindtab-db?sslmode=require"
     }
   },
 }) 
