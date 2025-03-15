@@ -74,10 +74,12 @@ export const songOperations = {
     try {
       console.log('[Firestore] Fetching all songs');
       const snapshot = await getDocs(collection(db, COLLECTIONS.SONGS));
-      return snapshot.docs.map(doc => ({
+      const songs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Song));
+      console.log(`[Firestore] Found ${songs.length} songs`);
+      return songs;
     } catch (error) {
       console.error('[Firestore] Failed to get songs:', error);
       return [];
