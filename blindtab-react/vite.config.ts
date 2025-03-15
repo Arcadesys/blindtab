@@ -19,7 +19,13 @@ export default defineConfig(({ command, mode }) => {
       // Development server settings
       port: 5173,
       strictPort: false,
-      open: true
+      open: true,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true
+        }
+      }
     },
     build: {
       // Build settings

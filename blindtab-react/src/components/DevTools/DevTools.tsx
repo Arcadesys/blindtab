@@ -2,7 +2,6 @@ import React, { useState, useCallback, memo } from 'react';
 import styled from 'styled-components';
 import { Button } from '../common';
 import { shouldShowDevTools } from '../../utils/devMode';
-import EnvironmentInfo from './EnvironmentInfo';
 
 interface DevToolsProps {
   onTriggerTour: () => void;
@@ -85,14 +84,9 @@ const KeyboardHint = styled.div`
 
 const DevTools: React.FC<DevToolsProps> = memo(({ onTriggerTour, onResetTour }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const [showEnvInfo, setShowEnvInfo] = useState(false);
   
   const toggleCollapse = useCallback(() => {
     setIsCollapsed(prev => !prev);
-  }, []);
-  
-  const toggleEnvInfo = useCallback(() => {
-    setShowEnvInfo(prev => !prev);
   }, []);
   
   // Only show dev tools in development mode
@@ -102,16 +96,42 @@ const DevTools: React.FC<DevToolsProps> = memo(({ onTriggerTour, onResetTour }) 
   
   if (isCollapsed) {
     return (
-      <>
-        <CollapsedButton 
+      <CollapsedButton 
+        onClick={toggleCollapse}
+        aria-label="Open developer tools"
+        title="Open developer tools"
+      >
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="20" 
+          height="20" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="2" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+        </svg>
+      </CollapsedButton>
+    );
+  }
+  
+  return (
+    <DevToolsContainer>
+      <DevToolsHeader>
+        <DevToolsTitle>Developer Tools</DevToolsTitle>
+        <CollapseButton 
           onClick={toggleCollapse}
-          aria-label="Open developer tools"
-          title="Open developer tools"
+          aria-label="Collapse developer tools"
+          title="Collapse developer tools"
         >
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
-            width="20" 
-            height="20" 
+            width="16" 
+            height="16" 
             viewBox="0 0 24 24" 
             fill="none" 
             stroke="currentColor" 
@@ -119,76 +139,34 @@ const DevTools: React.FC<DevToolsProps> = memo(({ onTriggerTour, onResetTour }) 
             strokeLinecap="round" 
             strokeLinejoin="round"
           >
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
-        </CollapsedButton>
-        {showEnvInfo && <EnvironmentInfo onClose={toggleEnvInfo} />}
-      </>
-    );
-  }
-  
-  return (
-    <>
-      <DevToolsContainer>
-        <DevToolsHeader>
-          <DevToolsTitle>Developer Tools</DevToolsTitle>
-          <CollapseButton 
-            onClick={toggleCollapse}
-            aria-label="Collapse developer tools"
-            title="Collapse developer tools"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </CollapseButton>
-        </DevToolsHeader>
-        
-        <Button 
-          variant="primary" 
-          size="small" 
-          onClick={onTriggerTour}
-          fullWidth
-        >
-          Trigger Tour
-        </Button>
-        
-        <Button 
-          variant="secondary" 
-          size="small" 
-          onClick={onResetTour}
-          fullWidth
-        >
-          Reset Tour
-        </Button>
-        
-        <Button 
-          variant="secondary" 
-          size="small" 
-          onClick={toggleEnvInfo}
-          fullWidth
-        >
-          {showEnvInfo ? 'Hide' : 'Show'} Environment Info
-        </Button>
-        
-        <KeyboardHint>
-          Tip: Type "dev" to toggle dev tools in production
-        </KeyboardHint>
-      </DevToolsContainer>
+        </CollapseButton>
+      </DevToolsHeader>
       
-      {showEnvInfo && <EnvironmentInfo onClose={toggleEnvInfo} />}
-    </>
+      <Button 
+        variant="primary" 
+        size="small" 
+        onClick={onTriggerTour}
+        fullWidth
+      >
+        Trigger Tour
+      </Button>
+      
+      <Button 
+        variant="secondary" 
+        size="small" 
+        onClick={onResetTour}
+        fullWidth
+      >
+        Reset Tour
+      </Button>
+      
+      <KeyboardHint>
+        Tip: Type "dev" to toggle dev tools in production
+      </KeyboardHint>
+    </DevToolsContainer>
   );
 });
 
