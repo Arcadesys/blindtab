@@ -1,19 +1,17 @@
-export interface Chord {
-  text: string;
-  position: number;
-}
+import { Timestamp } from 'firebase/firestore';
 
-export interface SongLine {
-  chords?: Chord[];
-  lyric: string;
+export interface LyricLine {
+  chord: string;
+  line: string;
+  position: number;
 }
 
 export interface SongInfo {
   title: string;
   artist: string;
   key?: string;
-  tempo?: number;
-  timeSignature?: string;
+  capo?: number;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
 }
 
 export interface Song {
@@ -21,11 +19,15 @@ export interface Song {
   title: string;
   artist: string;
   filename: string;
+  tags?: string[];
 }
 
 export interface SongData {
-  songData: SongLine[];
   songInfo: SongInfo;
+  lyrics: LyricLine[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  tags?: string[];
 }
 
 export interface SongsState {
