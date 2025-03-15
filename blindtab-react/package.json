@@ -15,7 +15,8 @@
     "seed:staging": "NODE_ENV=staging node prisma/seed.js",
     "seed:prod": "NODE_ENV=production node prisma/seed.js",
     "setup-env": "node scripts/setup-env.js",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "vercel-build": "vite build --mode production"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
