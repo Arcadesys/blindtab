@@ -55,6 +55,31 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [connectionAttempts, setConnectionAttempts] = useState<number>(0);
   const [initialized, setInitialized] = useState<boolean>(false);
 
+  // Initialize database on mount
+  useEffect(() => {
+    const initDb = async () => {
+      try {
+        setIsLoading(true);
+        const success = await songOperations.init();
+        if (success) {
+          setInitialized(true);
+          setError(null);
+          // Refresh song list after successful initialization
+          await refreshSongList();
+        } else {
+          setError('Failed to initialize database');
+        }
+      } catch (err) {
+        console.error('Database initialization error:', err);
+        setError('Failed to initialize database');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initDb();
+  }, []);
+
   // Function to update song display - defined with useCallback to prevent infinite renders
   const updateSongDisplay = useCallback((songData: SongData) => {
     // This function would update the UI with the new song data
@@ -70,6 +95,16 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Function to check database connection - memoized to prevent infinite loops
   const checkDatabaseConnection = useCallback(async (): Promise<boolean> => {
+    if (!initialized) {
+      // Try to initialize if not already initialized
+      const success = await songOperations.init();
+      setInitialized(success);
+      if (!success) {
+        setError('Database initialization failed. Using fallback data.');
+        return false;
+      }
+    }
+
     try {
       setIsLoading(true);
       const isConnected = await songOperations.checkConnection();
@@ -87,7 +122,7 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [initialized]);
 
   // Function to refresh the song list with better error handling - memoized to prevent infinite loops
   const refreshSongList = useCallback(async () => {

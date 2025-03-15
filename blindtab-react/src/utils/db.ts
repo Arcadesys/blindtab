@@ -251,6 +251,11 @@ const safeDbOperation = async <T>(
 
 // Song operations with browser-compatible implementation
 export const songOperations = {
+  // Initialize the database
+  init: async (): Promise<boolean> => {
+    return browserDB.isInitialized();
+  },
+
   // Check database connection
   checkConnection: async (): Promise<boolean> => {
     return browserDB.isInitialized();
