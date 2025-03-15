@@ -11,8 +11,39 @@ import {
   arrayUnion,
   arrayRemove,
   query,
-  where
+  where,
+  Timestamp
 } from 'firebase/firestore';
+
+// Test function to create a sample song
+export const createSampleSong = async (): Promise<string | null> => {
+  const sampleSong: SongData = {
+    songInfo: {
+      title: "Fake Plastic Trees",
+      artist: "Radiohead",
+      key: "G",
+      difficulty: "intermediate"
+    },
+    lyrics: [
+      { chord: "G", line: "Her green plastic watering can", position: 0 },
+      { chord: "Em", line: "For her fake Chinese rubber plant", position: 1 },
+      { chord: "C", line: "In the fake plastic earth", position: 2 },
+      { chord: "G", line: "That she bought from a rubber man", position: 3 },
+      { chord: "D", line: "In a town full of rubber plans", position: 4 },
+      { chord: "Am", line: "To get rid of itself", position: 5 },
+      { chord: "Em", line: "It wears her out", position: 6 },
+      { chord: "G", line: "It wears her out", position: 7 },
+      { chord: "Em", line: "It wears her out", position: 8 },
+      { chord: "G", line: "It wears her out", position: 9 },
+      { chord: "G", line: "She lives with a broken man", position: 10 }
+    ],
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+    tags: ["rock", "90s", "alternative"]
+  };
+
+  return await songOperations.createSong(sampleSong);
+};
 
 export const songOperations = {
   init: async (): Promise<boolean> => {

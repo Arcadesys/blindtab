@@ -1,182 +1,97 @@
-import React, { useState, useEffect, memo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { env, config, isDev } from '../../utils/env';
-import { getAllEdgeConfig, isEdgeConfigAvailable } from '../../utils/edgeConfig';
+import { getConfig, AppConfig } from '../../utils/config';
+import { env } from '../../utils/env';
 
 const Container = styled.div`
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1000;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1rem;
-  margin: 1rem;
-  max-width: 600px;
-  font-family: monospace;
-  font-size: 0.9rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  max-height: 80vh;
-  overflow-y: auto;
-`;
-
-const Title = styled.h3`
-  margin-top: 0;
-  color: var(--primary-color);
+  padding: 20px;
 `;
 
 const Section = styled.div`
-  margin-bottom: 1rem;
+  margin-bottom: 20px;
 `;
 
-const SectionTitle = styled.h4`
-  margin-bottom: 0.5rem;
-  color: var(--text-secondary);
-`;
-
-const InfoRow = styled.div`
-  display: flex;
-  margin-bottom: 0.25rem;
-`;
-
-const Label = styled.div`
-  width: 150px;
-  font-weight: bold;
-`;
-
-const Value = styled.div`
-  flex: 1;
-  word-break: break-all;
+const Title = styled.h3`
+  margin-bottom: 10px;
+  color: #333;
 `;
 
 const CodeBlock = styled.pre`
-  background-color: var(--bg-secondary);
-  padding: 0.5rem;
+  background: #f5f5f5;
+  padding: 15px;
   border-radius: 4px;
-  overflow: auto;
-  max-height: 200px;
+  overflow-x: auto;
 `;
 
-const LoadingSpinner = styled.div`
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  border-top-color: var(--primary-color);
-  animation: spin 1s ease-in-out infinite;
-  margin-right: 8px;
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
+const Status = styled.div<{ status: 'success' | 'error' | 'loading' }>`
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  background-color: ${({ status }) => 
+    status === 'success' ? '#e6ffe6' :
+    status === 'error' ? '#ffe6e6' :
+    '#f0f0f0'};
+  color: ${({ status }) => 
+    status === 'success' ? '#006600' :
+    status === 'error' ? '#660000' :
+    '#666666'};
 `;
 
-interface EnvironmentInfoProps {
-  onClose?: () => void;
-}
-
-const EnvironmentInfo: React.FC<EnvironmentInfoProps> = memo(({ onClose }) => {
-  const [edgeConfig, setEdgeConfig] = useState<Record<string, any> | null>(null);
-  const [edgeConfigAvailable, setEdgeConfigAvailable] = useState<boolean | null>(null);
+const EnvironmentInfo: React.FC = () => {
+  const [config, setConfig] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadEdgeConfig = useCallback(async () => {
+  const loadConfig = useCallback(async () => {
     try {
       setLoading(true);
-      const available = await isEdgeConfigAvailable();
-      setEdgeConfigAvailable(available);
-      
-      if (available) {
-        const config = await getAllEdgeConfig();
-        setEdgeConfig(config);
-      }
-    } catch (error) {
-      console.error('Error loading Edge Config:', error);
+      const appConfig = await getConfig();
+      setConfig(appConfig);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadEdgeConfig();
-  }, [loadEdgeConfig]);
-
-  if (!isDev) {
-    return null; // Only show in development
-  }
-
-  // Ensure config is available and has expected properties
-  const features = config?.features || {};
+    loadConfig();
+  }, [loadConfig]);
 
   return (
     <Container>
-      <Title>Environment Information</Title>
-      
       <Section>
-        <SectionTitle>Environment</SectionTitle>
-        <InfoRow>
-          <Label>Current:</Label>
-          <Value>{env}</Value>
-        </InfoRow>
-        <InfoRow>
-          <Label>API URL:</Label>
-          <Value>{config?.apiUrl || 'Not set'}</Value>
-        </InfoRow>
-        <InfoRow>
-          <Label>Database Type:</Label>
-          <Value>{config?.databaseType || 'Not set'}</Value>
-        </InfoRow>
-        <InfoRow>
-          <Label>Storage Prefix:</Label>
-          <Value>{config?.storagePrefix || 'Not set'}</Value>
-        </InfoRow>
-        <InfoRow>
-          <Label>Analytics:</Label>
-          <Value>{config?.enableAnalytics ? 'Enabled' : 'Disabled'}</Value>
-        </InfoRow>
-        <InfoRow>
-          <Label>Log Level:</Label>
-          <Value>{config?.logLevel || 'Not set'}</Value>
-        </InfoRow>
+        <Title>Environment</Title>
+        <CodeBlock>
+          {JSON.stringify(env, null, 2)}
+        </CodeBlock>
       </Section>
-      
+
       <Section>
-        <SectionTitle>Feature Flags</SectionTitle>
-        {Object.entries(features).map(([key, value]) => (
-          <InfoRow key={key}>
-            <Label>{key}:</Label>
-            <Value>{String(value)}</Value>
-          </InfoRow>
-        ))}
-      </Section>
-      
-      <Section>
-        <SectionTitle>Edge Config</SectionTitle>
+        <Title>Configuration</Title>
         {loading ? (
-          <div>
-            <LoadingSpinner /> Loading Edge Config...
-          </div>
-        ) : edgeConfigAvailable ? (
-          <>
-            <InfoRow>
-              <Label>Status:</Label>
-              <Value>Available</Value>
-            </InfoRow>
-            <CodeBlock>{JSON.stringify(edgeConfig, null, 2)}</CodeBlock>
-          </>
+          <Status status="loading">Loading configuration...</Status>
+        ) : error ? (
+          <Status status="error">Error: {error}</Status>
         ) : (
-          <InfoRow>
-            <Label>Status:</Label>
-            <Value>Not Available</Value>
-          </InfoRow>
+          <>
+            <Status status="success">Configuration loaded successfully</Status>
+            <CodeBlock>
+              {JSON.stringify(config, null, 2)}
+            </CodeBlock>
+          </>
         )}
+      </Section>
+
+      <Section>
+        <Title>Actions</Title>
+        <button onClick={loadConfig} disabled={loading}>
+          Refresh Configuration
+        </button>
       </Section>
     </Container>
   );
-});
-
-EnvironmentInfo.displayName = 'EnvironmentInfo';
+};
 
 export default EnvironmentInfo; 

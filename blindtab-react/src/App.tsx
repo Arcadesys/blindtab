@@ -16,6 +16,7 @@ import { TourGuide } from './components/common';
 import GlobalStyles from './styles/GlobalStyles';
 import { SongData } from './types/song';
 import { checkDevSequence } from './utils/devMode';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 const AppContainer = styled.div`
   display: flex;
@@ -222,13 +223,22 @@ const AppContent = () => {
 
 function App() {
   return (
-    <ThemeProvider>
-      <DisplayProvider>
-        <SongProvider>
-          <AppContent />
-        </SongProvider>
-      </DisplayProvider>
-    </ThemeProvider>
+    <Router>
+      <Routes>
+        <Route path="/" element={
+          <ThemeProvider>
+            <DisplayProvider>
+              <SongProvider>
+                <AppContent />
+              </SongProvider>
+            </DisplayProvider>
+          </ThemeProvider>
+        } />
+        {import.meta.env.DEV && (
+          <Route path="/dev" element={<DevTools />} />
+        )}
+      </Routes>
+    </Router>
   );
 }
 
