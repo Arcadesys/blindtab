@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Song, SongData } from '../../types/song';
 import { useSong } from '../../contexts/SongContext';
+import { Timestamp } from 'firebase/firestore';
 
 const Modal = styled.div`
   position: fixed;
@@ -116,14 +117,17 @@ const SongEditModal: React.FC<SongEditModalProps> = ({ song, onClose }) => {
         artist: formData.artist,
         key: formData.key,
       },
-      lyrics: formData.lyrics.split('\\n').map(line => {
+      lyrics: formData.lyrics.split('\n').map((line, index) => {
         const match = line.match(/\[(.*?)\](.*)/);
         return {
           chord: match ? match[1] : '',
-          line: match ? match[2].trim() : line.trim()
+          line: match ? match[2].trim() : line.trim(),
+          position: index
         };
       }),
-      tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+      tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
     };
 
     try {
