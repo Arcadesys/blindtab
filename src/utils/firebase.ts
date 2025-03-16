@@ -105,7 +105,6 @@ const db = initializeFirestore(app, {
   // Improve connection reliability by forcing long polling
   // This avoids WebChannel 400 Bad Request errors
   experimentalForceLongPolling: true,
-  experimentalAutoDetectLongPolling: true,
   ignoreUndefinedProperties: true
 });
 

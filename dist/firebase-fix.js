@@ -218,17 +218,16 @@
                   (error.message && (
                     error.message.includes('400') || 
                     error.message.includes('Bad Request')))) {
-                console.log('🔧 Detected 400 Bad Request error, applying more aggressive fix');
+                console.log('🔧 Detected 400 Bad Request error, trying alternative approach');
                 
-                // Create a new Firestore instance with more aggressive settings
+                // Create a new Firestore instance with alternative settings
                 const fixedDb = firebase.firestore(app);
                 
-                // Apply more aggressive settings
+                // Apply alternative settings - use memory cache instead of persistence
                 fixedDb.settings({
                   host: 'firestore.googleapis.com',
                   ssl: true,
                   experimentalForceLongPolling: true,
-                  experimentalAutoDetectLongPolling: true,
                   ignoreUndefinedProperties: true,
                   cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
                 });
@@ -239,10 +238,28 @@
                 // Test the connection again
                 fixedDb.collection('firebase_test').limit(1).get()
                   .then(() => {
-                    console.log('✅ Firestore connection test successful with aggressive fix');
+                    console.log('✅ Firestore connection test successful with alternative fix');
                   })
                   .catch(secondError => {
-                    console.error('❌ Aggressive fix also failed:', secondError);
+                    console.error('❌ Alternative fix also failed:', secondError);
+                    
+                    // Last resort: try with minimal settings
+                    console.log('🔧 Trying minimal settings as last resort');
+                    const lastResortDb = firebase.firestore(app);
+                    lastResortDb.settings({
+                      host: 'firestore.googleapis.com',
+                      ssl: true
+                    });
+                    
+                    window._fixed_firestore = lastResortDb;
+                    
+                    lastResortDb.collection('firebase_test').limit(1).get()
+                      .then(() => {
+                        console.log('✅ Minimal settings fix successful');
+                      })
+                      .catch(finalError => {
+                        console.error('❌ All fixes failed:', finalError);
+                      });
                   });
               }
             });
