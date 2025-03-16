@@ -2,6 +2,13 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { env, isDev } from './env';
 
+// Collection references
+export const COLLECTIONS = {
+  SONGS: 'songs',
+  TAGS: 'tags',
+  CONFIG: 'config'
+} as const;
+
 // Validate Firebase configuration
 const requiredEnvVars = [
   'VITE_FIREBASE_API_KEY',
@@ -86,11 +93,4 @@ try {
 }
 
 // Export the initialized Firestore instance
-export { db };
-
-// Collection references
-export const COLLECTIONS = {
-  SONGS: 'songs',
-  TAGS: 'tags',
-  CONFIG: 'config'
-} as const; 
+export { db }; 
