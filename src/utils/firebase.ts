@@ -7,7 +7,8 @@ import { env, isDev } from './env';
 export const COLLECTIONS = {
   SONGS: 'songs',
   TAGS: 'tags',
-  CONFIG: 'config'
+  CONFIG: 'config',
+  USER_SONGS: 'user_songs'
 } as const;
 
 // Validate Firebase configuration

@@ -22,16 +22,31 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
     // Base rules for development and staging
     match /{document=**} {
       allow read: if true;  // Anyone can read
       allow write: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes in development, staging, or if authenticated
     }
 
-    // Production rules
+    // Songs collection - public songs available to everyone
     match /songs/{songId} {
       allow read: if true;  // Anyone can read songs
       allow write: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes if authenticated
+    }
+
+    // User songs collection - personal song lists
+    match /user_songs/{userId} {
+      allow read: if isOwner(userId) || isDevelopment() || isStaging();
+      allow write: if isOwner(userId) || isDevelopment() || isStaging();
+      
+      match /songs/{songId} {
+        allow read: if isOwner(userId) || isDevelopment() || isStaging();
+        allow write: if isOwner(userId) || isDevelopment() || isStaging();
+      }
     }
 
     match /config/{configId} {
