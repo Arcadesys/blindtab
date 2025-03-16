@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db, COLLECTIONS, isFallbackMode, isPreviewDeployment, firestoreRest } from '../utils/firebase';
 import { useAuth } from './AuthContext';
 import type { Song } from '../types/firebase';
@@ -192,8 +192,21 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: new Date()
       };
       
-      // Add the song using REST client
-      await firestoreRest.set(COLLECTIONS.SONGS, newId, newSong);
+      // Try to add the song using Firebase SDK directly
+      try {
+        // Create a copy of the song without the id field
+        const { id, ...songData } = newSong;
+        
+        // Use the id from the song as the document ID
+        await setDoc(doc(db, COLLECTIONS.SONGS, id), songData);
+        
+        console.log('Song added successfully using Firebase SDK');
+      } catch (sdkError) {
+        console.error('Error adding song with Firebase SDK:', sdkError);
+        
+        // Fall back to REST client if SDK fails
+        await firestoreRest.set(COLLECTIONS.SONGS, newId, newSong);
+      }
       
       // Refresh songs to include the new one
       await refreshSongs();
@@ -209,7 +222,20 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateSong = async (id: string, songUpdate: Partial<Song>): Promise<void> => {
     try {
       // Get the current song
-      const currentSong = await firestoreRest.get<Song>(COLLECTIONS.SONGS, id);
+      let currentSong: Song | null = null;
+      
+      // Try to get the song using Firebase SDK directly
+      try {
+        const songDoc = await getDoc(doc(db, COLLECTIONS.SONGS, id));
+        if (songDoc.exists()) {
+          currentSong = { id: songDoc.id, ...songDoc.data() } as Song;
+        }
+      } catch (sdkError) {
+        console.error('Error getting song with Firebase SDK:', sdkError);
+        
+        // Fall back to REST client if SDK fails
+        currentSong = await firestoreRest.get<Song>(COLLECTIONS.SONGS, id);
+      }
       
       if (!currentSong) {
         throw new Error(`Song with ID ${id} not found`);
@@ -222,8 +248,21 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: new Date()
       };
       
-      // Update the song using REST client
-      await firestoreRest.set(COLLECTIONS.SONGS, id, updatedSong);
+      // Try to update the song using Firebase SDK directly
+      try {
+        // Create a copy of the song without the id field
+        const { id: songId, ...songData } = updatedSong;
+        
+        // Use the id from the song as the document ID
+        await updateDoc(doc(db, COLLECTIONS.SONGS, songId), songData);
+        
+        console.log('Song updated successfully using Firebase SDK');
+      } catch (sdkError) {
+        console.error('Error updating song with Firebase SDK:', sdkError);
+        
+        // Fall back to REST client if SDK fails
+        await firestoreRest.set(COLLECTIONS.SONGS, id, updatedSong);
+      }
       
       // Refresh songs to include the update
       await refreshSongs();
@@ -236,8 +275,16 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Delete a song
   const deleteSong = async (id: string): Promise<void> => {
     try {
-      // Delete the song using REST client
-      await firestoreRest.delete(COLLECTIONS.SONGS, id);
+      // Try to delete the song using Firebase SDK directly
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.SONGS, id));
+        console.log('Song deleted successfully using Firebase SDK');
+      } catch (sdkError) {
+        console.error('Error deleting song with Firebase SDK:', sdkError);
+        
+        // Fall back to REST client if SDK fails
+        await firestoreRest.delete(COLLECTIONS.SONGS, id);
+      }
       
       // Refresh songs to remove the deleted one
       await refreshSongs();
@@ -282,7 +329,21 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Play a song (legacy API)
   const playSong = async (songId: string): Promise<Song> => {
     try {
-      const song = await firestoreRest.get<Song>(COLLECTIONS.SONGS, songId);
+      let song: Song | null = null;
+      
+      // Try to get the song using Firebase SDK directly
+      try {
+        const songDoc = await getDoc(doc(db, COLLECTIONS.SONGS, songId));
+        if (songDoc.exists()) {
+          song = { id: songDoc.id, ...songDoc.data() } as Song;
+          console.log('Song loaded successfully using Firebase SDK:', song);
+        }
+      } catch (sdkError) {
+        console.error('Error getting song with Firebase SDK:', sdkError);
+        
+        // Fall back to REST client if SDK fails
+        song = await firestoreRest.get<Song>(COLLECTIONS.SONGS, songId);
+      }
       
       if (!song) {
         throw new Error(`Song with ID ${songId} not found`);

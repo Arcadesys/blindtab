@@ -5,24 +5,29 @@ service cloud.firestore {
     // Helper functions
     function isStaging() {
       return request.auth == null && request.resource != null && (
-        request.origin.matches('.*-staging.vercel.app') ||
-        request.origin.matches('.*-test.vercel.app') ||
-        request.origin.matches('.*-dev.vercel.app') ||
-        request.origin.matches('.*-projects.vercel.app')
+        request.origin != null && (
+          request.origin.matches('.*-staging.vercel.app') ||
+          request.origin.matches('.*-test.vercel.app') ||
+          request.origin.matches('.*-dev.vercel.app') ||
+          request.origin.matches('.*-projects.vercel.app')
+        )
       );
     }
 
     function isDevelopment() {
       return request.auth == null && (
-        request.origin.matches('localhost:.*') ||
-        request.origin.matches('127.0.0.1:.*') ||
-        // Allow emulator operations without origin check
-        request.origin == null
+        // Allow requests with no origin (like direct Firebase SDK calls)
+        request.origin == null ||
+        // Allow localhost origins
+        (request.origin != null && (
+          request.origin.matches('localhost:.*') ||
+          request.origin.matches('127.0.0.1:.*')
+        ))
       );
     }
 
     function isPreviewDeployment() {
-      return request.auth == null && (
+      return request.auth == null && request.origin != null && (
         request.origin.matches('.*-projects.vercel.app') ||
         request.origin.matches('.*-staging.vercel.app') ||
         request.origin.matches('.*-preview.vercel.app')

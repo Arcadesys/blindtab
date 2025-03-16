@@ -35,8 +35,23 @@ const Value = styled.div`
 `;
 
 const EnvironmentInfo: React.FC = () => {
-  const { isPreviewMode } = useSongs();
-  const { user } = useAuth();
+  // Safely try to use the SongContext
+  let songPreviewMode = false;
+  try {
+    const songContext = useSongs();
+    songPreviewMode = songContext.isPreviewMode;
+  } catch (error) {
+    console.warn('EnvironmentInfo: SongContext not available');
+  }
+  
+  // Safely try to use the AuthContext
+  let user = null;
+  try {
+    const authContext = useAuth();
+    user = authContext.user;
+  } catch (error) {
+    console.warn('EnvironmentInfo: AuthContext not available');
+  }
   
   return (
     <Container>
@@ -74,7 +89,7 @@ const EnvironmentInfo: React.FC = () => {
       
       <InfoRow>
         <Label>Preview Mode:</Label>
-        <Value>{isPreviewMode ? 'Yes' : 'No'}</Value>
+        <Value>{songPreviewMode ? 'Yes' : 'No'}</Value>
       </InfoRow>
       
       <InfoRow>

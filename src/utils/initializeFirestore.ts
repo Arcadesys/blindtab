@@ -89,6 +89,12 @@ export const initializeFirestore = async (): Promise<boolean> => {
     for (const song of mockSongs) {
       console.log(`Adding song: ${song.title}`);
       
+      // Ensure the song has the required lyrics field
+      if (!song.lyrics || !Array.isArray(song.lyrics)) {
+        console.warn(`Song ${song.title} is missing the lyrics field. Adding empty lyrics.`);
+        song.lyrics = [];
+      }
+      
       if (isDev) {
         // Use Firebase SDK directly
         // Create a copy of the song without the id field

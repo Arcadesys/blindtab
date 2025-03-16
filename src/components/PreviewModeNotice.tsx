@@ -41,8 +41,17 @@ const CloseButton = styled.button`
 `;
 
 const PreviewModeNotice: React.FC = () => {
-  const { isPreviewMode } = useSong();
   const [visible, setVisible] = useState(true);
+  
+  // Safely try to use the SongContext
+  let isPreviewMode = false;
+  try {
+    const songContext = useSong();
+    isPreviewMode = songContext.isPreviewMode;
+  } catch (error) {
+    console.warn('PreviewModeNotice: SongContext not available');
+    return null;
+  }
 
   if (!isPreviewMode) return null;
 
