@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../utils/firebase';
+import { db, COLLECTIONS, isFallbackMode, isPreviewDeployment } from '../utils/firebase';
 import { useAuth } from './AuthContext';
 import type { Song } from '../types/firebase';
 import { 
@@ -17,6 +17,7 @@ interface SongContextType {
   currentSong: Song | null;
   isLoading: boolean;
   error: Error | null;
+  isPreviewMode: boolean;
   addSongToCollection: (songId: string) => Promise<void>;
   removeSongFromCollection: (songId: string) => Promise<void>;
   playSong: (songId: string) => Promise<void>;
@@ -33,6 +34,7 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isPreviewMode] = useState(isPreviewDeployment || isFallbackMode);
   
   const { user } = useAuth();
 
@@ -49,12 +51,18 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
 
       // If user is authenticated, fetch their songs
       if (user) {
-        const userCollection = await getUserSongCollection(user.uid);
-        if (userCollection) {
-          const userSongIds = Object.keys(userCollection.songs);
-          const userSongsList = allSongs.filter(song => userSongIds.includes(song.id));
-          setUserSongs(userSongsList);
-        } else {
+        try {
+          const userCollection = await getUserSongCollection(user.uid);
+          if (userCollection) {
+            const userSongIds = Object.keys(userCollection.songs);
+            const userSongsList = allSongs.filter(song => userSongIds.includes(song.id));
+            setUserSongs(userSongsList);
+          } else {
+            setUserSongs([]);
+          }
+        } catch (err) {
+          console.error('Error fetching user songs:', err);
+          // Don't fail completely if user songs can't be fetched
           setUserSongs([]);
         }
       } else {
@@ -74,12 +82,22 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const addSongToCollection = async (songId: string) => {
+    if (isPreviewMode) {
+      console.warn('[SongContext] Write operations are disabled in preview mode');
+      throw new Error('Write operations are disabled in preview mode');
+    }
+    
     if (!user) throw new Error('Must be authenticated to add songs');
     await addSongToUserCollection(user.uid, songId);
     await refreshSongs();
   };
 
   const removeSongFromCollection = async (songId: string) => {
+    if (isPreviewMode) {
+      console.warn('[SongContext] Write operations are disabled in preview mode');
+      throw new Error('Write operations are disabled in preview mode');
+    }
+    
     if (!user) throw new Error('Must be authenticated to remove songs');
     await removeSongFromUserCollection(user.uid, songId);
     await refreshSongs();
@@ -97,52 +115,52 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
       const song = { id: songDoc.id, ...songDoc.data() } as Song;
       setCurrentSong(song);
 
-      // Update play stats if user is authenticated
-      if (user) {
-        const isSelected = await hasUserSelectedSong(user.uid, songId);
-        if (isSelected) {
+      // Update play stats if user is authenticated and not in preview mode
+      if (user && !isPreviewMode) {
+        try {
           await updateSongPlayStats(user.uid, songId);
+        } catch (err) {
+          console.error('Error updating play stats:', err);
+          // Don't fail if play stats can't be updated
         }
       }
+      
+      return song;
     } catch (err) {
       console.error('Error playing song:', err);
-      setError(err instanceof Error ? err : new Error('Failed to play song'));
+      throw err instanceof Error ? err : new Error('Failed to play song');
     }
   };
 
-  const createNewSong = async (songData: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
+  const createNewSong = async (songData: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (isPreviewMode) {
+      console.warn('[SongContext] Write operations are disabled in preview mode');
+      throw new Error('Write operations are disabled in preview mode');
+    }
+    
     try {
-      const timestamp = serverTimestamp();
-      
-      // Clean up the data to remove undefined values
-      const cleanData = {
-        title: songData.title,
-        artist: songData.artist,
-        lyrics: songData.lyrics,
-        ...(songData.key ? { key: songData.key } : {}),
-        ...(songData.tempo ? { tempo: songData.tempo } : {}),
-        ...(songData.timeSignature ? { timeSignature: songData.timeSignature } : {}),
-        createdAt: timestamp,
-        updatedAt: timestamp
+      const songsRef = collection(db, COLLECTIONS.SONGS);
+      const newSong = {
+        ...songData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       };
-
-      const docRef = await addDoc(collection(db, COLLECTIONS.SONGS), cleanData);
-
-      // Add to user's collection if authenticated
-      if (user) {
-        await addSongToCollection(docRef.id);
-      }
-
+      
+      const docRef = await addDoc(songsRef, newSong);
       await refreshSongs();
       return docRef.id;
     } catch (err) {
-      console.error('Error creating new song:', err);
-      setError(err instanceof Error ? err : new Error('Failed to create song'));
-      throw err;
+      console.error('Error creating song:', err);
+      throw err instanceof Error ? err : new Error('Failed to create song');
     }
   };
 
   const updateSong = async (songId: string, songData: Partial<Omit<Song, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    if (isPreviewMode) {
+      console.warn('[SongContext] Write operations are disabled in preview mode');
+      throw new Error('Write operations are disabled in preview mode');
+    }
+    
     try {
       const songRef = doc(db, COLLECTIONS.SONGS, songId);
       
@@ -173,6 +191,7 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
         currentSong,
         isLoading,
         error,
+        isPreviewMode,
         addSongToCollection,
         removeSongFromCollection,
         playSong,

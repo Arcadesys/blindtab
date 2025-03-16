@@ -5,6 +5,7 @@ import { DisplayProvider } from './contexts/DisplayContext';
 import { SongProvider } from './contexts/SongContext';
 import { AuthProvider } from './contexts/AuthContext';
 import AppContent from './components/AppContent';
+import PreviewModeNotice from './components/PreviewModeNotice';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
               <AuthProvider>
                 <SongProvider>
                   <AppContent />
+                  <PreviewModeNotice />
                 </SongProvider>
               </AuthProvider>
             </DisplayProvider>
@@ -28,6 +30,7 @@ function App() {
                 <AuthProvider>
                   <SongProvider>
                     <DevTools />
+                    <PreviewModeNotice />
                   </SongProvider>
                 </AuthProvider>
               </DisplayProvider>

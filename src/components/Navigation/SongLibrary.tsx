@@ -223,10 +223,20 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
   const handleSongAction = async (song: Song) => {
     if (!user) return;
     
-    if (userSongIds.has(song.id)) {
-      await removeSongFromCollection(song.id);
-    } else {
-      await addSongToCollection(song.id);
+    try {
+      if (userSongIds.has(song.id)) {
+        await removeSongFromCollection(song.id);
+      } else {
+        await addSongToCollection(song.id);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('preview mode')) {
+        // Don't show an error toast for preview mode, the PreviewModeNotice will handle this
+        console.warn('Song collection modification disabled in preview mode');
+      } else {
+        console.error('Error modifying song collection:', err);
+        // Show error toast or notification here
+      }
     }
   };
 

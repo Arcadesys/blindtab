@@ -9,7 +9,9 @@ import {
   enableIndexedDbPersistence,
   initializeFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
+  CACHE_SIZE_UNLIMITED,
+  memoryLocalCache
 } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth';
 import { env, isDev } from './env';
@@ -21,6 +23,9 @@ export const COLLECTIONS = {
   CONFIG: 'config',
   USER_SONGS: 'user_songs'
 } as const;
+
+// Track if we're in fallback mode (read-only)
+let isFallbackMode = false;
 
 // Validate Firebase configuration
 const requiredEnvVars = [
@@ -53,6 +58,11 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// Detect if we're in a preview deployment
+const isPreviewDeployment = window.location.hostname.includes('-projects.vercel.app') || 
+                           window.location.hostname.includes('-staging.vercel.app') ||
+                           window.location.hostname.includes('-preview.vercel.app');
+
 // Log config for debugging (excluding sensitive data)
 console.log('[Firebase] Configuration:', {
   authDomain: firebaseConfig.authDomain,
@@ -62,19 +72,37 @@ console.log('[Firebase] Configuration:', {
   currentDomain: window.location.hostname,
   currentOrigin: window.location.origin,
   currentPath: window.location.pathname,
-  isStaging: window.location.hostname.includes('-staging.vercel.app') || window.location.hostname.includes('-projects.vercel.app'),
-  isDev: isDev
+  isPreviewDeployment,
+  isDev
 });
 
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with settings optimized for web
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
+// Initialize Firestore with optimized settings
+let db;
+try {
+  // For preview deployments, use memory cache to avoid persistence issues
+  if (isPreviewDeployment) {
+    console.log('[Firebase] Using memory cache for preview deployment');
+    db = initializeFirestore(app, {
+      localCache: memoryLocalCache()
+    });
+  } else {
+    // For production and development, use persistent cache
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+        cacheSizeBytes: CACHE_SIZE_UNLIMITED
+      })
+    });
+  }
+} catch (error) {
+  console.error('[Firebase] Error initializing Firestore with persistent cache:', error);
+  // Fallback to basic initialization
+  console.log('[Firebase] Falling back to basic Firestore initialization');
+  db = getFirestore(app);
+}
 
 // Initialize Auth
 const auth = getAuth(app);
@@ -94,25 +122,14 @@ if (isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR) {
   }
 }
 
-// Enable offline persistence for better performance
-if (!isDev) {
-  enableIndexedDbPersistence(db)
-    .catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('[Firebase] Multiple tabs open, persistence can only be enabled in one tab at a time.');
-      } else if (err.code === 'unimplemented') {
-        console.warn('[Firebase] The current browser doesn\'t support persistence.');
-      }
-    });
-}
-
 // Initialize Firebase with environment-specific settings
-if (env === 'staging' || window.location.hostname.includes('-projects.vercel.app')) {
-  console.log('[Firebase] Initializing for staging/preview environment');
-  // Add any staging-specific initialization here
+if (isPreviewDeployment) {
+  console.log('[Firebase] Initializing for preview deployment');
+  console.warn('[Firebase] Preview deployments may have limited functionality');
+} else if (env === 'staging') {
+  console.log('[Firebase] Initializing for staging environment');
 } else if (env === 'production') {
   console.log('[Firebase] Initializing for production environment');
-  // Add any production-specific initialization here
 }
 
 // Test the connection using the new modular API
@@ -130,10 +147,10 @@ const testConnection = async () => {
       console.error('[Firebase] This might be due to unauthorized domain access. Please check Firebase Console -> Authentication -> Sign-in method -> Authorized domains');
       console.error('[Firebase] Current domain:', window.location.hostname);
       
-      // For preview/staging deployments, we'll still try to use the app in read-only mode
-      if (window.location.hostname.includes('-projects.vercel.app') || 
-          window.location.hostname.includes('-staging.vercel.app')) {
-        console.warn('[Firebase] Preview deployment detected. Some write operations may not work.');
+      // For preview deployments, we'll still try to use the app in read-only mode
+      if (isPreviewDeployment) {
+        console.warn('[Firebase] Preview deployment detected. Switching to read-only mode.');
+        isFallbackMode = true;
       }
     } else if (error.code === 'failed-precondition') {
       console.error('[Firebase] This might be due to incorrect project configuration or missing indexes');
@@ -148,5 +165,5 @@ testConnection();
 
 console.log('[Firebase] Initialization successful');
 
-// Export the initialized instances
-export { db, auth, googleProvider }; 
+// Export the initialized instances and helper functions
+export { db, auth, googleProvider, isFallbackMode, isPreviewDeployment }; 

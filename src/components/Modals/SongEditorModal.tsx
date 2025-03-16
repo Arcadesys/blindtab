@@ -177,7 +177,11 @@ export default function SongEditorModal({
       onClose();
     } catch (err) {
       console.error('Error saving song:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save song');
+      if (err instanceof Error && err.message.includes('preview mode')) {
+        setError('This feature is disabled in preview mode. Please use the full app to save songs.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to save song');
+      }
     } finally {
       setIsLoading(false);
     }
