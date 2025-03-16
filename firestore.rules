@@ -26,6 +26,14 @@ service cloud.firestore {
       );
     }
 
+    function isProduction() {
+      return request.auth == null && request.origin != null && (
+        request.origin.matches('blindtab.thearcades.me') ||
+        request.origin.matches('bt.thearcades.me') ||
+        request.origin.matches('tab.thearcades.me')
+      );
+    }
+
     function isPreviewDeployment() {
       return request.auth == null && request.origin != null && (
         request.origin.matches('.*-projects.vercel.app') ||
@@ -45,38 +53,43 @@ service cloud.firestore {
     // Base rules for development and staging
     match /{document=**} {
       allow read: if true;  // Anyone can read
-      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
-      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
+      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isProduction() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isProduction() || isAuthenticated();
+    }
+
+    // Test collection for REST API testing
+    match /firebase_test/{docId} {
+      allow read, write: if true;
     }
 
     // Songs collection - public songs available to everyone
     match /songs/{songId} {
       allow read: if true;
-      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
-      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
+      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isProduction() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isProduction() || isAuthenticated();
     }
 
     // User songs collection - personal song lists
     match /user_songs/{userId} {
-      allow read: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment();
-      allow create, update, delete: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment();
+      allow read: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment() || isProduction();
+      allow create, update, delete: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment() || isProduction();
       
       match /songs/{songId} {
-        allow read: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment();
-        allow create, update, delete: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment();
+        allow read: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment() || isProduction();
+        allow create, update, delete: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment() || isProduction();
       }
     }
 
     match /config/{configId} {
       allow read: if true;
-      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
-      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
+      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isProduction() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isProduction() || isAuthenticated();
     }
 
     match /tags/{tagId} {
       allow read: if true;
-      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
-      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
+      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isProduction() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isProduction() || isAuthenticated();
     }
   }
 } 

@@ -36,10 +36,16 @@ type FirestoreListResponse = {
 export class FirestoreRestClient {
   private baseUrl: string;
   private apiKey: string;
+  private defaultHeaders: HeadersInit;
 
   constructor(projectId: string, apiKey: string) {
     this.baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
     this.apiKey = apiKey;
+    this.defaultHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Origin': window.location.origin
+    };
   }
 
   /**
@@ -50,12 +56,8 @@ export class FirestoreRestClient {
     try {
       // Try to list a small number of documents from any collection
       const response = await fetch(`${this.baseUrl}?pageSize=1&key=${this.apiKey}`, {
-        // Add CORS mode
         mode: 'cors',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
+        headers: this.defaultHeaders
       });
       
       if (response.status === 404) {
@@ -109,7 +111,10 @@ export class FirestoreRestClient {
    */
   async get<T>(collection: string, docId: string): Promise<T | null> {
     try {
-      const response = await fetch(`${this.baseUrl}/${collection}/${docId}?key=${this.apiKey}`);
+      const response = await fetch(`${this.baseUrl}/${collection}/${docId}?key=${this.apiKey}`, {
+        mode: 'cors',
+        headers: this.defaultHeaders
+      });
       
       if (response.status === 404) {
         return null;
@@ -135,7 +140,10 @@ export class FirestoreRestClient {
    */
   async list<T>(collection: string, limit = 100): Promise<T[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/${collection}?pageSize=${limit}&key=${this.apiKey}`);
+      const response = await fetch(`${this.baseUrl}/${collection}?pageSize=${limit}&key=${this.apiKey}`, {
+        mode: 'cors',
+        headers: this.defaultHeaders
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -165,9 +173,8 @@ export class FirestoreRestClient {
     try {
       const response = await fetch(`${this.baseUrl}/${collection}/${docId}?key=${this.apiKey}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        mode: 'cors',
+        headers: this.defaultHeaders,
         body: JSON.stringify({
           fields: this._transformRequest(data)
         })
@@ -194,7 +201,9 @@ export class FirestoreRestClient {
   async delete(collection: string, docId: string): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/${collection}/${docId}?key=${this.apiKey}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        mode: 'cors',
+        headers: this.defaultHeaders
       });
       
       if (!response.ok) {
