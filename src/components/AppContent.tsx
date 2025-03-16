@@ -93,7 +93,7 @@ const AppContent: React.FC = () => {
   });
   
   // Get the current song data
-  const songLyrics = currentSong?.lyrics || currentSong?.songData || [];
+  const songLyrics = currentSong?.lyrics || [];
   
   // Check for dev sequence
   useEffect(() => {

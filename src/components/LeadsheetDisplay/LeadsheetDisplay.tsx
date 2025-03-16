@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { SongData, SongLine } from '../../types/song';
+import { Song } from '../../types/firebase';
 import { useDisplay } from '../../contexts/DisplayContext';
 import { useAutoResize } from '../../hooks/useAutoResize';
 
@@ -92,7 +93,7 @@ const LineCounter = styled.div`
 `;
 
 interface LeadsheetDisplayProps {
-  songData: SongData | null;
+  songData: Song | null;
   currentLineIndex?: number;
 }
 
@@ -101,18 +102,18 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
   currentLineIndex = 0
 }) => {
   const { fontSize, linesToDisplay, autoResize, enableAnimations } = useDisplay();
-  const [visibleLines, setVisibleLines] = useState<SongLine[]>([]);
+  const [visibleLines, setVisibleLines] = useState<any[]>([]);
   const [animationOffset, setAnimationOffset] = useState('0');
   const [prevLineIndex, setPrevLineIndex] = useState(currentLineIndex);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lineHeightRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Get the lyrics array, handling both old and new data structures
-  const lyrics = songData?.lyrics || songData?.songData || [];
+  // Get the lyrics array from the Song object
+  const lyrics = songData?.lyrics || [];
   
   // Convert song lines to string array for auto-resize calculation
-  const songLinesText = lyrics.map(line => line.line || line.lyric || '');
+  const songLinesText = lyrics.map(line => line.line || '');
   
   const { calculatedFontSize } = useAutoResize(
     songLinesText,
@@ -224,22 +225,25 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
   }, [songData, currentLineIndex, linesToDisplay, enableAnimations, lyrics.length]);
   
   // Render a line with chords
-  const renderLineWithChords = (line: SongLine, index: number) => {
+  const renderLineWithChords = (line: any, index: number) => {
     // Parse chords based on the data structure
     let chordsArray = [];
     
-    if (Array.isArray(line.chords)) {
-      // If chords is already an array, use it
-      chordsArray = line.chords;
-    } else if (line.chords && typeof line.chords === 'string') {
-      // If chords is a string, create a single chord object
-      chordsArray = [{ text: line.chords, position: 0 }];
-    } else if (line.chord) {
-      // Backward compatibility for old data structure
-      chordsArray = [{ text: line.chord, position: 0 }];
+    if (line.chords) {
+      // If it's a string, create a single chord object
+      if (typeof line.chords === 'string') {
+        chordsArray = [{ text: line.chords, position: line.position || 0 }];
+      } 
+      // If it's already an array of chords
+      else if (Array.isArray(line.chords)) {
+        chordsArray = line.chords.map(chord => ({
+          text: chord,
+          position: line.position || 0
+        }));
+      }
     }
     
-    const lyricText = line.lyric || line.line || '';
+    const lyricText = line.line || '';
 
     if (!chordsArray.length) {
       return (

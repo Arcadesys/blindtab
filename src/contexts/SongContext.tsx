@@ -3,6 +3,7 @@ import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, d
 import { db, COLLECTIONS, isFallbackMode, isPreviewDeployment, firestoreRest } from '../utils/firebase';
 import { useAuth } from './AuthContext';
 import type { Song } from '../types/firebase';
+import type { SongData, LyricLine } from '../types/song';
 import { 
   addSongToUserCollection, 
   removeSongFromUserCollection, 
@@ -16,7 +17,7 @@ import { isDev } from '../utils/env';
 interface SongContextType {
   songs: Song[];
   userSongs: Song[];
-  currentSong: Song | null;
+  currentSong: SongData | null;
   isLoading: boolean;
   error: Error | null;
   isPreviewMode: boolean;
@@ -26,13 +27,13 @@ interface SongContextType {
   deleteSong: (id: string) => Promise<void>;
   selectSong: (id: string) => Promise<void>;
   unselectSong: (id: string) => Promise<void>;
-  setCurrentSong: (song: Song | null) => void;
+  setCurrentSong: (song: SongData | null) => void;
   isUserSong: (id: string) => boolean;
   updatePlayStats: (id: string) => Promise<void>;
   // Legacy API compatibility
   addSongToCollection?: (songId: string) => Promise<void>;
   removeSongFromCollection?: (songId: string) => Promise<void>;
-  playSong?: (songId: string) => Promise<Song>;
+  playSong: (id: string) => Promise<Song>;
   createNewSong?: (songData: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
   refreshSongList?: () => Promise<void>;
   deleteSongById?: (songId: string) => Promise<void>;
@@ -55,7 +56,7 @@ export const useSong = useSongs;
 export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [userSongs, setUserSongs] = useState<Song[]>([]);
-  const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [currentSong, setCurrentSong] = useState<SongData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   
@@ -349,6 +350,7 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(`Song with ID ${songId} not found`);
       }
       
+      // Set the current song as SongData
       setCurrentSong(song);
       
       // Update play stats if user is authenticated
