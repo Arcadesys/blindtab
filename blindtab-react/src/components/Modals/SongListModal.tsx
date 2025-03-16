@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import SongList from '../Navigation/SongList';
+import SongLibrary from '../Navigation/SongLibrary';
 import { useSong } from '../../contexts/SongContext';
+import SongEditorModal from './SongEditorModal.tsx';
+import { ImportSong } from '../ImportSong';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
-import AddSongModal from './AddSongModal';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -118,7 +119,7 @@ const SongListModal: React.FC<SongListModalProps> = ({
 }) => {
   const { songs, deleteSongById, refreshSongList } = useSong();
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   
@@ -138,18 +139,19 @@ const SongListModal: React.FC<SongListModalProps> = ({
   const handleEditSong = () => {
     if (selectedSongId) {
       setIsEditMode(true);
-      setEditorOpen(true);
+      setIsEditorOpen(true);
     }
   };
   
   const handleNewSong = () => {
     setIsEditMode(false);
-    setEditorOpen(true);
+    setSelectedSongId(null);
+    setIsEditorOpen(true);
   };
   
-  const handleSongSaved = async (songId: string) => {
+  const handleEditorClose = async () => {
+    setIsEditorOpen(false);
     await refreshSongList();
-    setSelectedSongId(songId);
     announceToScreenReader(`Song ${isEditMode ? 'updated' : 'created'} successfully`);
   };
   
@@ -177,101 +179,53 @@ const SongListModal: React.FC<SongListModalProps> = ({
   return (
     <>
       <ModalOverlay onClick={onClose}>
-        <ModalContent 
-          onClick={e => e.stopPropagation()}
-          role="dialog"
-          aria-labelledby="song-list-title"
-          aria-modal="true"
-        >
+        <ModalContent onClick={e => e.stopPropagation()}>
           <ModalHeader>
-            <ModalTitle id="song-list-title">Song Library</ModalTitle>
-            <CloseButton 
-              onClick={onClose}
-              aria-label="Close song list"
-            >
-              ×
-            </CloseButton>
+            <ModalTitle>Song Library</ModalTitle>
+            <CloseButton onClick={onClose}>×</CloseButton>
           </ModalHeader>
           
           <ModalBody>
-            <SongList 
-              onSongSelect={handleSongSelect}
-              selectedSongId={selectedSongId}
-            />
+            <SongLibrary>
+              {songs.available.map(song => (
+                <SongItem
+                  key={song.id}
+                  $selected={selectedSongId === song.id}
+                  onClick={() => handleSongSelect(song.id)}
+                >
+                  <SongInfo>
+                    <SongTitle>{song.title}</SongTitle>
+                    <SongArtist>{song.artist}</SongArtist>
+                  </SongInfo>
+                  <SongActions>
+                    <ActionButton onClick={() => handleLoadSong()}>
+                      ▶
+                    </ActionButton>
+                    <ActionButton onClick={() => handleEditSong()}>
+                      ✏️
+                    </ActionButton>
+                    <ActionButton onClick={() => handleDeleteSong()}>
+                      🗑️
+                    </ActionButton>
+                  </SongActions>
+                </SongItem>
+              ))}
+            </SongLibrary>
           </ModalBody>
           
-          <ActionBar>
-            <ActionButton 
-              onClick={handleNewSong}
-              aria-label="Create new song"
-              title="Create new song"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path 
-                  fill="currentColor" 
-                  d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"
-                />
-              </svg>
-              New
-            </ActionButton>
-            
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <ActionButton 
-                onClick={handleEditSong}
-                disabled={!selectedSongId}
-                aria-label="Edit selected song"
-                title="Edit selected song"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path 
-                    fill="currentColor" 
-                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                  />
-                </svg>
-                Edit
-              </ActionButton>
-              
-              <ActionButton 
-                onClick={handleDeleteSong}
-                disabled={!selectedSongId}
-                aria-label={confirmDelete ? "Confirm delete" : "Delete selected song"}
-                title={confirmDelete ? "Confirm delete" : "Delete selected song"}
-                style={{ color: confirmDelete ? 'var(--error-color)' : undefined }}
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path 
-                    fill="currentColor" 
-                    d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                  />
-                </svg>
-                {confirmDelete ? 'Confirm' : 'Delete'}
-              </ActionButton>
-              
-              <ActionButton 
-                onClick={handleLoadSong}
-                disabled={!selectedSongId}
-                aria-label="Load selected song"
-                title="Load selected song"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path 
-                    fill="currentColor" 
-                    d="M8 5v14l11-7z"
-                  />
-                </svg>
-                Load
-              </ActionButton>
-            </div>
-          </ActionBar>
+          <ModalFooter>
+            <Button onClick={handleNewSong}>
+              + Add New Song
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </ModalOverlay>
       
-      <AddSongModal 
-        isOpen={editorOpen}
-        onClose={() => setEditorOpen(false)}
-        songId={isEditMode ? selectedSongId || undefined : undefined}
-        isEditMode={isEditMode}
-        onSongSaved={handleSongSaved}
+      <SongEditorModal 
+        isOpen={isEditorOpen}
+        onClose={handleEditorClose}
+        songId={isEditMode ? selectedSongId : undefined}
+        isNewSong={!isEditMode}
       />
     </>
   );

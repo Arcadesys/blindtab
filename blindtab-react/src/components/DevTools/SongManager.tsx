@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSong } from '../../contexts/SongContext';
 import { Song } from '../../types/song';
 import styled from 'styled-components';
-import SongEditModal from './SongEditModal';
+import SongEditorModal from '../Modals/SongEditorModal.tsx';
 
 const Container = styled.div`
   padding: 20px;
@@ -58,8 +58,8 @@ const AddButton = styled(Button)`
 
 const SongManager: React.FC = () => {
   const { songs, refreshSongList, deleteSongById } = useSong();
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   const handleDelete = async (songId: string) => {
     if (window.confirm('Are you sure you want to delete this song?')) {
@@ -69,18 +69,13 @@ const SongManager: React.FC = () => {
   };
 
   const handleEdit = (song: Song) => {
-    setSelectedSong(song);
-    setIsEditing(true);
+    setSelectedSongId(song.id);
+    setIsEditorOpen(true);
   };
 
   const handleAdd = () => {
-    setSelectedSong(null);
-    setIsEditing(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsEditing(false);
-    setSelectedSong(null);
+    setSelectedSongId(null);
+    setIsEditorOpen(true);
   };
 
   return (
@@ -115,12 +110,12 @@ const SongManager: React.FC = () => {
         ))}
       </SongGrid>
 
-      {isEditing && (
-        <SongEditModal
-          song={selectedSong}
-          onClose={handleCloseModal}
-        />
-      )}
+      <SongEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        songId={selectedSongId}
+        isNewSong={!selectedSongId}
+      />
     </Container>
   );
 };

@@ -1,5 +1,6 @@
 import { Song, SongData } from '../types/song';
 import { db, COLLECTIONS } from './firebase';
+import { parseMarkdown } from './markdownParser';
 import {
   collection,
   doc,
@@ -133,8 +134,12 @@ export const songOperations = {
     try {
       console.log(`[Firestore] Updating song ${id}`);
       const docRef = doc(db, COLLECTIONS.SONGS, id);
+      
+      // Parse the markdown into song data
+      const songData = parseMarkdown(markdown);
+      
       await updateDoc(docRef, {
-        markdown,
+        ...songData,
         updatedAt: serverTimestamp()
       });
       return true;

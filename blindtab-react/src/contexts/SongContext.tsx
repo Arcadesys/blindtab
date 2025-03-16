@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { Song, SongData, SongsState } from '../types/song';
 import { songOperations } from '../utils/db';
+import { Timestamp } from 'firebase/firestore';
 
 type SongContextType = {
   songs: SongsState;
@@ -23,16 +24,18 @@ const WELCOME_SONG: SongData = {
     title: 'Welcome to BlindTab',
     artist: 'React Edition',
   },
-  songData: [
-    { lyric: 'Welcome to BlindTab!' },
-    { lyric: '' },
-    { lyric: 'To get started:' },
-    { lyric: '1. Click the "Song Library" button in the header' },
-    { lyric: '2. Or press "O" on your keyboard' },
-    { lyric: '' },
-    { lyric: 'Use arrow keys or the buttons below to navigate' },
-    { lyric: 'Press "H" for a guided tour of the app' },
-  ]
+  lyrics: [
+    { chord: '', line: 'Welcome to BlindTab!', position: 0 },
+    { chord: '', line: '', position: 1 },
+    { chord: '', line: 'To get started:', position: 2 },
+    { chord: '', line: '1. Click the "Song Library" button in the header', position: 3 },
+    { chord: '', line: '2. Or press "O" on your keyboard', position: 4 },
+    { chord: '', line: '', position: 5 },
+    { chord: '', line: 'Use arrow keys or the buttons below to navigate', position: 6 },
+    { chord: '', line: 'Press "H" for a guided tour of the app', position: 7 }
+  ],
+  createdAt: Timestamp.now(),
+  updatedAt: Timestamp.now()
 };
 
 // Make the global function available for legacy code
