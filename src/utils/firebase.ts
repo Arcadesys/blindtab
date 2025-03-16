@@ -102,10 +102,31 @@ const db = initializeFirestore(app, {
     tabManager: persistentMultipleTabManager(),
     cacheSizeBytes: CACHE_SIZE_UNLIMITED
   }),
-  // Improve connection reliability
+  // Improve connection reliability by forcing long polling
+  // This avoids WebChannel 400 Bad Request errors
   experimentalForceLongPolling: true,
+  experimentalAutoDetectLongPolling: true,
   ignoreUndefinedProperties: true
 });
+
+// Apply additional settings to fix WebChannel connection issues
+try {
+  console.log('[Firebase] Applying additional connection settings');
+  
+  // @ts-ignore - This is a workaround for Firebase WebChannel connection issues
+  if (db._settings) {
+    // @ts-ignore
+    db._settings = {
+      // @ts-ignore
+      ...db._settings,
+      host: 'firestore.googleapis.com',
+      ssl: true
+    };
+    console.log('[Firebase] Applied additional settings to fix WebChannel issues');
+  }
+} catch (error) {
+  console.error('[Firebase] Error applying additional settings:', error);
+}
 
 // For development, connect to emulator if needed
 if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {

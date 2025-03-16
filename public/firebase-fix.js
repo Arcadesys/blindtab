@@ -76,6 +76,82 @@
         return false;
       }
       
+      // Apply aggressive WebChannel fix
+      // This patches the WebChannel transport to avoid 400 Bad Request errors
+      function applyWebChannelFix() {
+        console.log('🔧 Applying aggressive WebChannel transport fix');
+        
+        // Fix for WebChannel 400 Bad Request error
+        if (typeof XMLHttpRequest !== 'undefined') {
+          // Store the original open method
+          const originalOpen = XMLHttpRequest.prototype.open;
+          
+          // Override the open method to fix WebChannel issues
+          XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+            // Check if this is a WebChannel request
+            if (typeof url === 'string' && 
+                (url.includes('google.firestore.v1.Firestore') || 
+                 url.includes('firestore.googleapis.com'))) {
+              console.log('🔧 Intercepting WebChannel request:', url);
+              
+              // Add a cache-busting parameter to avoid 400 Bad Request errors
+              const separator = url.includes('?') ? '&' : '?';
+              const cacheBuster = `_cb=${Date.now()}`;
+              url = `${url}${separator}${cacheBuster}`;
+              
+              console.log('🔧 Modified WebChannel URL:', url);
+            }
+            
+            // Call the original open method with the potentially modified URL
+            return originalOpen.call(this, method, url, async, user, password);
+          };
+          
+          console.log('✅ Applied XMLHttpRequest patch for WebChannel');
+        }
+        
+        // Try to patch the WebChannel directly if it's available
+        setTimeout(() => {
+          try {
+            // Look for the WebChannel in the window object
+            if (window.goog && window.goog.net && window.goog.net.WebChannel) {
+              console.log('🔧 Found WebChannel, applying direct patch');
+              
+              // Store original WebChannel factory
+              const originalCreateWebChannelTransport = window.goog.net.createWebChannelTransport;
+              
+              // Override the WebChannel factory
+              window.goog.net.createWebChannelTransport = function() {
+                const transport = originalCreateWebChannelTransport();
+                
+                // Store the original createXhrIo method
+                const originalCreateXhrIo = transport.createXhrIo;
+                
+                // Override the createXhrIo method
+                transport.createXhrIo = function(url) {
+                  // Add a cache-busting parameter to the URL
+                  if (url && typeof url === 'string') {
+                    const separator = url.includes('?') ? '&' : '?';
+                    url = `${url}${separator}_wcb=${Date.now()}`;
+                    console.log('🔧 Modified WebChannel transport URL:', url);
+                  }
+                  
+                  // Call the original method with the modified URL
+                  return originalCreateXhrIo.call(this, url);
+                };
+                
+                console.log('✅ Applied WebChannel transport patch');
+                return transport;
+              };
+            }
+          } catch (error) {
+            console.error('❌ Error applying WebChannel patch:', error);
+          }
+        }, 1000); // Wait for WebChannel to be available
+      }
+      
+      // Apply the WebChannel fix immediately
+      applyWebChannelFix();
+      
       // Fix WebChannel connection issues
       if (window._firebase_app) {
         console.log('🔧 Attempting to fix WebChannel connection issues...');
@@ -121,34 +197,6 @@
           
           // Replace the existing Firestore instance
           window._fixed_firestore = newDb;
-          
-          // Fix for WebChannel 400 Bad Request error
-          if (typeof XMLHttpRequest !== 'undefined') {
-            console.log('🔧 Applying WebChannel XHR fix for 400 Bad Request error');
-            
-            // Store the original open method
-            const originalOpen = XMLHttpRequest.prototype.open;
-            
-            // Override the open method to fix WebChannel issues
-            XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
-              // Check if this is a WebChannel request
-              if (typeof url === 'string' && 
-                  (url.includes('google.firestore.v1.Firestore') || 
-                   url.includes('firestore.googleapis.com'))) {
-                console.log('🔧 Intercepting WebChannel request:', url);
-                
-                // Add a cache-busting parameter to avoid 400 Bad Request errors
-                const separator = url.includes('?') ? '&' : '?';
-                const cacheBuster = `_cb=${Date.now()}`;
-                url = `${url}${separator}${cacheBuster}`;
-                
-                console.log('🔧 Modified WebChannel URL:', url);
-              }
-              
-              // Call the original open method with the potentially modified URL
-              return originalOpen.call(this, method, url, async, user, password);
-            };
-          }
           
           // Test the connection
           newDb.collection('firebase_test').limit(1).get()
