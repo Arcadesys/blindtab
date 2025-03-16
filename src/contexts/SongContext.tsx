@@ -17,7 +17,7 @@ import { isDev } from '../utils/env';
 interface SongContextType {
   songs: Song[];
   userSongs: Song[];
-  currentSong: SongData | null;
+  currentSong: Song | null;
   isLoading: boolean;
   error: Error | null;
   isPreviewMode: boolean;
@@ -27,7 +27,7 @@ interface SongContextType {
   deleteSong: (id: string) => Promise<void>;
   selectSong: (id: string) => Promise<void>;
   unselectSong: (id: string) => Promise<void>;
-  setCurrentSong: (song: SongData | null) => void;
+  setCurrentSong: (song: Song | null) => void;
   isUserSong: (id: string) => boolean;
   updatePlayStats: (id: string) => Promise<void>;
   // Legacy API compatibility
@@ -56,7 +56,7 @@ export const useSong = useSongs;
 export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [userSongs, setUserSongs] = useState<Song[]>([]);
-  const [currentSong, setCurrentSong] = useState<SongData | null>(null);
+  const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   

@@ -288,20 +288,17 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
       <LeadsheetContent $fontSize={autoResize ? calculatedFontSize : fontSize}>
         <AnimationContainer>
           <LyricsContainer $animationOffset={animationOffset}>
-            {visibleLines.map((line, index) => (
-              <LyricLine 
-                key={index} 
-                $hasChords={!!line.chord || !!line.chords}
-              >
-                {renderLineWithChords(line, index)}
-              </LyricLine>
-            ))}
+            {visibleLines.map((line, index) => 
+              renderLineWithChords(line, index)
+            )}
           </LyricsContainer>
         </AnimationContainer>
         
-        <LineCounter>
-          {currentLineIndex + 1}/{lyrics.length}
-        </LineCounter>
+        {lyrics.length > 0 && (
+          <LineCounter>
+            {currentLineIndex + 1}/{lyrics.length}
+          </LineCounter>
+        )}
       </LeadsheetContent>
     </LeadsheetContainer>
   );
