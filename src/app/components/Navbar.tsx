@@ -1,11 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession, signOut } from 'next-auth/react';
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function Navbar() {
-  const { data: session, status } = useSession();
-  const isLoading = status === 'loading';
+  const { user, loading, logout, isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
+    router.refresh();
+  };
 
   return (
     <nav className="max-w-7xl mx-auto flex justify-between items-center">
@@ -15,13 +22,13 @@ export default function Navbar() {
         <Link href="/songs" className="text-xl hover:underline">Songs</Link>
         <Link href="/tags" className="text-xl hover:underline">Tags</Link>
         
-        {isLoading ? (
+        {loading ? (
           <span className="text-gray-300">Loading...</span>
-        ) : session ? (
+        ) : isAuthenticated ? (
           <>
-            <span className="text-gray-300">Hello, {session.user?.name || 'User'}</span>
+            <span className="text-gray-300">Hello, {user?.name || 'User'}</span>
             <button 
-              onClick={() => signOut({ callbackUrl: '/' })}
+              onClick={handleLogout}
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
             >
               Logout

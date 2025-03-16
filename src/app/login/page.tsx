@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { login, isAuthenticated, loading } = useAuth();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/songs';
   const registered = searchParams.get('registered');
@@ -20,10 +20,10 @@ export default function LoginPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (isAuthenticated && !loading) {
       router.push(callbackUrl);
     }
-  }, [status, router, callbackUrl]);
+  }, [isAuthenticated, loading, router, callbackUrl]);
 
   // Show success message if just registered
   useEffect(() => {
@@ -38,14 +38,10 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const result = await signIn('credentials', {
-        redirect: false,
-        email,
-        password,
-      });
+      const result = await login(email, password);
 
-      if (result?.error) {
-        setError('Invalid email or password');
+      if (!result.success) {
+        setError(result.error || 'Invalid email or password');
       } else {
         router.push(callbackUrl);
         router.refresh();
@@ -58,7 +54,7 @@ export default function LoginPage() {
     }
   };
 
-  if (status === 'loading') {
+  if (loading) {
     return <div className="max-w-md mx-auto my-12 p-6">Loading...</div>;
   }
 
