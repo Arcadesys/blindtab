@@ -122,6 +122,34 @@
           // Replace the existing Firestore instance
           window._fixed_firestore = newDb;
           
+          // Fix for WebChannel 400 Bad Request error
+          if (typeof XMLHttpRequest !== 'undefined') {
+            console.log('🔧 Applying WebChannel XHR fix for 400 Bad Request error');
+            
+            // Store the original open method
+            const originalOpen = XMLHttpRequest.prototype.open;
+            
+            // Override the open method to fix WebChannel issues
+            XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+              // Check if this is a WebChannel request
+              if (typeof url === 'string' && 
+                  (url.includes('google.firestore.v1.Firestore') || 
+                   url.includes('firestore.googleapis.com'))) {
+                console.log('🔧 Intercepting WebChannel request:', url);
+                
+                // Add a cache-busting parameter to avoid 400 Bad Request errors
+                const separator = url.includes('?') ? '&' : '?';
+                const cacheBuster = `_cb=${Date.now()}`;
+                url = `${url}${separator}${cacheBuster}`;
+                
+                console.log('🔧 Modified WebChannel URL:', url);
+              }
+              
+              // Call the original open method with the potentially modified URL
+              return originalOpen.call(this, method, url, async, user, password);
+            };
+          }
+          
           // Test the connection
           newDb.collection('firebase_test').limit(1).get()
             .then(() => {
@@ -136,6 +164,39 @@
             })
             .catch(error => {
               console.error('❌ Firestore connection test failed:', error);
+              
+              // If we get a 400 Bad Request error, try a more aggressive fix
+              if (error.code === 'unavailable' || 
+                  (error.message && (
+                    error.message.includes('400') || 
+                    error.message.includes('Bad Request')))) {
+                console.log('🔧 Detected 400 Bad Request error, applying more aggressive fix');
+                
+                // Create a new Firestore instance with more aggressive settings
+                const fixedDb = firebase.firestore(app);
+                
+                // Apply more aggressive settings
+                fixedDb.settings({
+                  host: 'firestore.googleapis.com',
+                  ssl: true,
+                  experimentalForceLongPolling: true,
+                  experimentalAutoDetectLongPolling: true,
+                  ignoreUndefinedProperties: true,
+                  cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+                });
+                
+                // Replace the existing Firestore instance
+                window._fixed_firestore = fixedDb;
+                
+                // Test the connection again
+                fixedDb.collection('firebase_test').limit(1).get()
+                  .then(() => {
+                    console.log('✅ Firestore connection test successful with aggressive fix');
+                  })
+                  .catch(secondError => {
+                    console.error('❌ Aggressive fix also failed:', secondError);
+                  });
+              }
             });
         }
       }

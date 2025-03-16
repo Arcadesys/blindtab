@@ -158,19 +158,10 @@ const testFirestoreConnection = async () => {
   }
 };
 
-// Run the connection test
+// Run the connection test and don't enable persistence (it's already enabled via localCache)
 testFirestoreConnection().then(success => {
   if (success) {
     console.log('[Firebase] Firestore is ready to use');
-    
-    // Enable offline persistence if connection is successful
-    enableIndexedDbPersistence(db)
-      .then(() => {
-        console.log('[Firebase] Offline persistence enabled');
-      })
-      .catch((err) => {
-        console.warn('[Firebase] Offline persistence could not be enabled:', err);
-      });
   } else {
     console.warn('[Firebase] Firestore connection failed, check network and Firebase settings');
   }
