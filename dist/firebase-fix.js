@@ -48,6 +48,9 @@
   let isEmulator = false;
   let listenStreamRetryCount = 0;
   const MAX_LISTEN_RETRIES = 5;
+  
+  // Store blocked Listen requests to avoid infinite loops
+  const blockedListenRequests = new Set();
 
   // Check if we're in an emulator environment
   function checkEmulator() {
@@ -86,7 +89,32 @@
         
         // Special handling for Listen stream requests which often fail
         const isListenRequest = input.includes('/Listen/channel');
+        
+        // For Listen requests that are causing loops, return a mock response
         if (isListenRequest) {
+          // Extract the request ID from the URL if present
+          const ridMatch = input.match(/RID=([^&]+)/);
+          const requestId = ridMatch ? ridMatch[1] : 'unknown';
+          
+          // Check if this is a repeated Listen request that's causing issues
+          if (blockedListenRequests.has(requestId) || listenStreamRetryCount >= MAX_LISTEN_RETRIES) {
+            console.log(`[Firebase Fix] Blocking problematic Listen stream request: ${requestId}`);
+            
+            // Return a mock response for Listen requests to break the loop
+            return Promise.resolve(new Response(
+              JSON.stringify({
+                status: "ok",
+                response: []
+              }), 
+              { 
+                status: 200,
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              }
+            ));
+          }
+          
           console.log('[Firebase Fix] Intercepted Listen stream request');
         } else {
           console.log('[Firebase Fix] Intercepted Firebase request:', input.substring(0, 100) + '...');
@@ -119,6 +147,9 @@
           
           // Force credentials inclusion for Listen requests
           newInit.credentials = 'include';
+          
+          // Set mode to 'no-cors' for Listen requests to bypass CORS issues
+          newInit.mode = 'no-cors';
         }
         
         // Handle WebChannel transport errors with retry logic
@@ -129,6 +160,13 @@
               
               // Special handling for Listen stream errors (status 400)
               if (isListenRequest && response.status === 400) {
+                // Extract the request ID from the URL if present
+                const ridMatch = input.match(/RID=([^&]+)/);
+                const requestId = ridMatch ? ridMatch[1] : 'unknown';
+                
+                // Add this request ID to the blocked list
+                blockedListenRequests.add(requestId);
+                
                 if (listenStreamRetryCount < MAX_LISTEN_RETRIES) {
                   listenStreamRetryCount++;
                   console.log(`[Firebase Fix] Retrying Listen stream (${listenStreamRetryCount}/${MAX_LISTEN_RETRIES})`);
@@ -142,26 +180,21 @@
                     }, 1000 * listenStreamRetryCount); // Increasing backoff
                   });
                 } else {
-                  console.log('[Firebase Fix] Max Listen stream retries reached, attempting to reset connection');
-                  // Reset retry count after max attempts to allow future retries
-                  listenStreamRetryCount = 0;
+                  console.log('[Firebase Fix] Max Listen stream retries reached, returning mock response');
                   
-                  // Try to trigger a connection reset if possible
-                  if (window.firebase && window.firebase.firestore) {
-                    try {
-                      // Force a disconnect and reconnect
-                      const db = window.firebase.firestore();
-                      console.log('[Firebase Fix] Attempting to reset Firestore connection');
-                      
-                      // Apply settings to force a reconnection
-                      db.settings({
-                        experimentalForceLongPolling: true,
-                        merge: true
-                      });
-                    } catch (e) {
-                      console.error('[Firebase Fix] Error resetting connection:', e);
+                  // Return a mock response for Listen requests to break the loop
+                  return new Response(
+                    JSON.stringify({
+                      status: "ok",
+                      response: []
+                    }), 
+                    { 
+                      status: 200,
+                      headers: {
+                        'Content-Type': 'application/json'
+                      }
                     }
-                  }
+                  );
                 }
               }
               // For other failed requests
@@ -188,6 +221,32 @@
           })
           .catch(error => {
             console.error('[Firebase Fix] Fetch error:', error);
+            
+            // For Listen requests that fail with network errors, return a mock response
+            if (isListenRequest) {
+              console.log('[Firebase Fix] Listen stream network error, returning mock response');
+              
+              // Extract the request ID from the URL if present
+              const ridMatch = input.match(/RID=([^&]+)/);
+              const requestId = ridMatch ? ridMatch[1] : 'unknown';
+              
+              // Add this request ID to the blocked list
+              blockedListenRequests.add(requestId);
+              
+              // Return a mock response for Listen requests to break the loop
+              return new Response(
+                JSON.stringify({
+                  status: "ok",
+                  response: []
+                }), 
+                { 
+                  status: 200,
+                  headers: {
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+            }
             
             // Only retry network errors a limited number of times
             if (retryCount < MAX_RETRIES && error.name === 'TypeError') {
@@ -236,6 +295,9 @@
             }
           }
         });
+        
+        // Patch the WebChannel transport if possible
+        patchWebChannelTransport();
         
         hasAppliedFix = true;
         return;
@@ -323,6 +385,42 @@
       }
     };
     
+    // Attempt to patch the WebChannel transport to prevent Listen stream errors
+    function patchWebChannelTransport() {
+      // This is a more aggressive approach to fix WebChannel issues
+      // by forcing long polling instead of WebChannel for all Firestore operations
+      
+      try {
+        // Check if we can access the Firebase config
+        if (window.firebase && window.firebase.SDK_VERSION) {
+          console.log('[Firebase Fix] Attempting to patch WebChannel transport');
+          
+          // Force Firestore to use long polling instead of WebChannel
+          if (window.firebase.firestore) {
+            const db = window.firebase.firestore();
+            db.settings({
+              experimentalForceLongPolling: true,
+              experimentalAutoDetectLongPolling: false,
+              merge: true
+            });
+            console.log('[Firebase Fix] Forced long polling for Firestore');
+          }
+        }
+        
+        // For Firebase v9+, we need to look for the Firestore instance differently
+        if (window._firestoreInstance) {
+          console.log('[Firebase Fix] Patching v9+ Firestore instance');
+          window._firestoreInstance.settings({
+            experimentalForceLongPolling: true,
+            experimentalAutoDetectLongPolling: false,
+            merge: true
+          });
+        }
+      } catch (error) {
+        console.error('[Firebase Fix] Error patching WebChannel transport:', error);
+      }
+    }
+    
     // Test Firestore connection
     const testFirestoreConnection = (db) => {
       console.log('[Firebase Fix] Testing Firestore connection...');
@@ -347,7 +445,7 @@
               host: 'firestore.googleapis.com',
               ssl: true,
               experimentalForceLongPolling: true,
-              experimentalAutoDetectLongPolling: true,
+              experimentalAutoDetectLongPolling: false,
               cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
             });
             

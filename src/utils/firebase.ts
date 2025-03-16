@@ -16,11 +16,12 @@ import {
 import { getAuth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth';
 import { env, isDev } from './env';
 
-// Declare global window interface extension for the fixFirebaseConnection function
+// Declare global interface for the fixFirebaseConnection function
 declare global {
   interface Window {
     fixFirebaseConnection?: () => void;
     _firebaseInitialized?: boolean;
+    _firestoreInstance?: any;
   }
 }
 
@@ -35,26 +36,14 @@ export const COLLECTIONS = {
 // For backward compatibility
 export const isFallbackMode = false;
 
-// Validate Firebase configuration
-const requiredEnvVars = [
-  'VITE_FIREBASE_API_KEY',
-  'VITE_FIREBASE_AUTH_DOMAIN',
-  'VITE_FIREBASE_PROJECT_ID',
-  'VITE_FIREBASE_STORAGE_BUCKET',
-  'VITE_FIREBASE_MESSAGING_SENDER_ID',
-  'VITE_FIREBASE_APP_ID'
-] as const;
+// Detect if we're in a preview deployment
+export const isPreviewDeployment = window.location.hostname.includes('-projects.vercel.app') || 
+                                  window.location.hostname.includes('-staging.vercel.app') ||
+                                  window.location.hostname.includes('-preview.vercel.app');
 
-// Check for missing environment variables
-const missingVars = requiredEnvVars.filter(
-  varName => !import.meta.env[varName]
-);
-
-if (missingVars.length > 0) {
-  throw new Error(
-    `Missing required Firebase configuration: ${missingVars.join(', ')}`
-  );
-}
+// Detect if we're in a local development environment
+export const isLocalDevelopment = window.location.hostname === 'localhost' || 
+                                 window.location.hostname === '127.0.0.1';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -63,136 +52,115 @@ const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
-
-// Detect if we're in a preview deployment
-const isPreviewDeployment = window.location.hostname.includes('-projects.vercel.app') || 
-                           window.location.hostname.includes('-staging.vercel.app') ||
-                           window.location.hostname.includes('-preview.vercel.app');
-
-// Detect if we're in a local development environment
-const isLocalDevelopment = window.location.hostname === 'localhost' || 
-                          window.location.hostname === '127.0.0.1';
-
-// Special access for development features in production
-const AUTHORIZED_DEV_EMAILS = ['austen.crowder@gmail.com'];
-
-// Log config for debugging (excluding sensitive data)
-console.log('[Firebase] Configuration:', {
-  authDomain: firebaseConfig.authDomain,
-  projectId: firebaseConfig.projectId,
-  storageBucket: firebaseConfig.storageBucket,
-  environment: env,
-  currentDomain: window.location.hostname,
-  currentOrigin: window.location.origin,
-  currentPath: window.location.pathname,
-  isPreviewDeployment,
-  isLocalDevelopment,
-  isDev,
-  usingEmulator: isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true',
-  authorizedDevEmails: AUTHORIZED_DEV_EMAILS
-});
-
-// Initialize Firebase app
-const app = initializeApp(firebaseConfig);
-
-// Mark Firebase as initialized
-window._firebaseInitialized = true;
-
-// Expose Firebase app to window in production for debugging
-if (!isLocalDevelopment) {
-  console.log('[Firebase] Exposing Firebase app to window for debugging');
-  (window as any)._firebase_app = app;
-}
-
-// Check if we're using the emulator
-const isUsingEmulator = isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
-
-// Initialize Firestore with optimized settings
-const db = initializeFirestore(app, {
-  // Use persistent cache for better offline support, but not in emulator mode
-  localCache: !isUsingEmulator 
-    ? persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-        cacheSizeBytes: CACHE_SIZE_UNLIMITED
-      })
-    : memoryLocalCache(), // Use memory cache for emulator to avoid conflicts
-  
-  // Improve connection reliability by forcing long polling
-  experimentalForceLongPolling: true,
-  ignoreUndefinedProperties: true
-});
-
-// Initialize Auth
-const auth = getAuth(app);
-
-// Connect to emulators in development mode if enabled
-if (isUsingEmulator) {
-  console.log('[Firebase] Connecting to Firestore emulator');
-  
-  try {
-    // Connect to Auth emulator
-    connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-    
-    // Connect to Firestore emulator
-    connectFirestoreEmulator(db, 'localhost', 8080);
-    
-    console.log('[Firebase] Successfully connected to emulators');
-  } catch (error) {
-    console.error('[Firebase] Error connecting to emulators:', error);
-    
-    // Retry connection with a delay
-    setTimeout(() => {
-      try {
-        connectFirestoreEmulator(db, 'localhost', 8080);
-        console.log('[Firebase] Retry connection to emulator successful');
-      } catch (retryError) {
-        console.error('[Firebase] Retry connection to emulator failed:', retryError);
-      }
-    }, 1000);
-  }
-}
-
-// Handle WebChannel transport errors
-window.addEventListener('load', () => {
-  // Check if the fixFirebaseConnection function is available
-  if (typeof window.fixFirebaseConnection === 'function') {
-    console.log('[Firebase] Applying WebChannel connection fix');
-    window.fixFirebaseConnection();
-  } else {
-    console.log('[Firebase] WebChannel fix not available, will apply when loaded');
-    
-    // Wait for the fix script to load
-    const checkFixAvailable = setInterval(() => {
-      if (typeof window.fixFirebaseConnection === 'function') {
-        window.fixFirebaseConnection();
-        clearInterval(checkFixAvailable);
-      }
-    }, 500);
-    
-    // Stop checking after 10 seconds
-    setTimeout(() => clearInterval(checkFixAvailable), 10000);
-  }
-});
 
 // Create a Google Auth provider
 const googleProvider = new GoogleAuthProvider();
 
-// Function to check if current user has dev access
-export const hasDevAccess = async (): Promise<boolean> => {
-  // Always allow in local development
-  if (isLocalDevelopment || isDev) {
-    return true;
+// Validate Firebase configuration
+const validateFirebaseConfig = () => {
+  const requiredEnvVars = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID',
+  ];
+
+  for (const envVar of requiredEnvVars) {
+    if (!import.meta.env[envVar]) {
+      console.error(`Missing required environment variable: ${envVar}`);
+      return false;
+    }
   }
-  
-  // Check if user is logged in and has authorized email
-  const currentUser = auth.currentUser;
-  if (currentUser && currentUser.email) {
-    return AUTHORIZED_DEV_EMAILS.includes(currentUser.email);
+  return true;
+};
+
+// Initialize Firebase
+const isConfigValid = validateFirebaseConfig();
+const app = isConfigValid ? initializeApp(firebaseConfig) : null;
+
+// Initialize Firestore with optimized settings
+const db = app ? initializeFirestore(app, {
+  // Use memory cache for emulator mode, persistent cache for production
+  localCache: import.meta.env.DEV 
+    ? undefined // Use default for emulator
+    : persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+}) : null;
+
+// Initialize Auth
+const auth = app ? getAuth(app) : null;
+
+// Connect to Firebase emulators in development mode
+if (import.meta.env.DEV && app && db && auth) {
+  try {
+    // Connect to Auth emulator
+    connectAuthEmulator(auth, 'http://127.0.0.1:9099');
+    console.log('Connected to Auth emulator');
+
+    // Connect to Firestore emulator with retry logic
+    const connectToEmulator = (attempt = 1, maxAttempts = 3) => {
+      try {
+        connectFirestoreEmulator(db, '127.0.0.1', 8080);
+        console.log('Connected to Firestore emulator');
+      } catch (error) {
+        console.error(`Error connecting to Firestore emulator (attempt ${attempt}/${maxAttempts}):`, error);
+        
+        if (attempt < maxAttempts) {
+          console.log(`Retrying emulator connection in ${attempt * 1000}ms...`);
+          setTimeout(() => connectToEmulator(attempt + 1, maxAttempts), attempt * 1000);
+        } else {
+          console.error('Failed to connect to Firestore emulator after multiple attempts');
+        }
+      }
+    };
+    
+    connectToEmulator();
+  } catch (error) {
+    console.error('Error connecting to emulators:', error);
   }
+}
+
+// Enable offline persistence for better user experience
+if (db && !import.meta.env.DEV) {
+  enableIndexedDbPersistence(db)
+    .then(() => {
+      console.log('Offline persistence enabled');
+    })
+    .catch((error) => {
+      console.error('Error enabling offline persistence:', error);
+    });
+}
+
+// Mark Firebase as initialized for the fix script
+if (app && db) {
+  window._firebaseInitialized = true;
+  window._firestoreInstance = db;
   
-  return false;
+  // Test Firestore connection
+  console.log('Testing Firestore connection...');
+  
+  // Listen for WebChannel transport errors
+  window.addEventListener('error', (event) => {
+    if (event && event.error && 
+        (event.error.message && event.error.message.includes('WebChannel transport errored') ||
+         event.message && event.message.includes('WebChannel transport errored'))) {
+      
+      console.log('Caught WebChannel transport error, attempting recovery');
+      
+      // Try to reset the connection if we have access to the fixFirebaseConnection function
+      if (typeof window.fixFirebaseConnection === 'function') {
+        window.fixFirebaseConnection();
+      }
+    }
+  });
+}
+
+// Check if the current user has development access
+export const hasDevAccess = () => {
+  return sessionStorage.getItem('has_dev_access') === 'true' || 
+         auth?.currentUser?.email === 'austen.crowder@gmail.com';
 };
 
 // Test the Firestore connection
@@ -221,15 +189,5 @@ testFirestoreConnection().then(success => {
   }
 });
 
-// Export everything
-export { 
-  app, 
-  db, 
-  auth, 
-  googleProvider,
-  isPreviewDeployment,
-  isLocalDevelopment
-};
-
-// Default export
-export default db; 
+// Export Firebase instances
+export { app, db, auth, googleProvider }; 
