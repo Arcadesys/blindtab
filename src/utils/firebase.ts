@@ -82,6 +82,14 @@ console.log('[Firebase] Configuration:', {
   usingEmulator: isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true'
 });
 
+// For preview deployments, we might need to override the authDomain
+// This helps with Firebase Auth domain authorization issues
+if (isPreviewDeployment && !isLocalDevelopment) {
+  console.log('[Firebase] Preview deployment detected, using default authDomain');
+  // Keep the original authDomain from Firebase console
+  // Don't try to use the preview URL as authDomain
+}
+
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 

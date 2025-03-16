@@ -48,10 +48,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Handle unauthorized domain error
       if (error.code === 'auth/unauthorized-domain') {
         console.warn('[Auth] This domain is not authorized in Firebase. Add it in the Firebase Console -> Authentication -> Sign-in method -> Authorized domains');
+        console.warn('[Auth] Current domain:', window.location.hostname);
         
         // For development purposes, you can use a workaround
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          console.info('[Auth] For local development, please use the Firebase emulator');
+          console.info('[Auth] For local development, please use the Firebase emulator with VITE_USE_FIREBASE_EMULATOR=true');
+        } else if (window.location.hostname.includes('-projects.vercel.app') || 
+                  window.location.hostname.includes('-staging.vercel.app') || 
+                  window.location.hostname.includes('-preview.vercel.app')) {
+          console.info('[Auth] For preview deployments, please add this domain to Firebase authorized domains list');
+          console.info('[Auth] Or use the production domain that is already authorized');
         }
       }
       
