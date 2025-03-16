@@ -10,27 +10,56 @@ const Modal = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
 `;
 
 const ModalContent = styled.div`
-  background: white;
+  background: var(--bg-primary);
   padding: 24px;
-  border-radius: 8px;
+  border-radius: 12px;
   width: 90%;
   max-width: 800px;
   max-height: 90vh;
   overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
+  border: 1px solid var(--border-color);
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+    
+    &:hover {
+      background: var(--primary-color);
+    }
+  }
+`;
+
+const Title = styled.h2`
+  margin: 0 0 24px 0;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
 `;
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 `;
 
 const Field = styled.div`
@@ -40,52 +69,105 @@ const Field = styled.div`
 `;
 
 const Label = styled.label`
-  font-weight: bold;
-  color: #333;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9rem;
 `;
 
 const Input = styled.input`
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 1rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color-alpha);
+  }
+  
+  &::placeholder {
+    color: var(--text-secondary);
+  }
 `;
 
 const TextArea = styled.textarea`
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 1rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   min-height: 200px;
-  font-family: monospace;
+  font-family: 'Fira Code', monospace;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color-alpha);
+  }
+  
+  &::placeholder {
+    color: var(--text-secondary);
+  }
 `;
 
 const ButtonGroup = styled.div`
   display: flex;
-  gap: 8px;
+  gap: 12px;
   justify-content: flex-end;
-  margin-top: 16px;
+  margin-top: 8px;
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  padding: 8px 16px;
+  padding: 12px 24px;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  background: ${props => props.variant === 'primary' ? '#007AFF' : '#f0f0f0'};
-  color: ${props => props.variant === 'primary' ? 'white' : 'black'};
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  
+  background: ${props => 
+    props.variant === 'primary' 
+      ? 'var(--primary-color)' 
+      : 'var(--bg-secondary)'};
+  
+  color: ${props => 
+    props.variant === 'primary' 
+      ? 'white' 
+      : 'var(--text-primary)'};
+  
+  border: 1px solid ${props => 
+    props.variant === 'primary'
+      ? 'var(--primary-color)'
+      : 'var(--border-color)'};
   
   &:hover {
-    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px ${props =>
+      props.variant === 'primary'
+        ? 'var(--primary-color-alpha)'
+        : 'rgba(0, 0, 0, 0.1)'};
+  }
+  
+  &:active {
+    transform: translateY(0);
   }
 `;
 
 interface SongEditModalProps {
   song?: Song | null;
   onClose: () => void;
+  isOpen: boolean;
 }
 
-const SongEditModal: React.FC<SongEditModalProps> = ({ song, onClose }) => {
+const SongEditModal: React.FC<SongEditModalProps> = ({ song, onClose, isOpen }) => {
   const { createNewSong, saveSongEdits, refreshSongList } = useSong();
   const [formData, setFormData] = useState({
     title: '',
@@ -97,13 +179,28 @@ const SongEditModal: React.FC<SongEditModalProps> = ({ song, onClose }) => {
 
   useEffect(() => {
     if (song) {
-      // If editing existing song, populate form
+      // Load song data into form
+      const lyrics = song.lyrics?.map(l => {
+        // Only add chord if it exists
+        const chordPart = l.chord ? `[${l.chord}] ` : '';
+        return `${chordPart}${l.line}`;
+      }).join('\n') || '';
+
       setFormData({
-        title: song.title || '',
-        artist: song.artist || '',
-        key: song.key || '',
-        lyrics: song.lyrics?.map(l => `[${l.chord || ''}] ${l.line}`).join('\n') || '',
+        title: song.songInfo?.title || song.title || '',
+        artist: song.songInfo?.artist || song.artist || '',
+        key: song.songInfo?.key || '',
+        lyrics: lyrics,
         tags: song.tags?.join(', ') || ''
+      });
+    } else {
+      // Reset form for new song
+      setFormData({
+        title: '',
+        artist: '',
+        key: '',
+        lyrics: '[C]Add your lyrics here\n[G]Each line can have chords in brackets',
+        tags: ''
       });
     }
   }, [song]);
@@ -118,24 +215,22 @@ const SongEditModal: React.FC<SongEditModalProps> = ({ song, onClose }) => {
         key: formData.key,
       },
       lyrics: formData.lyrics.split('\n').map((line, index) => {
-        const match = line.match(/\[(.*?)\](.*)/);
+        const match = line.match(/^\[([^\]]+)\]\s*(.*)$/);
         return {
           chord: match ? match[1] : '',
-          line: match ? match[2].trim() : line.trim(),
+          line: match ? match[2] : line.trim(),
           position: index
         };
-      }),
+      }).filter(l => l.line || l.chord), // Remove empty lines
       tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-      createdAt: Timestamp.now(),
+      createdAt: song?.createdAt || Timestamp.now(),
       updatedAt: Timestamp.now()
     };
 
     try {
       if (song) {
-        // Edit existing song
         await saveSongEdits(song.id, songData);
       } else {
-        // Create new song
         await createNewSong(songData);
       }
       await refreshSongList();
@@ -146,10 +241,12 @@ const SongEditModal: React.FC<SongEditModalProps> = ({ song, onClose }) => {
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Modal onClick={() => onClose()}>
+    <Modal onClick={onClose}>
       <ModalContent onClick={e => e.stopPropagation()}>
-        <h2>{song ? 'Edit Song' : 'Add New Song'}</h2>
+        <Title>{song ? 'Edit Song' : 'Add New Song'}</Title>
         <Form onSubmit={handleSubmit}>
           <Field>
             <Label>Title</Label>
@@ -158,6 +255,7 @@ const SongEditModal: React.FC<SongEditModalProps> = ({ song, onClose }) => {
               value={formData.title}
               onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
               required
+              placeholder="Enter song title"
             />
           </Field>
           
@@ -168,6 +266,7 @@ const SongEditModal: React.FC<SongEditModalProps> = ({ song, onClose }) => {
               value={formData.artist}
               onChange={e => setFormData(prev => ({ ...prev, artist: e.target.value }))}
               required
+              placeholder="Enter artist name"
             />
           </Field>
           
@@ -177,11 +276,12 @@ const SongEditModal: React.FC<SongEditModalProps> = ({ song, onClose }) => {
               type="text"
               value={formData.key}
               onChange={e => setFormData(prev => ({ ...prev, key: e.target.value }))}
+              placeholder="e.g., C, Am, G"
             />
           </Field>
           
           <Field>
-            <Label>Tags (comma-separated)</Label>
+            <Label>Tags</Label>
             <Input
               type="text"
               value={formData.tags}
@@ -202,7 +302,7 @@ const SongEditModal: React.FC<SongEditModalProps> = ({ song, onClose }) => {
 
           <ButtonGroup>
             <Button type="button" onClick={onClose}>Cancel</Button>
-            <Button type="submit" variant="primary">Save</Button>
+            <Button type="submit" variant="primary">Save Changes</Button>
           </ButtonGroup>
         </Form>
       </ModalContent>

@@ -122,6 +122,19 @@ const EmptyState = styled(LoadingState)`
   color: var(--text-secondary);
 `;
 
+const Button = styled.button<{ $variant?: 'danger' | 'primary' }>`
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: ${props => props.$variant === 'danger' ? '#ff4444' : props.$variant === 'primary' ? '#007AFF' : '#f0f0f0'};
+  color: ${props => props.$variant === 'danger' || props.$variant === 'primary' ? 'white' : 'black'};
+  
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
 interface SongLibraryProps {
   onSongLoad: (songId: string) => void;
   onClose?: () => void;
@@ -180,7 +193,7 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
       <LibraryContainer>
         <ErrorState>
           <div>{error}</div>
-          <Button onClick={refreshSongList}>
+          <Button onClick={refreshSongList} $variant="primary">
             Retry
           </Button>
         </ErrorState>

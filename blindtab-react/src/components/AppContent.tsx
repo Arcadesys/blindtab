@@ -94,6 +94,7 @@ const AppContent: React.FC = () => {
   
   // Get the current song data
   const currentSong = songs.current ? songs.loaded[songs.current] : null;
+  const songLyrics = currentSong?.lyrics || currentSong?.songData || [];
   
   // Check for dev sequence
   useEffect(() => {
@@ -133,7 +134,7 @@ const AppContent: React.FC = () => {
   };
   
   const handleNext = () => {
-    if (currentSong && currentLineIndex < currentSong.songData.length - 1) {
+    if (songLyrics.length && currentLineIndex < songLyrics.length - 1) {
       setCurrentLineIndex(currentLineIndex + 1);
     }
   };
@@ -176,9 +177,9 @@ const AppContent: React.FC = () => {
           onPrevious={handlePrevious}
           onNext={handleNext}
           hasPrevious={currentLineIndex > 0}
-          hasNext={currentSong ? currentLineIndex < currentSong.songData.length - 1 : false}
+          hasNext={songLyrics.length ? currentLineIndex < songLyrics.length - 1 : false}
           currentLineIndex={currentLineIndex}
-          totalLines={currentSong ? currentSong.songData.length : 0}
+          totalLines={songLyrics.length || 0}
           onSliderChange={setCurrentLineIndex}
         />
         
