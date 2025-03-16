@@ -83,7 +83,7 @@ const app = isConfigValid ? initializeApp(firebaseConfig) : null;
 const db = app ? initializeFirestore(app, {
   // Use memory cache for emulator mode, persistent cache for production
   localCache: import.meta.env.DEV 
-    ? undefined // Use default for emulator
+    ? memoryLocalCache() // Use memory cache for emulator to avoid conflicts
     : persistentLocalCache({
         tabManager: persistentMultipleTabManager()
       })
@@ -122,24 +122,17 @@ if (import.meta.env.DEV && app && db && auth) {
   }
 }
 
-// Enable offline persistence for better user experience
-if (db && !import.meta.env.DEV) {
-  enableIndexedDbPersistence(db)
-    .then(() => {
-      console.log('Offline persistence enabled');
-    })
-    .catch((error) => {
-      console.error('Error enabling offline persistence:', error);
-    });
-}
-
 // Mark Firebase as initialized for the fix script
 if (app && db) {
+  // Set global flags for the fix script to find
   window._firebaseInitialized = true;
   window._firestoreInstance = db;
   
-  // Test Firestore connection
-  console.log('Testing Firestore connection...');
+  // Expose Firebase app to window in development for debugging
+  if (import.meta.env.DEV) {
+    console.log('[Firebase] Exposing Firebase app to window for debugging');
+    (window as any)._firebase_app = app;
+  }
   
   // Listen for WebChannel transport errors
   window.addEventListener('error', (event) => {

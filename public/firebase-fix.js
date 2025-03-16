@@ -20,7 +20,11 @@
       attempts++;
       
       // Check if Firebase is available - look for our marker or the Firebase SDK
-      if (window._firebaseInitialized || window.firebase || window._firebase_app) {
+      if (window._firebaseInitialized || 
+          window._firestoreInstance || 
+          window._firebase_app || 
+          window.firebase || 
+          (window.Firestore && window.Firestore.instance)) {
         console.log('✅ Firebase detected, applying fixes...');
         callback();
         return;
@@ -271,7 +275,7 @@
     // Fix Firestore settings
     const fixFirestoreSettings = () => {
       // Check if we're using the modular SDK (v9+)
-      if (window._firebaseInitialized) {
+      if (window._firebaseInitialized || window._firestoreInstance) {
         console.log('[Firebase Fix] Using Firebase v9+ modular SDK, skipping legacy settings');
         
         // Add a global error handler for WebChannel transport errors
@@ -315,7 +319,7 @@
         const db = firebase.firestore();
         
         // Check if settings have already been applied by the app
-        if (db._settings && db._settings.cacheSizeBytes) {
+        if (db._settings && (db._settings.cacheSizeBytes || db._settings.localCache)) {
           console.log('[Firebase Fix] Firestore already has cache settings, skipping settings application');
           
           // Just test the connection without modifying settings
@@ -410,11 +414,12 @@
         // For Firebase v9+, we need to look for the Firestore instance differently
         if (window._firestoreInstance) {
           console.log('[Firebase Fix] Patching v9+ Firestore instance');
-          window._firestoreInstance.settings({
-            experimentalForceLongPolling: true,
-            experimentalAutoDetectLongPolling: false,
-            merge: true
-          });
+          try {
+            // We can't directly modify settings for v9+ SDK, but we can intercept requests
+            console.log('[Firebase Fix] Using fetch interception for v9+ SDK');
+          } catch (error) {
+            console.error('[Firebase Fix] Error patching v9+ Firestore instance:', error);
+          }
         }
       } catch (error) {
         console.error('[Firebase Fix] Error patching WebChannel transport:', error);
