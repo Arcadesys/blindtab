@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { PrismaClient } from '@prisma/client';
 import { notFound, redirect } from 'next/navigation';
 import { Metadata } from 'next';
-import { unstable_getServerSession } from 'next-auth';
-import { authOptions } from '../../api/auth/[...nextauth]/route';
+import { cookies } from 'next/headers';
+import { verifyToken } from '@/lib/jwt';
 
 const prisma = new PrismaClient();
 
@@ -69,7 +69,19 @@ function formatMarkdown(content: string) {
 }
 
 export default async function SongDetailPage({ params }: SongPageProps) {
-  const session = await unstable_getServerSession(authOptions);
+  // Get auth token from cookies
+  const cookieStore = cookies();
+  const token = cookieStore.get('auth-token')?.value;
+  
+  // Verify token and get user info
+  let userId = null;
+  if (token) {
+    const payload = verifyToken(token);
+    if (payload) {
+      userId = payload.userId;
+    }
+  }
+  
   const { id } = params;
   
   // Get the song
@@ -94,7 +106,7 @@ export default async function SongDetailPage({ params }: SongPageProps) {
   
   // Check if user is authorized to view this song
   const isPublic = song.isPublic;
-  const isOwner = session?.user?.email === song.user?.email;
+  const isOwner = userId === song.userId;
   
   // If song is not public and user is not the owner, redirect to songs page
   if (!isPublic && !isOwner) {

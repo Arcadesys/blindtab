@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { unstable_getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { verifyToken } from '@/lib/jwt';
 
 const prisma = new PrismaClient();
 
@@ -23,14 +22,25 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const session = await unstable_getServerSession(authOptions);
+    // Get token from cookies
+    const token = request.cookies.get('auth-token')?.value;
     
     // Check if user is authenticated
-    if (!session?.user?.email) {
+    if (!token) {
       return NextResponse.json(
         { message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    // Verify token
+    const payload = verifyToken(token);
+    
+    if (!payload) {
+      return NextResponse.json(
+        { message: 'Invalid token' },
         { status: 401 }
       );
     }
@@ -38,7 +48,7 @@ export async function POST(request: Request) {
     // Get user from database
     const user = await prisma.user.findUnique({
       where: {
-        email: session.user.email,
+        id: payload.userId,
       },
     });
     
