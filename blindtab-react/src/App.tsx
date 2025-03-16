@@ -19,7 +19,15 @@ function App() {
           </ThemeProvider>
         } />
         {import.meta.env.DEV && (
-          <Route path="/dev" element={<DevTools />} />
+          <Route path="/dev" element={
+            <ThemeProvider>
+              <DisplayProvider>
+                <SongProvider>
+                  <DevTools />
+                </SongProvider>
+              </DisplayProvider>
+            </ThemeProvider>
+          } />
         )}
       </Routes>
     </Router>

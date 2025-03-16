@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { FirestoreTest } from '../FirestoreTest';
 import EnvironmentInfo from './EnvironmentInfo';
+import SongManager from './SongManager';
 
 const DevTools: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('firestore');
+  const [activeTab, setActiveTab] = useState<string>('songs');
 
   const tabs = {
+    songs: {
+      label: '🎵 Songs',
+      component: <SongManager />
+    },
     firestore: {
       label: '🔥 Firestore',
       component: <FirestoreTest />
