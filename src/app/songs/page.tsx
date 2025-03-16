@@ -1,12 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../api/auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
 
 export default async function SongsPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   
   // Get public songs
   const publicSongs = await prisma.song.findMany({
