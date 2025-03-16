@@ -3,6 +3,7 @@ import DevTools from './components/DevTools';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DisplayProvider } from './contexts/DisplayContext';
 import { SongProvider } from './contexts/SongContext';
+import { AuthProvider } from './contexts/AuthContext';
 import AppContent from './components/AppContent';
 
 function App() {
@@ -12,9 +13,11 @@ function App() {
         <Route path="/" element={
           <ThemeProvider>
             <DisplayProvider>
-              <SongProvider>
-                <AppContent />
-              </SongProvider>
+              <AuthProvider>
+                <SongProvider>
+                  <AppContent />
+                </SongProvider>
+              </AuthProvider>
             </DisplayProvider>
           </ThemeProvider>
         } />
@@ -22,9 +25,11 @@ function App() {
           <Route path="/dev" element={
             <ThemeProvider>
               <DisplayProvider>
-                <SongProvider>
-                  <DevTools />
-                </SongProvider>
+                <AuthProvider>
+                  <SongProvider>
+                    <DevTools />
+                  </SongProvider>
+                </AuthProvider>
               </DisplayProvider>
             </ThemeProvider>
           } />

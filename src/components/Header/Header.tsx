@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSong } from '../../contexts/SongContext';
 import ThemeToggle from './ThemeToggle';
+import { ProfileMenu } from '../ProfileMenu';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
 
 const HeaderContainer = styled.header`
@@ -157,35 +158,39 @@ const Header: React.FC<HeaderProps> = ({
         </a>
       </Logo>
       
-      {currentSong && (
-        <SongInfo>
-          <SongTitle>{songTitle}</SongTitle>
-          <SongArtist>
-            {songArtist}
-            {metadataText && ` · ${metadataText}`}
-          </SongArtist>
-        </SongInfo>
-      )}
+      <SongInfo>
+        {songTitle && (
+          <>
+            <SongTitle>{songTitle}</SongTitle>
+            <SongArtist>{songArtist}</SongArtist>
+            {metadataText && (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                {metadataText}
+              </div>
+            )}
+          </>
+        )}
+      </SongInfo>
       
       <Controls>
         <HeaderButton 
           onClick={handleSongLibraryClick}
           aria-label="Open song library"
-          title="Open song library (O)"
+          title="Open song library"
           className="song-library-button"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path 
               fill="currentColor" 
-              d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"
+              d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 5h-3v5.5c0 1.38-1.12 2.5-2.5 2.5S10 13.88 10 12.5s1.12-2.5 2.5-2.5c.57 0 1.08.19 1.5.51V5h4v2zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"
             />
           </svg>
         </HeaderButton>
         
         <HeaderButton 
           onClick={handleAccessibilityClick}
-          aria-label="Open accessibility options"
-          title="Open accessibility options"
+          aria-label="Open accessibility menu"
+          title="Open accessibility menu"
           className="accessibility-button"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -215,6 +220,8 @@ const Header: React.FC<HeaderProps> = ({
           toggleTheme={toggleTheme} 
           className="theme-toggle"
         />
+
+        <ProfileMenu />
       </Controls>
     </HeaderContainer>
   );

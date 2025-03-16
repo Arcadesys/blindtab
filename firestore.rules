@@ -4,32 +4,44 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Helper functions
     function isStaging() {
-      return request.auth == null && request.resource != null;  // Allow writes in staging
+      return request.auth == null && request.resource != null && (
+        request.origin.matches('.*-staging.vercel.app') ||
+        request.origin.matches('.*-test.vercel.app') ||
+        request.origin.matches('.*-dev.vercel.app')
+      );
     }
 
     function isDevelopment() {
-      return true;  // Allow all operations in development - we'll control this via the emulator
+      return request.auth == null && (
+        request.origin.matches('localhost:.*') ||
+        request.origin.matches('127.0.0.1:.*')
+      );
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
     // Base rules for development and staging
     match /{document=**} {
-      allow read, write: if isDevelopment() || isStaging();
+      allow read: if true;  // Anyone can read
+      allow write: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes in development, staging, or if authenticated
     }
 
-    // Production rules (more restrictive)
+    // Production rules
     match /songs/{songId} {
       allow read: if true;  // Anyone can read songs
-      allow write: if false; // No writes in production for now
+      allow write: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes if authenticated
     }
 
     match /config/{configId} {
       allow read: if true;
-      allow write: if false; // No writes in production for now
+      allow write: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes if authenticated
     }
 
     match /tags/{tagId} {
       allow read: if true;
-      allow write: if false; // No writes in production for now
+      allow write: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes if authenticated
     }
   }
 } 

@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator, collection, getDocs, query, limit, enableIndexedDbPersistence } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth';
 import { env, isDev } from './env';
 
 // Collection references
@@ -53,90 +54,61 @@ console.log('[Firebase] Configuration:', {
   isDev: isDev
 });
 
-let db;
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
-try {
-  console.log(`[Firebase] Initializing Firebase in ${env} environment`);
-  
-  // Validate config values
-  Object.entries(firebaseConfig).forEach(([key, value]) => {
-    if (!value || value === 'undefined') {
-      throw new Error(`Invalid Firebase config: ${key} is ${value}`);
+// Use emulator in development if available
+if (isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR) {
+  try {
+    connectFirestoreEmulator(db, 'localhost', 8080);
+    connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+    console.log('[Firebase] Connected to local emulators:', {
+      firestore: 'localhost:8080',
+      auth: 'localhost:9099'
+    });
+  } catch (error) {
+    console.error('[Firebase] Failed to connect to emulators:', error);
+  }
+}
+
+// Enable offline persistence for better performance
+if (!isDev) {
+  enableIndexedDbPersistence(db)
+    .catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn('[Firebase] Multiple tabs open, persistence can only be enabled in one tab at a time.');
+      } else if (err.code === 'unimplemented') {
+        console.warn('[Firebase] The current browser doesn\'t support persistence.');
+      }
+    });
+}
+
+// Initialize Firebase with environment-specific settings
+if (env === 'staging') {
+  console.log('[Firebase] Initializing for staging environment');
+  // Add any staging-specific initialization here
+} else if (env === 'production') {
+  console.log('[Firebase] Initializing for production environment');
+  // Add any production-specific initialization here
+}
+
+// Test the connection using the new modular API
+const songsRef = collection(db, COLLECTIONS.SONGS);
+const q = query(songsRef, limit(1));
+getDocs(q)
+  .then(() => console.log('[Firebase] Connection test successful'))
+  .catch(error => {
+    console.error('[Firebase] Connection test failed:', error);
+    if (error.code === 'permission-denied') {
+      console.error('[Firebase] This might be due to unauthorized domain access. Please check Firebase Console -> Authentication -> Sign-in method -> Authorized domains');
+    } else if (error.code === 'failed-precondition') {
+      console.error('[Firebase] This might be due to incorrect project configuration or missing indexes');
     }
   });
 
-  // Validate current domain against authDomain
-  const currentDomain = window.location.hostname;
-  console.log(`[Firebase] Current domain: ${currentDomain}`);
-  if (!isDev && !currentDomain.includes('localhost')) {
-    // Check if current domain matches auth domain pattern
-    const authDomainParts = firebaseConfig.authDomain.split('.');
-    const currentDomainParts = currentDomain.split('.');
-    
-    if (currentDomainParts.length < 2) {
-      console.warn('[Firebase] Current domain seems invalid:', currentDomain);
-    }
-    
-    // Log domain validation attempt
-    console.log('[Firebase] Domain validation:', {
-      current: currentDomain,
-      authorized: firebaseConfig.authDomain,
-      isPreview: currentDomain.includes('vercel.app')
-    });
-  }
+console.log('[Firebase] Initialization successful');
 
-  const app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-
-  // Enable offline persistence for better performance
-  if (!isDev) {
-    enableIndexedDbPersistence(db)
-      .catch((err) => {
-        if (err.code === 'failed-precondition') {
-          console.warn('[Firebase] Multiple tabs open, persistence can only be enabled in one tab at a time.');
-        } else if (err.code === 'unimplemented') {
-          console.warn('[Firebase] The current browser doesn\'t support persistence.');
-        }
-      });
-  }
-
-  // Use emulator in development if available
-  if (isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR) {
-    connectFirestoreEmulator(db, 'localhost', 8080);
-    console.log('[Firebase] Connected to local emulator');
-  }
-
-  // Initialize Firebase with environment-specific settings
-  if (env === 'staging') {
-    console.log('[Firebase] Initializing for staging environment');
-    // Add any staging-specific initialization here
-  } else if (env === 'production') {
-    console.log('[Firebase] Initializing for production environment');
-    // Add any production-specific initialization here
-  }
-
-  // Test the connection using the new modular API
-  const songsRef = collection(db, COLLECTIONS.SONGS);
-  const q = query(songsRef, limit(1));
-  getDocs(q)
-    .then(() => console.log('[Firebase] Connection test successful'))
-    .catch(error => {
-      console.error('[Firebase] Connection test failed:', error);
-      if (error.code === 'permission-denied') {
-        console.error('[Firebase] This might be due to unauthorized domain access. Please check Firebase Console -> Authentication -> Sign-in method -> Authorized domains');
-      } else if (error.code === 'failed-precondition') {
-        console.error('[Firebase] This might be due to incorrect project configuration or missing indexes');
-      }
-    });
-
-  console.log('[Firebase] Initialization successful');
-} catch (error) {
-  console.error('[Firebase] Initialization failed:', error);
-  console.error('[Firebase] Current environment:', env);
-  console.error('[Firebase] Auth domain:', firebaseConfig.authDomain);
-  console.error('[Firebase] Project ID:', firebaseConfig.projectId);
-  throw error;
-}
-
-// Export the initialized Firestore instance
-export { db }; 
+// Export the initialized instances
+export { db, auth, googleProvider }; 
