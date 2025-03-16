@@ -3,31 +3,37 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ 
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET
-  });
-  const isAuthenticated = !!token;
-  
-  // Define paths that require authentication
-  const authRequiredPaths = [
-    '/songs/create',
-    '/songs/edit',
-  ];
-  
-  // Check if the current path requires authentication
-  const isAuthRequired = authRequiredPaths.some(path => 
-    request.nextUrl.pathname.startsWith(path)
-  );
-  
-  // If the path requires authentication and the user is not authenticated, redirect to login
-  if (isAuthRequired && !isAuthenticated) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
+  try {
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET
+    });
+    
+    const isAuthenticated = !!token;
+    
+    // Define paths that require authentication
+    const authRequiredPaths = [
+      '/songs/create',
+      '/songs/edit',
+    ];
+    
+    // Check if the current path requires authentication
+    const isAuthRequired = authRequiredPaths.some(path => 
+      request.nextUrl.pathname.startsWith(path)
+    );
+    
+    // If the path requires authentication and the user is not authenticated, redirect to login
+    if (isAuthRequired && !isAuthenticated) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    
+    return NextResponse.next();
+  } catch (error) {
+    console.error('Middleware error:', error);
+    return NextResponse.next();
   }
-  
-  return NextResponse.next();
 }
 
 // Configure the middleware to run on specific paths
