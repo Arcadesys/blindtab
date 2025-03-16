@@ -7,7 +7,8 @@ service cloud.firestore {
       return request.auth == null && request.resource != null && (
         request.origin.matches('.*-staging.vercel.app') ||
         request.origin.matches('.*-test.vercel.app') ||
-        request.origin.matches('.*-dev.vercel.app')
+        request.origin.matches('.*-dev.vercel.app') ||
+        request.origin.matches('.*-projects.vercel.app')
       );
     }
 
@@ -17,6 +18,14 @@ service cloud.firestore {
         request.origin.matches('127.0.0.1:.*') ||
         // Allow emulator operations without origin check
         request.origin == null
+      );
+    }
+
+    function isPreviewDeployment() {
+      return request.auth == null && (
+        request.origin.matches('.*-projects.vercel.app') ||
+        request.origin.matches('.*-staging.vercel.app') ||
+        request.origin.matches('.*-preview.vercel.app')
       );
     }
 
@@ -31,38 +40,38 @@ service cloud.firestore {
     // Base rules for development and staging
     match /{document=**} {
       allow read: if true;  // Anyone can read
-      allow create, update: if isDevelopment() || isStaging() || isAuthenticated();
-      allow delete: if isDevelopment() || isStaging() || isAuthenticated();
+      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
     }
 
     // Songs collection - public songs available to everyone
     match /songs/{songId} {
-      allow read: if true;  // Anyone can read songs
-      allow create, update: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes if authenticated
-      allow delete: if isDevelopment() || isStaging() || isAuthenticated();
+      allow read: if true;
+      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
     }
 
     // User songs collection - personal song lists
     match /user_songs/{userId} {
-      allow read: if isOwner(userId) || isDevelopment() || isStaging();
-      allow create, update, delete: if isOwner(userId) || isDevelopment() || isStaging();
+      allow read: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment();
+      allow create, update, delete: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment();
       
       match /songs/{songId} {
-        allow read: if isOwner(userId) || isDevelopment() || isStaging();
-        allow create, update, delete: if isOwner(userId) || isDevelopment() || isStaging();
+        allow read: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment();
+        allow create, update, delete: if isOwner(userId) || isDevelopment() || isStaging() || isPreviewDeployment();
       }
     }
 
     match /config/{configId} {
       allow read: if true;
-      allow create, update: if isDevelopment() || isStaging() || isAuthenticated();
-      allow delete: if isDevelopment() || isStaging() || isAuthenticated();
+      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
     }
 
     match /tags/{tagId} {
       allow read: if true;
-      allow create, update: if isDevelopment() || isStaging() || isAuthenticated();
-      allow delete: if isDevelopment() || isStaging() || isAuthenticated();
+      allow create, update: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isPreviewDeployment() || isAuthenticated();
     }
   }
 } 

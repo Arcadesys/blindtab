@@ -1,5 +1,16 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator, collection, getDocs, query, limit, enableIndexedDbPersistence } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  connectFirestoreEmulator, 
+  collection, 
+  getDocs, 
+  query, 
+  limit, 
+  enableIndexedDbPersistence,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth';
 import { env, isDev } from './env';
 
@@ -51,12 +62,21 @@ console.log('[Firebase] Configuration:', {
   currentDomain: window.location.hostname,
   currentOrigin: window.location.origin,
   currentPath: window.location.pathname,
-  isStaging: window.location.hostname.includes('-staging.vercel.app'),
+  isStaging: window.location.hostname.includes('-staging.vercel.app') || window.location.hostname.includes('-projects.vercel.app'),
   isDev: isDev
 });
 
+// Initialize Firebase app
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+// Initialize Firestore with settings optimized for web
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
+
+// Initialize Auth
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
@@ -87,8 +107,8 @@ if (!isDev) {
 }
 
 // Initialize Firebase with environment-specific settings
-if (env === 'staging') {
-  console.log('[Firebase] Initializing for staging environment');
+if (env === 'staging' || window.location.hostname.includes('-projects.vercel.app')) {
+  console.log('[Firebase] Initializing for staging/preview environment');
   // Add any staging-specific initialization here
 } else if (env === 'production') {
   console.log('[Firebase] Initializing for production environment');
@@ -96,18 +116,35 @@ if (env === 'staging') {
 }
 
 // Test the connection using the new modular API
-const songsRef = collection(db, COLLECTIONS.SONGS);
-const q = query(songsRef, limit(1));
-getDocs(q)
-  .then(() => console.log('[Firebase] Connection test successful'))
-  .catch(error => {
+const testConnection = async () => {
+  try {
+    const songsRef = collection(db, COLLECTIONS.SONGS);
+    const q = query(songsRef, limit(1));
+    await getDocs(q);
+    console.log('[Firebase] Connection test successful');
+    return true;
+  } catch (error: any) {
     console.error('[Firebase] Connection test failed:', error);
+    
     if (error.code === 'permission-denied') {
       console.error('[Firebase] This might be due to unauthorized domain access. Please check Firebase Console -> Authentication -> Sign-in method -> Authorized domains');
+      console.error('[Firebase] Current domain:', window.location.hostname);
+      
+      // For preview/staging deployments, we'll still try to use the app in read-only mode
+      if (window.location.hostname.includes('-projects.vercel.app') || 
+          window.location.hostname.includes('-staging.vercel.app')) {
+        console.warn('[Firebase] Preview deployment detected. Some write operations may not work.');
+      }
     } else if (error.code === 'failed-precondition') {
       console.error('[Firebase] This might be due to incorrect project configuration or missing indexes');
     }
-  });
+    
+    return false;
+  }
+};
+
+// Run the test but don't block initialization
+testConnection();
 
 console.log('[Firebase] Initialization successful');
 
