@@ -30,6 +30,14 @@ type FirestoreListResponse = {
   documents?: FirestoreDocument[];
 };
 
+// Available CORS proxies to try
+const CORS_PROXIES = [
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  (url: string) => `https://cors-anywhere.herokuapp.com/${url}`,
+  (url: string) => `https://proxy.cors.sh/${url}`,
+];
+
 /**
  * Firestore REST API Client
  */
@@ -37,6 +45,7 @@ export class FirestoreRestClient {
   private baseUrl: string;
   private apiKey: string;
   private defaultHeaders: HeadersInit;
+  private currentProxyIndex: number = -1; // Start with direct access
 
   constructor(projectId: string, apiKey: string) {
     this.baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
@@ -45,8 +54,16 @@ export class FirestoreRestClient {
     // Enhanced headers for CORS support
     this.defaultHeaders = {
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      'X-Firebase-Auth': apiKey
     };
+
+    // Check if we've already determined a working proxy
+    const savedProxyIndex = sessionStorage.getItem('firestore_working_proxy_index');
+    if (savedProxyIndex !== null) {
+      this.currentProxyIndex = parseInt(savedProxyIndex, 10);
+      console.log(`Using previously successful proxy #${this.currentProxyIndex}`);
+    }
   }
 
   /**
@@ -54,7 +71,7 @@ export class FirestoreRestClient {
    * In production, we'll use a CORS proxy if direct access fails
    */
   private getFirestoreUrl(path: string = ''): string {
-    // First try direct access with API key
+    // First build the direct URL with API key
     const directUrl = `${this.baseUrl}${path ? '/' + path : ''}?key=${this.apiKey}`;
     
     // For production environments, we'll have a fallback to CORS proxy
@@ -64,17 +81,111 @@ export class FirestoreRestClient {
       
       // Check if we've already tried direct access and it failed
       const hasCorsIssue = sessionStorage.getItem('firestore_cors_issue') === 'true';
+      const has400Error = sessionStorage.getItem('firestore_400_error') === 'true';
       
-      if (hasCorsIssue) {
-        // Use a CORS proxy service
-        // Note: For a production app, you should set up your own proxy
-        // This is just a temporary solution for debugging
+      if (hasCorsIssue || has400Error) {
+        // If we have a working proxy, use it
+        if (this.currentProxyIndex >= 0 && this.currentProxyIndex < CORS_PROXIES.length) {
+          const proxyUrl = CORS_PROXIES[this.currentProxyIndex](directUrl);
+          console.log(`Using CORS proxy #${this.currentProxyIndex} for Firestore request`);
+          return proxyUrl;
+        }
+        
+        // Otherwise use the first proxy
         console.log('Using CORS proxy for Firestore request');
-        return `https://corsproxy.io/?${encodeURIComponent(directUrl)}`;
+        return CORS_PROXIES[0](directUrl);
       }
     }
     
     return directUrl;
+  }
+
+  /**
+   * Try the next proxy in the list
+   * @returns URL with the next proxy, or null if all proxies have been tried
+   */
+  private tryNextProxy(originalUrl: string): string | null {
+    this.currentProxyIndex++;
+    
+    if (this.currentProxyIndex >= CORS_PROXIES.length) {
+      console.error('All CORS proxies have failed');
+      return null;
+    }
+    
+    const proxyUrl = CORS_PROXIES[this.currentProxyIndex](originalUrl);
+    console.log(`Trying next CORS proxy #${this.currentProxyIndex}: ${proxyUrl}`);
+    
+    // Save the current proxy index in case it works
+    sessionStorage.setItem('firestore_working_proxy_index', this.currentProxyIndex.toString());
+    
+    return proxyUrl;
+  }
+
+  /**
+   * Make a request with automatic proxy fallback
+   */
+  private async makeRequest(url: string, options: RequestInit = {}): Promise<Response> {
+    try {
+      // First try with the current URL (direct or proxy)
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...this.defaultHeaders,
+          ...options.headers
+        }
+      });
+      
+      // If successful, return the response
+      if (response.ok) {
+        return response;
+      }
+      
+      // If we get a 400 or 403 error, try the next proxy
+      if ((response.status === 400 || response.status === 403 || response.status === 0) && 
+          window.location.hostname !== 'localhost') {
+        
+        // Mark that we had a CORS or 400 error
+        sessionStorage.setItem('firestore_cors_issue', 'true');
+        sessionStorage.setItem('firestore_400_error', 'true');
+        
+        // Extract the original URL if this was already a proxy URL
+        const originalUrl = url.includes('?url=') 
+          ? decodeURIComponent(url.split('?url=')[1]) 
+          : url;
+        
+        // Try the next proxy
+        const nextProxyUrl = this.tryNextProxy(originalUrl);
+        if (nextProxyUrl) {
+          console.log('Retrying with next proxy');
+          return this.makeRequest(nextProxyUrl, options);
+        }
+      }
+      
+      // If we've tried all proxies or it's not a proxy-fixable error, return the response
+      return response;
+    } catch (error) {
+      console.error('Request failed:', error);
+      
+      // Mark that we had a CORS issue
+      sessionStorage.setItem('firestore_cors_issue', 'true');
+      
+      // If we're not on localhost, try the next proxy
+      if (window.location.hostname !== 'localhost') {
+        // Extract the original URL if this was already a proxy URL
+        const originalUrl = url.includes('?url=') 
+          ? decodeURIComponent(url.split('?url=')[1]) 
+          : url;
+        
+        // Try the next proxy
+        const nextProxyUrl = this.tryNextProxy(originalUrl);
+        if (nextProxyUrl) {
+          console.log('Retrying with next proxy after error');
+          return this.makeRequest(nextProxyUrl, options);
+        }
+      }
+      
+      throw error;
+    }
   }
 
   /**
@@ -84,10 +195,10 @@ export class FirestoreRestClient {
   async testConnection(): Promise<boolean> {
     try {
       // Try to list a small number of documents
-      const response = await fetch(this.getFirestoreUrl(), {
-        method: 'GET',
-        headers: this.defaultHeaders
-      });
+      const url = this.getFirestoreUrl();
+      console.log('Testing Firestore connection with URL:', url);
+      
+      const response = await this.makeRequest(url);
       
       if (response.status === 404) {
         console.error('Firestore database not found. You need to create it in the Firebase Console.');
@@ -96,58 +207,16 @@ export class FirestoreRestClient {
       
       if (!response.ok) {
         console.error(`Firestore connection test failed with status: ${response.status}`);
-        
-        // If we get a CORS error, mark it for future requests
-        if (response.status === 0 || response.type === 'opaque') {
-          console.log('CORS issue detected, will use proxy for future requests');
-          sessionStorage.setItem('firestore_cors_issue', 'true');
-          
-          // Try again with the proxy
-          return this.testConnectionWithProxy();
-        }
-        
         return false;
       }
       
+      console.log('✅ Firestore REST connection successful');
       return true;
     } catch (error) {
       console.error('Firestore connection test failed:', error);
       
       // If we get a CORS error, try using the proxy
-      console.log('Trying with CORS proxy...');
-      return this.testConnectionWithProxy();
-    }
-  }
-  
-  /**
-   * Test connection using a CORS proxy as fallback
-   */
-  private async testConnectionWithProxy(): Promise<boolean> {
-    try {
-      // Force using the proxy by temporarily setting the CORS issue flag
-      sessionStorage.setItem('firestore_cors_issue', 'true');
-      
-      // Try to list a small number of documents through the proxy
-      const proxyUrl = this.getFirestoreUrl();
-      console.log('Testing connection with proxy URL:', proxyUrl);
-      
-      const response = await fetch(proxyUrl, {
-        method: 'GET',
-        headers: this.defaultHeaders
-      });
-      
-      if (!response.ok) {
-        console.error(`Proxy connection test failed with status: ${response.status}`);
-        return false;
-      }
-      
-      console.log('✅ Connection successful through CORS proxy');
-      return true;
-    } catch (error) {
-      console.error('Proxy connection test failed:', error);
-      
-      // If proxy also fails, try direct Firebase SDK as last resort
-      console.log('Trying direct Firebase SDK as last resort...');
+      console.log('Trying with Firebase SDK as last resort...');
       return this.testWithFirebaseSDK();
     }
   }
@@ -165,7 +234,7 @@ export class FirestoreRestClient {
       const testQuery = query(collection(db, 'firebase_test'), limit(1));
       await getDocs(testQuery);
       
-      console.log('Direct Firestore access successful. Using Firebase SDK instead of REST.');
+      console.log('Direct Firestore access successful. Database exists but REST API has CORS issues.');
       return true;
     } catch (sdkError: any) {
       // If this also fails with a "not found" error, the database doesn't exist
@@ -190,9 +259,8 @@ export class FirestoreRestClient {
    */
   async get<T>(collection: string, docId: string): Promise<T | null> {
     try {
-      const response = await fetch(this.getFirestoreUrl(`${collection}/${docId}`), {
-        headers: this.defaultHeaders
-      });
+      const url = this.getFirestoreUrl(`${collection}/${docId}`);
+      const response = await this.makeRequest(url);
       
       if (response.status === 404) {
         return null;
@@ -218,9 +286,8 @@ export class FirestoreRestClient {
    */
   async list<T>(collection: string, limit = 100): Promise<T[]> {
     try {
-      const response = await fetch(this.getFirestoreUrl(`${collection}?pageSize=${limit}`), {
-        headers: this.defaultHeaders
-      });
+      const url = this.getFirestoreUrl(`${collection}?pageSize=${limit}`);
+      const response = await this.makeRequest(url);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -248,9 +315,9 @@ export class FirestoreRestClient {
    */
   async set<T>(collection: string, docId: string, data: any): Promise<T> {
     try {
-      const response = await fetch(this.getFirestoreUrl(`${collection}/${docId}`), {
+      const url = this.getFirestoreUrl(`${collection}/${docId}`);
+      const response = await this.makeRequest(url, {
         method: 'PATCH',
-        headers: this.defaultHeaders,
         body: JSON.stringify({
           fields: this._transformRequest(data)
         })
@@ -276,9 +343,9 @@ export class FirestoreRestClient {
    */
   async delete(collection: string, docId: string): Promise<boolean> {
     try {
-      const response = await fetch(this.getFirestoreUrl(`${collection}/${docId}`), {
-        method: 'DELETE',
-        headers: this.defaultHeaders
+      const url = this.getFirestoreUrl(`${collection}/${docId}`);
+      const response = await this.makeRequest(url, {
+        method: 'DELETE'
       });
       
       if (!response.ok) {

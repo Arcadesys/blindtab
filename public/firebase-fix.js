@@ -55,37 +55,134 @@
         isEmulator
       });
       
+      // Get Firebase API key from the page
+      let apiKey = '';
+      try {
+        // Try to extract API key from meta tag
+        const metaTag = document.querySelector('meta[name="firebase-api-key"]');
+        if (metaTag) {
+          apiKey = metaTag.getAttribute('content');
+        }
+        
+        // If not found, try to extract from Firebase config
+        if (!apiKey && window._firebase_config) {
+          apiKey = window._firebase_config.apiKey;
+        }
+        
+        // Last resort - look for it in the page source
+        if (!apiKey) {
+          const scripts = document.querySelectorAll('script');
+          for (const script of scripts) {
+            const content = script.textContent || '';
+            const match = content.match(/apiKey["']?\s*:\s*["']([^"']+)["']/);
+            if (match && match[1]) {
+              apiKey = match[1];
+              break;
+            }
+          }
+        }
+        
+        console.log('Firebase API key found:', apiKey ? '✅' : '❌');
+      } catch (e) {
+        console.error('Error extracting API key:', e);
+      }
+      
       // 1. Fix CORS issues by adding proper headers and using a proxy if needed
       const originalFetch = window.fetch;
       window.fetch = function(url, options = {}) {
         // Only intercept Firebase API calls
-        if (typeof url === 'string' && url.includes('firestore.googleapis.com')) {
-          console.log('Intercepting Firebase fetch request:', url);
+        if (typeof url === 'string' && (
+            url.includes('firestore.googleapis.com') || 
+            url.includes('google.firestore.v1.Firestore'))) {
+          
+          // Mark that we're intercepting this request
+          console.log('🔧 Applied CORS fix to Firebase fetch request');
           
           // Check if we should use a CORS proxy
           const hasCorsIssue = sessionStorage.getItem('firestore_cors_issue') === 'true';
+          const has400Error = sessionStorage.getItem('firestore_400_error') === 'true';
           
-          if (!isLocalhost && hasCorsIssue) {
-            // Use a CORS proxy service
-            console.log('🔧 Using CORS proxy for Firebase request');
-            url = 'https://corsproxy.io/?' + encodeURIComponent(url);
-          } else {
-            // Add CORS headers
+          // Add authentication headers if we have an API key
+          if (apiKey && !options.headers?.Authorization) {
             options.headers = options.headers || {};
             options.headers = {
               ...options.headers,
               'Content-Type': 'application/json',
-              'Accept': 'application/json'
+              'Accept': 'application/json',
+              'X-Firebase-Auth': apiKey
             };
             
-            // Force CORS mode
-            options.mode = 'cors';
-            options.credentials = 'omit';
+            // Add auth parameter to URL if not already present
+            if (typeof url === 'string' && !url.includes('key=') && apiKey) {
+              const separator = url.includes('?') ? '&' : '?';
+              url = `${url}${separator}key=${apiKey}`;
+            }
           }
           
-          console.log('🔧 Applied CORS fix to Firebase fetch request');
+          // If we're having CORS issues and not on localhost, use a proxy
+          if (!isLocalhost && (hasCorsIssue || has400Error)) {
+            // Try a different CORS proxy service
+            const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+            console.log('🔄 Using CORS proxy for Firebase request:', proxyUrl);
+            
+            // When using a proxy, we need to ensure we're not sending credentials
+            options.mode = 'cors';
+            options.credentials = 'omit';
+            
+            // Return the proxied request
+            return originalFetch.call(this, proxyUrl, options)
+              .then(response => {
+                if (!response.ok) {
+                  // If proxy also fails, try another proxy
+                  if (response.status === 400 || response.status === 403) {
+                    sessionStorage.setItem('firestore_400_error', 'true');
+                    
+                    // Try a different proxy as fallback
+                    const backupProxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+                    console.log('🔄 First proxy failed, trying backup:', backupProxyUrl);
+                    return originalFetch.call(this, backupProxyUrl, options);
+                  }
+                }
+                return response;
+              })
+              .catch(error => {
+                console.error('Proxy request failed:', error);
+                // Mark that we had an error for future requests
+                sessionStorage.setItem('firestore_cors_issue', 'true');
+                sessionStorage.setItem('firestore_400_error', 'true');
+                throw error;
+              });
+          }
+          
+          // Force CORS mode
+          options.mode = 'cors';
+          
+          // Return the original request with our modifications
+          return originalFetch.call(this, url, options)
+            .then(response => {
+              // Check for CORS or 400 errors
+              if (!response.ok) {
+                if (response.status === 0 || response.type === 'opaque') {
+                  console.log('CORS issue detected, will use proxy for future requests');
+                  sessionStorage.setItem('firestore_cors_issue', 'true');
+                }
+                
+                if (response.status === 400 || response.status === 403) {
+                  console.log('400/403 error detected, will use proxy for future requests');
+                  sessionStorage.setItem('firestore_400_error', 'true');
+                }
+              }
+              return response;
+            })
+            .catch(error => {
+              console.error('Firebase request failed:', error);
+              // Mark that we had an error for future requests
+              sessionStorage.setItem('firestore_cors_issue', 'true');
+              throw error;
+            });
         }
         
+        // For non-Firebase requests, just pass through
         return originalFetch.call(this, url, options);
       };
       
@@ -106,7 +203,9 @@
             console.log('🔧 Detected emulator environment, applying emulator settings');
             newDb.settings({
               host: 'localhost:8080',
-              ssl: false
+              ssl: false,
+              experimentalForceLongPolling: true,
+              ignoreUndefinedProperties: true
             });
             
             // Connect to emulator
@@ -123,7 +222,8 @@
               experimentalForceLongPolling: true,
               merge: true,
               ignoreUndefinedProperties: true,
-              ssl: true
+              ssl: true,
+              cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
             });
           }
           
@@ -143,6 +243,10 @@
               // If we get a CORS error, mark it for future requests
               console.log('Marking CORS issue for future requests');
               sessionStorage.setItem('firestore_cors_issue', 'true');
+              
+              if (error.code === 'permission-denied' || error.code === 'invalid-argument') {
+                sessionStorage.setItem('firestore_400_error', 'true');
+              }
             });
         }
       }
