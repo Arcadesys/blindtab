@@ -1,0 +1,58 @@
+{
+  "name": "blindtab-react",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "dev": "vite --mode development",
+    "dev:staging": "vite --mode staging",
+    "build": "vite build --mode production",
+    "build:staging": "vite build --mode staging",
+    "build:dev": "vite build --mode development",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "seed": "node prisma/seed.js",
+    "seed:staging": "NODE_ENV=staging node prisma/seed.js",
+    "seed:prod": "NODE_ENV=production node prisma/seed.js",
+    "setup-env": "node scripts/setup-env.js",
+    "typecheck": "tsc -b",
+    "vercel-build": "vite build --mode staging",
+    "test": "vitest",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.5.0",
+    "@types/styled-components": "^5.1.34",
+    "firebase": "^10.8.0",
+    "prisma": "^6.5.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.3",
+    "styled-components": "^6.1.15"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^1.3.1",
+    "@vitest/ui": "^1.3.1",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.3.3",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^5.1.5",
+    "vitest": "^1.3.1",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/jest-dom": "^6.1.4",
+    "@testing-library/user-event": "^14.5.1"
+  }
+}
