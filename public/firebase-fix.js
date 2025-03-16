@@ -12,38 +12,6 @@
   // Special access for development features in production
   const AUTHORIZED_DEV_EMAILS = ['austen.crowder@gmail.com'];
   
-  // Wait for Firebase to be available
-  function waitForFirebase(callback, maxAttempts = 30) {
-    let attempts = 0;
-    
-    const checkFirebase = () => {
-      attempts++;
-      
-      // Check if Firebase is available - look for our marker or the Firebase SDK
-      if (window._firebaseInitialized || 
-          window._firestoreInstance || 
-          window._firebase_app || 
-          window.firebase || 
-          (window.Firestore && window.Firestore.instance)) {
-        console.log('✅ Firebase detected, applying fixes...');
-        callback();
-        return;
-      }
-      
-      // Give up after max attempts
-      if (attempts >= maxAttempts) {
-        console.error('❌ Firebase not found after', maxAttempts, 'attempts');
-        return;
-      }
-      
-      // Try again in 500ms
-      setTimeout(checkFirebase, 500);
-    };
-    
-    // Start checking
-    checkFirebase();
-  }
-  
   // Track retry attempts to avoid infinite loops
   let retryCount = 0;
   const MAX_RETRIES = 3;
@@ -55,7 +23,7 @@
   
   // Store blocked Listen requests to avoid infinite loops
   const blockedListenRequests = new Set();
-
+  
   // Check if we're in an emulator environment
   function checkEmulator() {
     const host = window.location.hostname;
@@ -272,209 +240,30 @@
       return originalFetch(input, init);
     };
     
-    // Fix Firestore settings
-    const fixFirestoreSettings = () => {
-      // Check if we're using the modular SDK (v9+)
-      if (window._firebaseInitialized || window._firestoreInstance) {
-        console.log('[Firebase Fix] Using Firebase v9+ modular SDK, skipping legacy settings');
+    // Add a global error handler for WebChannel transport errors
+    window.addEventListener('error', function(event) {
+      // Check if this is a WebChannel transport error
+      if (event && event.error && 
+          (event.error.message && event.error.message.includes('WebChannel transport errored') ||
+           event.message && event.message.includes('WebChannel transport errored'))) {
         
-        // Add a global error handler for WebChannel transport errors
-        window.addEventListener('error', function(event) {
-          // Check if this is a WebChannel transport error
-          if (event && event.error && 
-              (event.error.message && event.error.message.includes('WebChannel transport errored') ||
-               event.message && event.message.includes('WebChannel transport errored'))) {
-            
-            console.log('[Firebase Fix] Caught WebChannel transport error, attempting recovery');
-            
-            // Try to reset the connection if we have access to the fixFirebaseConnection function
-            if (typeof window.fixFirebaseConnection === 'function') {
-              // Reset the hasAppliedFix flag to allow reapplication of fixes
-              hasAppliedFix = false;
-              
-              // Reapply fixes after a short delay
-              setTimeout(() => {
-                window.fixFirebaseConnection();
-              }, 1000);
-            }
-          }
-        });
+        console.log('[Firebase Fix] Caught WebChannel transport error, attempting recovery');
         
-        // Patch the WebChannel transport if possible
-        patchWebChannelTransport();
-        
-        hasAppliedFix = true;
-        return;
-      }
-      
-      // Check for legacy Firebase SDK
-      if (!window.firebase || !window.firebase.firestore) {
-        console.log('[Firebase Fix] Firebase or Firestore not available yet, waiting...');
-        setTimeout(fixFirestoreSettings, 500);
-        return;
-      }
-      
-      try {
-        // Check if Firestore is already initialized with cache settings
-        const db = firebase.firestore();
-        
-        // Check if settings have already been applied by the app
-        if (db._settings && (db._settings.cacheSizeBytes || db._settings.localCache)) {
-          console.log('[Firebase Fix] Firestore already has cache settings, skipping settings application');
+        // Try to reset the connection if we have access to the fixFirebaseConnection function
+        if (typeof window.fixFirebaseConnection === 'function') {
+          // Reset the hasAppliedFix flag to allow reapplication of fixes
+          hasAppliedFix = false;
           
-          // Just test the connection without modifying settings
-          testFirestoreConnection(db);
-          hasAppliedFix = true;
-          return;
+          // Reapply fixes after a short delay
+          setTimeout(() => {
+            window.fixFirebaseConnection();
+          }, 1000);
         }
-        
-        // First, set the host property
-        if (isEmulator) {
-          // For emulator, use localhost
-          db.settings({
-            host: 'localhost:8080',
-            ssl: false
-          });
-          
-          console.log('[Firebase Fix] Applied emulator settings');
-        } else {
-          // For production, set host first
-          db.settings({
-            host: 'firestore.googleapis.com'
-          });
-          
-          // Then apply other settings
-          db.settings({
-            experimentalForceLongPolling: true,
-            merge: true,
-            ignoreUndefinedProperties: true,
-            ssl: true
-          });
-          
-          console.log('[Firebase Fix] Applied production settings');
-        }
-        
-        // Add a listener for WebChannel transport errors
-        window.addEventListener('error', function(event) {
-          // Check if this is a WebChannel transport error
-          if (event && event.error && 
-              (event.error.message && event.error.message.includes('WebChannel transport errored') ||
-               event.message && event.message.includes('WebChannel transport errored'))) {
-            
-            console.log('[Firebase Fix] Caught WebChannel transport error, attempting recovery');
-            
-            // Try to reset the connection
-            try {
-              // Reset settings to force a reconnection
-              db.settings({
-                experimentalForceLongPolling: true,
-                merge: true,
-                ignoreUndefinedProperties: true,
-                ssl: !isEmulator
-              });
-              
-              console.log('[Firebase Fix] Reset Firestore connection after WebChannel error');
-            } catch (e) {
-              console.error('[Firebase Fix] Error resetting connection:', e);
-            }
-          }
-        });
-        
-        // Test the connection
-        testFirestoreConnection(db);
-        
-        hasAppliedFix = true;
-      } catch (error) {
-        console.error('[Firebase Fix] Error applying settings:', error);
       }
-    };
+    });
     
-    // Attempt to patch the WebChannel transport to prevent Listen stream errors
-    function patchWebChannelTransport() {
-      // This is a more aggressive approach to fix WebChannel issues
-      // by forcing long polling instead of WebChannel for all Firestore operations
-      
-      try {
-        // Check if we can access the Firebase config
-        if (window.firebase && window.firebase.SDK_VERSION) {
-          console.log('[Firebase Fix] Attempting to patch WebChannel transport');
-          
-          // Force Firestore to use long polling instead of WebChannel
-          if (window.firebase.firestore) {
-            const db = window.firebase.firestore();
-            db.settings({
-              experimentalForceLongPolling: true,
-              experimentalAutoDetectLongPolling: false,
-              merge: true
-            });
-            console.log('[Firebase Fix] Forced long polling for Firestore');
-          }
-        }
-        
-        // For Firebase v9+, we need to look for the Firestore instance differently
-        if (window._firestoreInstance) {
-          console.log('[Firebase Fix] Patching v9+ Firestore instance');
-          try {
-            // We can't directly modify settings for v9+ SDK, but we can intercept requests
-            console.log('[Firebase Fix] Using fetch interception for v9+ SDK');
-          } catch (error) {
-            console.error('[Firebase Fix] Error patching v9+ Firestore instance:', error);
-          }
-        }
-      } catch (error) {
-        console.error('[Firebase Fix] Error patching WebChannel transport:', error);
-      }
-    }
-    
-    // Test Firestore connection
-    const testFirestoreConnection = (db) => {
-      console.log('[Firebase Fix] Testing Firestore connection...');
-      
-      // Try to access a test collection
-      db.collection('firebase_test')
-        .limit(1)
-        .get()
-        .then(() => {
-          console.log('[Firebase] Firestore connection test passed');
-          console.log('[Firebase] Firestore is ready to use');
-        })
-        .catch(error => {
-          console.error('[Firebase Fix] Connection test failed:', error);
-          
-          // If we're still having issues, try one more approach
-          if (!hasAppliedFix && !isEmulator) {
-            console.log('[Firebase Fix] Trying alternative connection method...');
-            
-            // Reset settings and try with long polling explicitly enabled
-            db.settings({
-              host: 'firestore.googleapis.com',
-              ssl: true,
-              experimentalForceLongPolling: true,
-              experimentalAutoDetectLongPolling: false,
-              cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-            });
-            
-            // Test again
-            db.collection('firebase_test')
-              .limit(1)
-              .get()
-              .then(() => {
-                console.log('[Firebase] Alternative method successful');
-                hasAppliedFix = true;
-              })
-              .catch(finalError => {
-                console.error('[Firebase Fix] All connection attempts failed:', finalError);
-              });
-          }
-        });
-    };
-    
-    // Start the fix process
-    fixFirestoreSettings();
+    hasAppliedFix = true;
   }
-  
-  // Apply fixes when Firebase is available
-  waitForFirebase(fixFirebaseConnection);
   
   // Expose fix function to window
   window.fixFirebaseConnection = fixFirebaseConnection;
@@ -486,6 +275,39 @@
              (window.firebase && window.firebase.auth && window.firebase.auth().currentUser?.email) || ''
            );
   };
+  
+  // Apply fixes immediately
+  fixFirebaseConnection();
+  
+  // Also set up a MutationObserver to watch for Firebase script loading
+  const observer = new MutationObserver(function(mutations) {
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList') {
+        for (const node of mutation.addedNodes) {
+          if (node.tagName === 'SCRIPT' && 
+              node.src && 
+              (node.src.includes('firebase') || node.src.includes('firestore'))) {
+            console.log('[Firebase Fix] Detected Firebase script loading, will apply fixes after load');
+            node.addEventListener('load', function() {
+              console.log('[Firebase Fix] Firebase script loaded, applying fixes');
+              setTimeout(fixFirebaseConnection, 500);
+            });
+          }
+        }
+      }
+    }
+  });
+  
+  // Start observing the document
+  observer.observe(document, { childList: true, subtree: true });
+  
+  // Also set up a timer to periodically check and apply fixes if needed
+  setInterval(function() {
+    if (!hasAppliedFix) {
+      console.log('[Firebase Fix] Periodic check, applying fixes');
+      fixFirebaseConnection();
+    }
+  }, 5000);
   
   console.log('🔧 Firebase fix utility added to window. Run window.fixFirebaseConnection() to apply fixes manually.');
 })(); 
