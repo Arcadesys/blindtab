@@ -6,6 +6,7 @@ interface LeadsheetDisplayProps {
   content: string;
   autoScroll: boolean;
   fontSize: number;
+  setFontSize?: (size: number) => void;
   displayMode?: 'default' | 'high-contrast' | 'yellow-black' | 'black-white';
 }
 
@@ -13,6 +14,7 @@ export function LeadsheetDisplay({
   content, 
   autoScroll, 
   fontSize,
+  setFontSize,
   displayMode = 'default'
 }: LeadsheetDisplayProps) {
   const [lines, setLines] = useState<string[]>([]);
@@ -20,11 +22,19 @@ export function LeadsheetDisplay({
   const [showControls, setShowControls] = useState(false);
   const [lineTypes, setLineTypes] = useState<('chord' | 'lyric' | 'other')[]>([]);
   const [lineGroups, setLineGroups] = useState<number[]>([]);
+  const [showFontSizeSlider, setShowFontSizeSlider] = useState(false);
+  const [localFontSize, setLocalFontSize] = useState(fontSize);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLPreElement>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [showTapHint, setShowTapHint] = useState(true);
+
+  // Update local font size when prop changes
+  useEffect(() => {
+    setLocalFontSize(fontSize);
+  }, [fontSize]);
 
   // Hide tap hint after 5 seconds
   useEffect(() => {
@@ -35,6 +45,73 @@ export function LeadsheetDisplay({
       return () => clearTimeout(timer);
     }
   }, [showTapHint]);
+
+  // Auto-scale text to fit container
+  useEffect(() => {
+    const autoScaleText = () => {
+      if (!containerRef.current || !contentRef.current) return;
+      
+      // Get container width
+      const containerWidth = containerRef.current.clientWidth - 32; // Subtract padding
+      
+      // Find the longest line
+      let maxLineLength = 0;
+      let longestLine = '';
+      
+      lines.forEach(line => {
+        if (line.length > maxLineLength) {
+          maxLineLength = line.length;
+          longestLine = line;
+        }
+      });
+      
+      if (maxLineLength === 0) return;
+      
+      // Create a temporary span to measure text width
+      const tempSpan = document.createElement('span');
+      tempSpan.style.fontSize = '1px'; // Start with 1px
+      tempSpan.style.fontFamily = 'monospace';
+      tempSpan.style.visibility = 'hidden';
+      tempSpan.style.position = 'absolute';
+      tempSpan.style.whiteSpace = 'pre';
+      tempSpan.innerText = longestLine;
+      document.body.appendChild(tempSpan);
+      
+      // Calculate optimal font size
+      const charWidthAt1px = tempSpan.offsetWidth / maxLineLength;
+      const optimalFontSize = Math.floor(containerWidth / (charWidthAt1px * maxLineLength));
+      
+      // Limit font size between 12 and 36
+      const newFontSize = Math.max(12, Math.min(36, optimalFontSize));
+      
+      // Update font size if it's different
+      if (newFontSize !== localFontSize) {
+        setLocalFontSize(newFontSize);
+        if (setFontSize) {
+          setFontSize(newFontSize);
+        }
+      }
+      
+      // Clean up
+      document.body.removeChild(tempSpan);
+    };
+    
+    // Run auto-scale on mount and when container size changes
+    autoScaleText();
+    
+    // Set up resize observer
+    const resizeObserver = new ResizeObserver(() => {
+      autoScaleText();
+    });
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [lines, containerRef, contentRef, setFontSize]);
 
   // Parse content into lines and identify chord/lyric pairs
   useEffect(() => {
@@ -97,12 +174,15 @@ export function LeadsheetDisplay({
       } else if (e.key === 'c') {
         e.preventDefault();
         setShowControls(!showControls);
+      } else if (e.key === 'f') {
+        e.preventDefault();
+        setShowFontSizeSlider(!showFontSizeSlider);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lines.length, showControls, lineGroups]);
+  }, [lines.length, showControls, lineGroups, showFontSizeSlider]);
 
   // Auto-scroll to current line
   useEffect(() => {
@@ -222,6 +302,15 @@ export function LeadsheetDisplay({
     setTouchStartX(null);
   };
 
+  // Handle font size change
+  const handleFontSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSize = parseInt(e.target.value);
+    setLocalFontSize(newSize);
+    if (setFontSize) {
+      setFontSize(newSize);
+    }
+  };
+
   // Get display mode styles
   const getDisplayModeStyles = (isCurrentLine: boolean, isChord: boolean) => {
     switch (displayMode) {
@@ -276,9 +365,12 @@ export function LeadsheetDisplay({
       <div 
         ref={containerRef}
         className="flex-1 overflow-y-auto px-2 md:px-4"
-        style={{ fontSize: `${fontSize}px`, lineHeight: '1.5' }}
+        style={{ fontSize: `${localFontSize}px`, lineHeight: '1.5' }}
       >
-        <pre className="font-mono whitespace-pre-wrap break-words w-full">
+        <pre 
+          ref={contentRef}
+          className="font-mono whitespace-pre-wrap break-words w-full"
+        >
           {lines.map((line, index) => {
             const isChord = lineTypes[index] === 'chord';
             const currentGroup = lineGroups[currentLineIndex];
@@ -330,6 +422,86 @@ export function LeadsheetDisplay({
               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
           </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowFontSizeSlider(!showFontSizeSlider);
+            }}
+            className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
+            aria-label="Font size"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+          </button>
+        </div>
+      )}
+      
+      {/* Font size slider */}
+      {showFontSizeSlider && (
+        <div className="absolute bottom-20 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 w-48">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-medium">Font Size: {localFontSize}px</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowFontSizeSlider(false);
+              }}
+              className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <input
+            type="range"
+            min="12"
+            max="36"
+            value={localFontSize}
+            onChange={handleFontSizeChange}
+            className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+          />
+          <div className="flex justify-between text-xs mt-1">
+            <span>12px</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Auto-scale text
+                if (containerRef.current && contentRef.current) {
+                  const containerWidth = containerRef.current.clientWidth - 32;
+                  const maxLineLength = Math.max(...lines.map(line => line.length));
+                  
+                  if (maxLineLength > 0) {
+                    const tempSpan = document.createElement('span');
+                    tempSpan.style.fontSize = '1px';
+                    tempSpan.style.fontFamily = 'monospace';
+                    tempSpan.style.visibility = 'hidden';
+                    tempSpan.style.position = 'absolute';
+                    tempSpan.style.whiteSpace = 'pre';
+                    tempSpan.innerText = 'X'.repeat(maxLineLength);
+                    document.body.appendChild(tempSpan);
+                    
+                    const charWidthAt1px = tempSpan.offsetWidth / maxLineLength;
+                    const optimalFontSize = Math.floor(containerWidth / (charWidthAt1px * maxLineLength));
+                    const newFontSize = Math.max(12, Math.min(36, optimalFontSize));
+                    
+                    setLocalFontSize(newFontSize);
+                    if (setFontSize) {
+                      setFontSize(newFontSize);
+                    }
+                    
+                    document.body.removeChild(tempSpan);
+                  }
+                }
+              }}
+              className="text-blue-600 dark:text-blue-400 font-medium"
+            >
+              Auto
+            </button>
+            <span>36px</span>
+          </div>
         </div>
       )}
       
