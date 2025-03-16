@@ -20,7 +20,7 @@ interface SongContextType {
   isPreviewMode: boolean;
   addSongToCollection: (songId: string) => Promise<void>;
   removeSongFromCollection: (songId: string) => Promise<void>;
-  playSong: (songId: string) => Promise<void>;
+  playSong: (songId: string) => Promise<Song>;
   refreshSongs: () => Promise<void>;
   createNewSong: (songData: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
   updateSong: (songId: string, songData: Partial<Omit<Song, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
