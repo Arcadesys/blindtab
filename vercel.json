@@ -1,18 +1,1 @@
-{
-  "version": 2,
-  "github": {
-    "enabled": true,
-    "silent": true
-  },
-  "buildCommand": "cd blindtab-react && npm install && npm run vercel-build",
-  "outputDirectory": "blindtab-react/dist",
-  "git": {
-    "deploymentEnabled": {
-      "main": true,
-      "staging": true
-    }
-  },
-  "env": {
-    "VITE_APP_ENV": "staging"
-  }
-} 
+{} 

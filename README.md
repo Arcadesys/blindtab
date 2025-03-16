@@ -1,68 +1,54 @@
-# BlindTab - Accessible Lyrics Display
+# React + TypeScript + Vite
 
-A simple, accessible web application for displaying song lyrics and chords with easy navigation.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Features
+Currently, two official plugins are available:
 
-- **Accessible Display**: 
-  - Shows two lines of lyrics and chords at a time
-  - Rolling buffer navigation (one line at a time) for better readability
-  - Previous line remains visible when advancing to help maintain context
-  - Maximized display area with hideable controls
-- **Accessible Navigation**: 
-  - Tap/click on left/right sides to navigate
-  - Previous/Next buttons
-  - Keyboard navigation (arrow keys and spacebar)
-  - Auto-scroll with adjustable BPM (beats per minute)
-- **Accessibility Options**:
-  - Adjustable font size
-  - Light/Dark theme toggle
-- **Chord Tools**:
-  - Full key selection dropdown with all musical keys
-  - Toggle between sharps (#) and flats (♭)
-- **Responsive Design**: Works on both desktop and mobile browsers
-- **Persistent Settings**: User preferences are saved between sessions
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## How to Use
+## Expanding the ESLint configuration
 
-1. Open `index.html` in any modern web browser
-2. Click the gear icon (⚙️) in the top-left corner to show/hide controls
-3. Navigate through the lyrics using:
-   - The Previous/Next buttons
-   - Clicking/tapping on the left or right side of the lyrics display
-   - Using keyboard arrow keys (left/right or up/down) or spacebar
-   - Auto-scroll feature (toggle with the "Auto-Scroll" button or press 'P')
-4. Adjust font size with the A+/A- buttons
-5. Toggle between light and dark themes with the sun/moon button
-6. Click "Select Key" to open a dropdown menu with all available keys
-7. Toggle between sharps and flats notation with the "Use ♭" button
-8. Control auto-scroll speed by adjusting the BPM value:
-   - Each line advances after 4 beats (one measure in 4/4 time)
-   - Lower BPM = slower scroll, higher BPM = faster scroll
-   - Recommended range: 40-120 BPM for comfortable reading
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-## Current Song
+```js
+export default tseslint.config({
+  extends: [
+    // Remove ...tseslint.configs.recommended and replace with this
+    ...tseslint.configs.recommendedTypeChecked,
+    // Alternatively, use this for stricter rules
+    ...tseslint.configs.strictTypeChecked,
+    // Optionally, add this for stylistic rules
+    ...tseslint.configs.stylisticTypeChecked,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
+```
 
-The app currently displays "Fake Plastic Trees" by Radiohead as a demo.
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-## Development
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-This is a simple vanilla JavaScript application with no dependencies. To modify:
-
-1. Edit the HTML structure in `index.html`
-2. Modify styles in `styles.css`
-3. Update functionality in `script.js`
-
-To add or change songs, modify the `songData` array in `script.js`.
-
-## Future Enhancements
-
-- Song selection menu
-- Import/export song data
-- Auto-scroll functionality
-- Custom chord diagrams
-- Transposition tools
-
-## License
-
-MIT 
+export default tseslint.config({
+  plugins: {
+    // Add the react-x and react-dom plugins
+    'react-x': reactX,
+    'react-dom': reactDom,
+  },
+  rules: {
+    // other rules...
+    // Enable its recommended typescript rules
+    ...reactX.configs['recommended-typescript'].rules,
+    ...reactDom.configs.recommended.rules,
+  },
+})
+```
