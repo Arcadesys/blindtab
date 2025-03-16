@@ -32,6 +32,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('default');
   const [showDisplayOptions, setShowDisplayOptions] = useState(false);
+  const [showControlsPanel, setShowControlsPanel] = useState(false);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -44,7 +45,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
         setShowInfo(!showInfo);
       } else if (e.key === 'c' && !e.repeat) {
         e.preventDefault();
-        setShowControls(!showControls);
+        setShowControlsPanel(!showControlsPanel);
       } else if (e.key === 'd' && !e.repeat) {
         e.preventDefault();
         setShowDisplayOptions(!showDisplayOptions);
@@ -56,7 +57,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [fullscreen, showInfo, showControls, showDisplayOptions]);
+  }, [fullscreen, showInfo, showControlsPanel, showDisplayOptions]);
 
   return (
     <div className={`flex flex-col ${fullscreen ? 'h-screen' : 'h-screen'}`}>
@@ -88,7 +89,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
               </svg>
             </button>
             <button 
-              onClick={() => setShowControls(!showControls)}
+              onClick={() => setShowControlsPanel(!showControlsPanel)}
               className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
               aria-label="Toggle controls"
               title="Toggle controls (C)"
@@ -158,7 +159,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
           </button>
           <button 
             onClick={() => {
-              setShowControls(!showControls);
+              setShowControlsPanel(!showControlsPanel);
               setMobileMenuOpen(false);
             }}
             className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex flex-col items-center"
@@ -356,20 +357,21 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
           <LeadsheetDisplay 
             content={song.content} 
             fontSize={fontSize}
+            setFontSize={setFontSize}
             autoScroll={autoScroll}
             displayMode={displayMode}
           />
         </div>
         
         {/* Controls panel - conditionally shown */}
-        {showControls && (
+        {showControlsPanel && (
           <div className="bg-white dark:bg-gray-800 p-4 border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 md:w-64">
             <ControlsPanel 
               fontSize={fontSize}
               setFontSize={setFontSize}
               autoScroll={autoScroll}
               setAutoScroll={setAutoScroll}
-              onClose={() => setShowControls(false)}
+              onClose={() => setShowControlsPanel(false)}
               tempo={song.tempo || 120}
             />
           </div>
