@@ -189,7 +189,7 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
   onClose,
   searchTerm = ''
 }) => {
-  const { songs, userSongs, addSongToCollection, removeSongFromCollection, playSong, refreshSongList, isLoading, error } = useSong();
+  const { songs, userSongs, addSongToCollection, removeSongFromCollection, playSong, refreshSongs, isLoading, error } = useSong();
   const { user } = useAuth();
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -216,7 +216,7 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
 
   const handleEditorClose = async () => {
     setIsEditorOpen(false);
-    await refreshSongList();
+    await refreshSongs();
     announceToScreenReader('Song updated successfully');
   };
 
@@ -254,7 +254,7 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
       <LibraryContainer>
         <ErrorState>
           <div>{error}</div>
-          <Button onClick={refreshSongList} $variant="primary">
+          <Button onClick={refreshSongs} $variant="primary">
             Retry
           </Button>
         </ErrorState>

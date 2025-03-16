@@ -84,7 +84,7 @@ const AppContent: React.FC = () => {
   const [songListModalOpen, setSongListModalOpen] = useState(false);
   const [songLibraryModalOpen, setSongLibraryModalOpen] = useState(false);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
-  const { songs, loadSong } = useSong();
+  const { songs, playSong, currentSong } = useSong();
   
   // Tour guide setup
   const { isTourOpen, startTour, closeTour, completeTour, resetTour } = useTour({
@@ -93,7 +93,6 @@ const AppContent: React.FC = () => {
   });
   
   // Get the current song data
-  const currentSong = songs.current ? songs.loaded[songs.current] : null;
   const songLyrics = currentSong?.lyrics || currentSong?.songData || [];
   
   // Check for dev sequence
@@ -142,13 +141,11 @@ const AppContent: React.FC = () => {
   // Song selection handler with better error handling
   const handleSongSelect = async (songId: string) => {
     try {
-      const songData = await loadSong(songId);
-      if (songData) {
-        setCurrentLineIndex(0); // Reset to the beginning of the song
-        // Announce success to screen reader
-        const songTitle = songData.songInfo.title;
-        const songArtist = songData.songInfo.artist;
-        announceToScreenReader(`Loaded song: ${songTitle} by ${songArtist}`);
+      await playSong(songId);
+      setCurrentLineIndex(0); // Reset to the beginning of the song
+      // Announce success to screen reader
+      if (currentSong) {
+        announceToScreenReader(`Loaded song: ${currentSong.title} by ${currentSong.artist}`);
       }
     } catch (error) {
       console.error(`Error loading song ${songId}:`, error);

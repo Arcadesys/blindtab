@@ -128,7 +128,7 @@ const SongLibraryModal: React.FC<SongLibraryModalProps> = ({
   onClose, 
   onSongLoad 
 }) => {
-  const { isLoading, error, refreshSongList, checkDatabaseConnection } = useSong();
+  const { isLoading, error, refreshSongs, checkDatabaseConnection } = useSong();
   const [activeTab, setActiveTab] = useState<'all' | 'search'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -139,7 +139,7 @@ const SongLibraryModal: React.FC<SongLibraryModalProps> = ({
   
   const handleEditorClose = async () => {
     setIsEditorOpen(false);
-    await refreshSongList();
+    await refreshSongs();
     announceToScreenReader('Song created successfully');
   };
   
@@ -174,7 +174,7 @@ const SongLibraryModal: React.FC<SongLibraryModalProps> = ({
           <ActionButton onClick={handleAddNewSong}>
             Add
           </ActionButton>
-          <ActionButton onClick={refreshSongList}>
+          <ActionButton onClick={refreshSongs}>
             Refresh
           </ActionButton>
           <CloseButton onClick={onClose} aria-label="Close">
