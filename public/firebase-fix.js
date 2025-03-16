@@ -40,6 +40,21 @@
   // Fix Firebase connection issues
   function fixFirebaseConnection() {
     try {
+      // Check if we're in emulator mode
+      const isLocalhost = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1';
+      const isEmulator = isLocalhost && 
+                        (window.location.port === '5002' || 
+                         window.location.port === '5000' ||
+                         window.location.port === '5001');
+      
+      console.log('Environment:', {
+        hostname: window.location.hostname,
+        port: window.location.port,
+        isLocalhost,
+        isEmulator
+      });
+      
       // 1. Fix CORS issues by adding proper headers
       const originalFetch = window.fetch;
       window.fetch = function(url, options = {}) {
@@ -75,14 +90,31 @@
           // Create a new Firestore instance with better settings
           const newDb = firebase.firestore(app);
           
-          // Apply settings to fix WebChannel issues
-          newDb.settings({
-            experimentalForceLongPolling: true,
-            merge: true,
-            ignoreUndefinedProperties: true,
-            host: 'firestore.googleapis.com',
-            ssl: true
-          });
+          if (isEmulator) {
+            // Special settings for emulator
+            console.log('🔧 Detected emulator environment, applying emulator settings');
+            newDb.settings({
+              host: 'localhost:8080',
+              ssl: false
+            });
+            
+            // Connect to emulator
+            newDb.useEmulator('localhost', 8080);
+          } else {
+            // Apply settings to fix WebChannel issues - do this in two steps to avoid the SSL error
+            // First set the host
+            newDb.settings({
+              host: 'firestore.googleapis.com'
+            });
+            
+            // Then set the other options
+            newDb.settings({
+              experimentalForceLongPolling: true,
+              merge: true,
+              ignoreUndefinedProperties: true,
+              ssl: true
+            });
+          }
           
           console.log('✅ Applied WebChannel connection fixes');
           

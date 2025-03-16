@@ -114,7 +114,6 @@ if (!isLocalDevelopment) {
 // We'll primarily use the REST client for data operations
 let db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-  ssl: true,
   ignoreUndefinedProperties: true
 });
 
@@ -130,6 +129,16 @@ db._settings = {
 // For development, connect to emulator if needed
 if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   console.log('[Firebase] Connecting to Firestore emulator');
+  
+  // Reset any previous settings before connecting to emulator
+  // @ts-ignore - This is a workaround for Firebase WebChannel connection issues
+  db._settings = {
+    // @ts-ignore
+    ...db._settings,
+    host: 'localhost:8080',
+    ssl: false
+  };
+  
   connectFirestoreEmulator(db, 'localhost', 8080);
 }
 
