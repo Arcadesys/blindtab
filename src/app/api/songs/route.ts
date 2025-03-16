@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { getServerSession } from 'next-auth';
 
 const prisma = new PrismaClient();
 
@@ -23,10 +24,42 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const session = await getServerSession();
     
-    const { title, artist, content, key, tempo, timeSignature, tags } = body;
+    // Check if user is authenticated
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: {
+        email: session.user.email,
+      },
+    });
+    
+    if (!user) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Parse request body
+    const { title, artist, content, key, tempo, timeSignature, isPublic, tags } = await request.json();
+    
+    // Validate required fields
+    if (!title || !artist || !content) {
+      return NextResponse.json(
+        { message: 'Title, artist, and content are required' },
+        { status: 400 }
+      );
+    }
+    
+    // Create song with tags
     const song = await prisma.song.create({
       data: {
         title,
@@ -35,15 +68,14 @@ export async function POST(request: Request) {
         key,
         tempo,
         timeSignature,
+        isPublic: isPublic || false,
+        userId: user.id,
         tags: {
-          connectOrCreate: tags?.map((tag: string) => ({
+          connectOrCreate: tags.map((tag: string) => ({
             where: { name: tag },
             create: { name: tag },
-          })) || [],
+          })),
         },
-      },
-      include: {
-        tags: true,
       },
     });
     
@@ -51,7 +83,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error creating song:', error);
     return NextResponse.json(
-      { error: 'Failed to create song' },
+      { message: 'Something went wrong' },
       { status: 500 }
     );
   }
