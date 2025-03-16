@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../utils/firebase';
 import { useAuth } from './AuthContext';
 import type { Song } from '../types/firebase';
@@ -22,6 +22,7 @@ interface SongContextType {
   playSong: (songId: string) => Promise<void>;
   refreshSongs: () => Promise<void>;
   createNewSong: (songData: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+  updateSong: (songId: string, songData: Partial<Omit<Song, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
 }
 
 const SongContext = createContext<SongContextType | null>(null);
@@ -141,6 +142,20 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateSong = async (songId: string, songData: Partial<Omit<Song, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    try {
+      const songRef = doc(db, COLLECTIONS.SONGS, songId);
+      await updateDoc(songRef, {
+        ...songData,
+        updatedAt: serverTimestamp()
+      });
+      await refreshSongs();
+    } catch (err) {
+      console.error('Error updating song:', err);
+      throw err instanceof Error ? err : new Error('Failed to update song');
+    }
+  };
+
   return (
     <SongContext.Provider
       value={{
@@ -153,7 +168,8 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
         removeSongFromCollection,
         playSong,
         refreshSongs,
-        createNewSong
+        createNewSong,
+        updateSong
       }}
     >
       {children}

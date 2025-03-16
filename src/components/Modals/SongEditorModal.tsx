@@ -95,7 +95,7 @@ export default function SongEditorModal({
   songId,
   isNewSong = false
 }: SongEditorModalProps) {
-  const { songs, createNewSong } = useSong();
+  const { songs, createNewSong, updateSong } = useSong();
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [key, setKey] = useState('');
@@ -169,8 +169,15 @@ export default function SongEditorModal({
           timeSignature: timeSignature || undefined,
           lyrics: parseLyrics(rawLyrics)
         });
-      } else {
-        // TODO: Add update functionality
+      } else if (songId) {
+        await updateSong(songId, {
+          title,
+          artist,
+          key: key || undefined,
+          tempo: tempo ? parseInt(tempo, 10) : undefined,
+          timeSignature: timeSignature || undefined,
+          lyrics: parseLyrics(rawLyrics)
+        });
       }
       onClose();
     } catch (err) {
