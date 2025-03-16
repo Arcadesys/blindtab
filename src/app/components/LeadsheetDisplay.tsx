@@ -14,6 +14,7 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
   const [showControls, setShowControls] = useState(false);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
   // Parse content into lines
   useEffect(() => {
@@ -83,14 +84,44 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
     setCurrentLineIndex(index);
   };
 
+  // Handle touch events for mobile swipe navigation
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY === null) return;
+    
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaY = touchEndY - touchStartY;
+    
+    // If the swipe is significant enough (more than 50px)
+    if (Math.abs(deltaY) > 50) {
+      if (deltaY > 0) {
+        // Swipe down - go to previous line
+        setCurrentLineIndex(prev => Math.max(prev - 1, 0));
+      } else {
+        // Swipe up - go to next line
+        setCurrentLineIndex(prev => Math.min(prev + 1, lines.length - 1));
+      }
+    }
+    
+    setTouchStartY(null);
+  };
+
   return (
-    <div className="flex flex-col h-full relative" onClick={() => setShowControls(!showControls)}>
+    <div 
+      className="flex flex-col h-full relative" 
+      onClick={() => setShowControls(!showControls)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto px-2 md:px-4"
         style={{ fontSize: `${fontSize}px`, lineHeight: '1.5' }}
       >
-        <pre className="font-mono whitespace-pre break-normal w-full">
+        <pre className="font-mono whitespace-pre-wrap break-words w-full">
           {lines.map((line, index) => {
             const isChord = isChordLine(line);
             return (
@@ -147,6 +178,11 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
           </button>
         </div>
       )}
+      
+      {/* Mobile navigation hint - only shown initially */}
+      <div className="md:hidden absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none">
+        Swipe up/down to navigate
+      </div>
     </div>
   );
 } 

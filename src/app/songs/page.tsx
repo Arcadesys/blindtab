@@ -90,19 +90,19 @@ export default function SongsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Songs</h1>
+    <div className="container mx-auto px-4 py-6 md:py-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold">Songs</h1>
         <Link 
           href="/songs/create" 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full sm:w-auto text-center"
         >
           Create Song
         </Link>
       </div>
 
       {/* Search and Filter */}
-      <div className="mb-8 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+      <div className="mb-6 md:mb-8 bg-white dark:bg-gray-800 p-3 md:p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Search Input */}
           <div>
@@ -148,8 +148,8 @@ export default function SongsPage() {
 
       {/* Songs Grid */}
       {filteredSongs.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-xl text-gray-500 dark:text-gray-400">No songs found matching your criteria.</p>
+        <div className="text-center py-8 md:py-12">
+          <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400">No songs found matching your criteria.</p>
           <button
             onClick={() => {
               setSearchTerm('');
@@ -161,18 +161,18 @@ export default function SongsPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredSongs.map((song) => (
             <Link
               key={song.id}
               href={`/songs/${song.id}`}
-              className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow"
+              className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow"
             >
-              <h2 className="text-xl font-semibold mb-2">{song.title}</h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">{song.artist}</p>
+              <h2 className="text-lg md:text-xl font-semibold mb-1 md:mb-2 truncate">{song.title}</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-3 md:mb-4 truncate">{song.artist}</p>
               
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 flex flex-wrap gap-2">
                   {song.key && <span className="mr-2">Key: {song.key}</span>}
                   {song.tempo && <span>Tempo: {song.tempo} BPM</span>}
                 </div>

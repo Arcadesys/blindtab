@@ -16,24 +16,24 @@ export default async function Home() {
   });
 
   return (
-    <div className="container mx-auto px-4 py-12">
+    <div className="container mx-auto px-4 py-8 md:py-12">
       {/* Hero Section */}
-      <section className="text-center mb-16">
-        <h1 className="text-5xl font-bold mb-6">Welcome to BlindTab</h1>
-        <p className="text-xl max-w-3xl mx-auto mb-8">
+      <section className="text-center mb-12 md:mb-16">
+        <h1 className="text-3xl md:text-5xl font-bold mb-4 md:mb-6">Welcome to BlindTab</h1>
+        <p className="text-lg md:text-xl max-w-3xl mx-auto mb-6 md:mb-8 px-2">
           A simple, accessible leadsheet viewer for musicians. Practice with auto-scrolling, 
           metronome support, and customizable display options.
         </p>
-        <div className="flex justify-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-center gap-3 md:gap-4">
           <Link 
             href="/songs" 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-lg font-medium"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-lg font-medium w-full sm:w-auto"
           >
             Browse Songs
           </Link>
           <Link 
             href="/songs/create" 
-            className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-3 rounded-lg text-lg font-medium"
+            className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-3 rounded-lg text-lg font-medium w-full sm:w-auto mt-2 sm:mt-0"
           >
             Create New Song
           </Link>
@@ -41,12 +41,12 @@ export default async function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="mb-16">
-        <h2 className="text-3xl font-bold text-center mb-10">Features</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-            <div className="text-blue-600 dark:text-blue-400 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <section className="mb-12 md:mb-16">
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 md:mb-10">Features</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+          <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+            <div className="text-blue-600 dark:text-blue-400 mb-4 flex justify-center md:justify-start">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 md:h-12 md:w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
               </svg>
             </div>
@@ -57,9 +57,9 @@ export default async function Home() {
             </p>
           </div>
           
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-            <div className="text-blue-600 dark:text-blue-400 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+            <div className="text-blue-600 dark:text-blue-400 mb-4 flex justify-center md:justify-start">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 md:h-12 md:w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
             </div>
@@ -70,9 +70,9 @@ export default async function Home() {
             </p>
           </div>
           
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-            <div className="text-blue-600 dark:text-blue-400 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+            <div className="text-blue-600 dark:text-blue-400 mb-4 flex justify-center md:justify-start">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 md:h-12 md:w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
