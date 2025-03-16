@@ -120,7 +120,10 @@ try {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager(),
         cacheSizeBytes: CACHE_SIZE_UNLIMITED
-      })
+      }),
+      // Add CORS settings for production as well to avoid WebSocket issues
+      experimentalForceLongPolling: true,
+      experimentalAutoDetectLongPolling: true
     });
   }
 } catch (error) {
@@ -128,6 +131,18 @@ try {
   // Fallback to basic initialization
   console.log('[Firebase] Falling back to basic Firestore initialization');
   db = getFirestore(app);
+  
+  // Apply settings to the fallback instance as well
+  const settings = {
+    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: true
+  };
+  try {
+    console.log('[Firebase] Applying settings to fallback Firestore instance');
+    initializeFirestore(app, settings);
+  } catch (settingsError) {
+    console.error('[Firebase] Failed to apply settings to fallback instance:', settingsError);
+  }
 }
 
 // Initialize Auth
@@ -177,10 +192,11 @@ if (isLocalDevelopment && isDev) {
 // Test the connection using the new modular API
 const testConnection = async () => {
   try {
+    console.log('[Firebase] Testing connection to Firestore...');
     const songsRef = collection(db, COLLECTIONS.SONGS);
     const q = query(songsRef, limit(1));
-    await getDocs(q);
-    console.log('[Firebase] Connection test successful');
+    const snapshot = await getDocs(q);
+    console.log(`[Firebase] Connection test successful, found ${snapshot.size} documents`);
     isFallbackMode = false;
     return true;
   } catch (error: any) {
@@ -205,10 +221,32 @@ const testConnection = async () => {
         stack: error.stack
       });
       
-      // For network errors in preview deployments, try to switch to fallback mode
-      if (isPreviewDeployment && (error.name === 'FirebaseError' || error.message?.includes('network'))) {
-        console.warn('[Firebase] Network error in preview deployment. Switching to read-only mode.');
-        isFallbackMode = true;
+      // For network errors in any environment, try to switch to fallback mode
+      if (error.name === 'FirebaseError' || error.message?.includes('network')) {
+        console.warn('[Firebase] Network error detected. Attempting to reinitialize with long polling.');
+        
+        try {
+          // Try to reinitialize Firestore with long polling
+          const newDb = initializeFirestore(app, {
+            experimentalForceLongPolling: true,
+            experimentalAutoDetectLongPolling: true
+          });
+          
+          // If successful, replace the existing db instance
+          db = newDb;
+          console.log('[Firebase] Reinitialized Firestore with long polling');
+          
+          // Try the connection test again
+          const songsRef = collection(db, COLLECTIONS.SONGS);
+          const q = query(songsRef, limit(1));
+          await getDocs(q);
+          console.log('[Firebase] Connection test successful after reinitialization');
+          isFallbackMode = false;
+          return true;
+        } catch (reinitError) {
+          console.error('[Firebase] Failed to reinitialize Firestore:', reinitError);
+          isFallbackMode = true;
+        }
       }
     }
     
