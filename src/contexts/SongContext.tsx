@@ -145,10 +145,19 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
   const updateSong = async (songId: string, songData: Partial<Omit<Song, 'id' | 'createdAt' | 'updatedAt'>>) => {
     try {
       const songRef = doc(db, COLLECTIONS.SONGS, songId);
-      await updateDoc(songRef, {
-        ...songData,
+      
+      // Clean up the data to remove undefined values
+      const cleanData = {
+        ...(songData.title !== undefined ? { title: songData.title } : {}),
+        ...(songData.artist !== undefined ? { artist: songData.artist } : {}),
+        ...(songData.key ? { key: songData.key } : {}),
+        ...(songData.tempo ? { tempo: songData.tempo } : {}),
+        ...(songData.timeSignature ? { timeSignature: songData.timeSignature } : {}),
+        ...(songData.lyrics ? { lyrics: songData.lyrics } : {}),
         updatedAt: serverTimestamp()
-      });
+      };
+
+      await updateDoc(songRef, cleanData);
       await refreshSongs();
     } catch (err) {
       console.error('Error updating song:', err);

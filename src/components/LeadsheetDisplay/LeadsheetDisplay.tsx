@@ -225,11 +225,23 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
   
   // Render a line with chords
   const renderLineWithChords = (line: SongLine, index: number) => {
-    // Handle both old and new data structures
-    const chords = line.chords || (line.chord ? [{ text: line.chord, position: 0 }] : []);
+    // Parse chords based on the data structure
+    let chordsArray = [];
+    
+    if (Array.isArray(line.chords)) {
+      // If chords is already an array, use it
+      chordsArray = line.chords;
+    } else if (line.chords && typeof line.chords === 'string') {
+      // If chords is a string, create a single chord object
+      chordsArray = [{ text: line.chords, position: 0 }];
+    } else if (line.chord) {
+      // Backward compatibility for old data structure
+      chordsArray = [{ text: line.chord, position: 0 }];
+    }
+    
     const lyricText = line.lyric || line.line || '';
 
-    if (!chords.length) {
+    if (!chordsArray.length) {
       return (
         <LyricLine key={index} $hasChords={false}>
           <LyricText>{lyricText}</LyricText>
@@ -240,7 +252,7 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
     return (
       <LyricLine key={index} $hasChords={true}>
         <ChordContainer>
-          {chords.map((chord, chordIndex) => (
+          {chordsArray.map((chord, chordIndex) => (
             <ChordSpan 
               key={chordIndex}
               style={{ left: `${chord.position}ch` }}
@@ -273,7 +285,10 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
         <AnimationContainer>
           <LyricsContainer $animationOffset={animationOffset}>
             {visibleLines.map((line, index) => (
-              <LyricLine key={index} $hasChords={!!line.chord || (line.chords && line.chords.length > 0)}>
+              <LyricLine 
+                key={index} 
+                $hasChords={!!line.chord || !!line.chords}
+              >
                 {renderLineWithChords(line, index)}
               </LyricLine>
             ))}

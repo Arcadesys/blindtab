@@ -160,24 +160,19 @@ export default function SongEditorModal({
     setError(null);
 
     try {
+      const songData = {
+        title,
+        artist,
+        key: key || null,
+        tempo: tempo ? parseInt(tempo, 10) : null,
+        timeSignature: timeSignature || null,
+        lyrics: parseLyrics(rawLyrics)
+      };
+
       if (isNewSong) {
-        await createNewSong({
-          title,
-          artist,
-          key: key || undefined,
-          tempo: tempo ? parseInt(tempo, 10) : undefined,
-          timeSignature: timeSignature || undefined,
-          lyrics: parseLyrics(rawLyrics)
-        });
+        await createNewSong(songData);
       } else if (songId) {
-        await updateSong(songId, {
-          title,
-          artist,
-          key: key || undefined,
-          tempo: tempo ? parseInt(tempo, 10) : undefined,
-          timeSignature: timeSignature || undefined,
-          lyrics: parseLyrics(rawLyrics)
-        });
+        await updateSong(songId, songData);
       }
       onClose();
     } catch (err) {
