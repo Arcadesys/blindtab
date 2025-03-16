@@ -16,9 +16,6 @@ import {
 import { getAuth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth';
 import { env, isDev } from './env';
 
-// Import our REST client
-import { firestoreRest, FirestoreRestClient } from './firebase-rest-client';
-
 // Collection references
 export const COLLECTIONS = {
   SONGS: 'songs',
@@ -27,8 +24,8 @@ export const COLLECTIONS = {
   USER_SONGS: 'user_songs'
 } as const;
 
-// Track if we're in fallback mode (read-only)
-let isFallbackMode = false;
+// For backward compatibility
+export const isFallbackMode = false;
 
 // Validate Firebase configuration
 const requiredEnvVars = [
@@ -70,6 +67,9 @@ const isPreviewDeployment = window.location.hostname.includes('-projects.vercel.
 const isLocalDevelopment = window.location.hostname === 'localhost' || 
                           window.location.hostname === '127.0.0.1';
 
+// Special access for development features in production
+const AUTHORIZED_DEV_EMAILS = ['austen.crowder@gmail.com'];
+
 // Log config for debugging (excluding sensitive data)
 console.log('[Firebase] Configuration:', {
   authDomain: firebaseConfig.authDomain,
@@ -83,62 +83,33 @@ console.log('[Firebase] Configuration:', {
   isLocalDevelopment,
   isDev,
   usingEmulator: isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true',
-  usingRestClient: true // Indicate we're using the REST client
+  authorizedDevEmails: AUTHORIZED_DEV_EMAILS
 });
-
-// For preview deployments, we might need to override the authDomain
-// This helps with Firebase Auth domain authorization issues
-if (isPreviewDeployment && !isLocalDevelopment) {
-  console.log('[Firebase] Preview deployment detected, using default authDomain');
-  // Keep the original authDomain from Firebase console
-  // Don't try to use the preview URL as authDomain
-}
 
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
-
-// Initialize REST client with the correct API key
-const restClient = new FirestoreRestClient(
-  firebaseConfig.projectId,
-  firebaseConfig.apiKey
-);
 
 // Expose Firebase app to window in production for debugging
 if (!isLocalDevelopment) {
   console.log('[Firebase] Exposing Firebase app to window for debugging');
   (window as any)._firebase_app = app;
-  (window as any)._firebase_rest = restClient;
 }
 
-// Initialize Firestore with basic settings (for compatibility with existing code)
-// We'll primarily use the REST client for data operations
-let db = initializeFirestore(app, {
+// Initialize Firestore with optimized settings
+const db = initializeFirestore(app, {
+  // Use persistent cache for better offline support
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED
+  }),
+  // Improve connection reliability
   experimentalForceLongPolling: true,
   ignoreUndefinedProperties: true
 });
 
-// Apply additional settings to fix WebChannel connection issues
-// @ts-ignore - This is a workaround for Firebase WebChannel connection issues
-db._settings = {
-  // @ts-ignore
-  ...db._settings,
-  host: 'firestore.googleapis.com',
-  ssl: true
-};
-
 // For development, connect to emulator if needed
 if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   console.log('[Firebase] Connecting to Firestore emulator');
-  
-  // Reset any previous settings before connecting to emulator
-  // @ts-ignore - This is a workaround for Firebase WebChannel connection issues
-  db._settings = {
-    // @ts-ignore
-    ...db._settings,
-    host: 'localhost:8080',
-    ssl: false
-  };
-  
   connectFirestoreEmulator(db, 'localhost', 8080);
 }
 
@@ -154,54 +125,54 @@ if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR ==
 // Create a Google Auth provider
 const googleProvider = new GoogleAuthProvider();
 
-// Test the REST client connection
-const testRestConnection = async () => {
+// Function to check if current user has dev access
+export const hasDevAccess = async (): Promise<boolean> => {
+  // Always allow in local development
+  if (isLocalDevelopment || isDev) {
+    return true;
+  }
+  
+  // Check if user is logged in and has authorized email
+  const currentUser = auth.currentUser;
+  if (currentUser && currentUser.email) {
+    return AUTHORIZED_DEV_EMAILS.includes(currentUser.email);
+  }
+  
+  return false;
+};
+
+// Test the Firestore connection
+const testFirestoreConnection = async () => {
   try {
-    console.log('[Firebase] Testing REST client connection...');
+    console.log('[Firebase] Testing Firestore connection...');
     
-    // First, test if the database exists and is accessible
-    const databaseExists = await restClient.testConnection();
-    if (!databaseExists) {
-      console.error('[Firebase] Firestore database not found or not accessible');
-      return false;
-    }
+    // Try to access a test collection
+    const testQuery = query(collection(db, 'firebase_test'), limit(1));
+    await getDocs(testQuery);
     
-    // If database exists, try to create a test document
-    const testCollection = 'firebase_test';
-    const testDocId = 'rest_test_' + Date.now();
-    const testData = {
-      message: 'Hello from REST API',
-      timestamp: new Date(),
-      testValue: 42
-    };
-    
-    // Create test document
-    await restClient.set(testCollection, testDocId, testData);
-    console.log('[Firebase] REST client test document created successfully');
-    
-    // Get the document
-    const doc = await restClient.get(testCollection, testDocId);
-    console.log('[Firebase] REST client test document retrieved successfully:', doc);
-    
-    // Delete the document
-    await restClient.delete(testCollection, testDocId);
-    console.log('[Firebase] REST client test document deleted successfully');
-    
-    console.log('[Firebase] REST client connection test passed');
+    console.log('[Firebase] Firestore connection test passed');
     return true;
   } catch (error) {
-    console.error('[Firebase] REST client connection test failed:', error);
+    console.error('[Firebase] Firestore connection test failed:', error);
     return false;
   }
 };
 
 // Run the connection test
-testRestConnection().then(success => {
+testFirestoreConnection().then(success => {
   if (success) {
-    console.log('[Firebase] REST client is ready to use');
+    console.log('[Firebase] Firestore is ready to use');
+    
+    // Enable offline persistence if connection is successful
+    enableIndexedDbPersistence(db)
+      .then(() => {
+        console.log('[Firebase] Offline persistence enabled');
+      })
+      .catch((err) => {
+        console.warn('[Firebase] Offline persistence could not be enabled:', err);
+      });
   } else {
-    console.warn('[Firebase] REST client failed, falling back to standard Firestore');
-    isFallbackMode = true;
+    console.warn('[Firebase] Firestore connection failed, check network and Firebase settings');
   }
 });
 
@@ -210,12 +181,10 @@ export {
   app, 
   db, 
   auth, 
-  googleProvider, 
-  restClient as firestoreRest,
-  isFallbackMode,
+  googleProvider,
   isPreviewDeployment,
   isLocalDevelopment
 };
 
-// Default export is now the REST client
-export default restClient; 
+// Default export
+export default db; 

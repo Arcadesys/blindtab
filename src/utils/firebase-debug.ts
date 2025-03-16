@@ -5,7 +5,7 @@
  * in production environments.
  */
 
-import { db, auth, isPreviewDeployment, firestoreRest } from './firebase';
+import { db, auth, isPreviewDeployment } from './firebase';
 import { collection, getDocs, query, limit, initializeFirestore } from 'firebase/firestore';
 import { COLLECTIONS } from './firebase';
 import { getApp } from 'firebase/app';
@@ -41,30 +41,24 @@ export const runFirebaseDebug = async () => {
   
   let databaseExists = false;
   
-  if (isDev) {
-    // In development mode, use Firebase SDK directly to avoid CORS issues
-    try {
-      console.log('Using Firebase SDK directly (development mode)');
-      const testQuery = query(collection(db, 'firebase_test'), limit(1));
-      await getDocs(testQuery);
+  try {
+    console.log('Using Firebase SDK directly');
+    const testQuery = query(collection(db, 'firebase_test'), limit(1));
+    await getDocs(testQuery);
+    databaseExists = true;
+    console.log('✅ Firestore database exists and is accessible');
+  } catch (error: any) {
+    if (error.code === 'permission-denied') {
+      // This means the database exists but we don't have permission
+      console.log('✅ Firestore database exists but permission denied for test collection');
       databaseExists = true;
-      console.log('✅ Firestore database exists and is accessible');
-    } catch (error: any) {
-      if (error.code === 'permission-denied') {
-        // This means the database exists but we don't have permission
-        console.log('✅ Firestore database exists but permission denied for test collection');
-        databaseExists = true;
-      } else if (error.code === 'not-found' || error.message?.includes('not found')) {
-        console.error('❌ Firestore database not found');
-        databaseExists = false;
-      } else {
-        console.error('❌ Error checking database:', error);
-        databaseExists = false;
-      }
+    } else if (error.code === 'not-found' || error.message?.includes('not found')) {
+      console.error('❌ Firestore database not found');
+      databaseExists = false;
+    } else {
+      console.error('❌ Error checking database:', error);
+      databaseExists = false;
     }
-  } else {
-    // In production, use REST client
-    databaseExists = await firestoreRest.testConnection();
   }
   
   if (!databaseExists) {

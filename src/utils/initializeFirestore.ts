@@ -4,12 +4,10 @@
  * This utility helps initialize a new Firestore database with sample data
  */
 
-import { firestoreRest } from './firebase';
 import { mockSongs } from './mockData';
-import { COLLECTIONS } from './firebase';
+import { COLLECTIONS, db, hasDevAccess } from './firebase';
 import { isDev } from './env';
 import { collection, getDocs, doc, setDoc, query, limit } from 'firebase/firestore';
-import { db } from './firebase';
 
 /**
  * Initialize the Firestore database with sample data
@@ -24,67 +22,56 @@ export const initializeFirestore = async (): Promise<boolean> => {
     
     let databaseExists = false;
     
-    if (isDev) {
-      // In development mode, use Firebase SDK directly to avoid CORS issues
-      try {
-        console.log('Using Firebase SDK directly (development mode)');
-        const testQuery = query(collection(db, 'firebase_test'), limit(1));
-        await getDocs(testQuery);
+    try {
+      console.log('Using Firebase SDK directly');
+      const testQuery = query(collection(db, 'firebase_test'), limit(1));
+      await getDocs(testQuery);
+      databaseExists = true;
+      console.log('✅ Firestore database exists and is accessible');
+    } catch (error: any) {
+      if (error.code === 'permission-denied') {
+        // This means the database exists but we don't have permission
+        console.log('✅ Firestore database exists but permission denied for test collection');
         databaseExists = true;
-        console.log('✅ Firestore database exists and is accessible');
-      } catch (error: any) {
-        if (error.code === 'permission-denied') {
-          // This means the database exists but we don't have permission
-          console.log('✅ Firestore database exists but permission denied for test collection');
-          databaseExists = true;
-        } else if (error.code === 'not-found' || error.message?.includes('not found')) {
-          console.error('❌ Firestore database not found');
-          databaseExists = false;
-        } else {
-          console.error('❌ Error checking database:', error);
-          databaseExists = false;
-        }
+      } else if (error.code === 'not-found' || error.message?.includes('not found')) {
+        console.error('❌ Firestore database not found');
+        databaseExists = false;
+      } else {
+        console.error('❌ Error checking database:', error);
+        databaseExists = false;
       }
-    } else {
-      // In production, use REST client
-      databaseExists = await firestoreRest.testConnection();
     }
     
     if (!databaseExists) {
-      console.error('❌ Firestore database not found or not accessible');
-      console.log('Please create a Firestore database in the Firebase Console first.');
+      console.error('❌ Firestore database not found. Please create it in the Firebase Console.');
       console.groupEnd();
       return false;
     }
     
-    // Check if songs collection already has data
-    console.log('Checking if songs collection already has data...');
-    let hasExistingSongs = false;
+    // Check if we already have songs in the database
+    console.log('Checking for existing songs...');
     
-    try {
-      if (isDev) {
-        // Use Firebase SDK directly
-        const songsQuery = query(collection(db, COLLECTIONS.SONGS), limit(1));
-        const snapshot = await getDocs(songsQuery);
-        hasExistingSongs = !snapshot.empty;
-      } else {
-        // Use REST client
-        const existingSongs = await firestoreRest.list(COLLECTIONS.SONGS, 1);
-        hasExistingSongs = existingSongs && existingSongs.length > 0;
-      }
-      
-      if (hasExistingSongs) {
-        console.log('✅ Songs collection already has data. Skipping initialization.');
-        console.groupEnd();
-        return true;
-      }
-    } catch (error) {
-      // Collection might not exist yet, which is fine
-      console.log('Songs collection does not exist yet. Will create it.');
+    const songsQuery = query(collection(db, COLLECTIONS.SONGS), limit(1));
+    const songsSnapshot = await getDocs(songsQuery);
+    
+    if (!songsSnapshot.empty) {
+      console.log('✅ Songs already exist in the database. Skipping initialization.');
+      console.groupEnd();
+      return true;
     }
     
-    // Add sample songs from mock data
-    console.log('Adding sample songs to Firestore...');
+    // Check if user has dev access before initializing
+    const userHasDevAccess = await hasDevAccess();
+    if (!isDev && !userHasDevAccess) {
+      console.log('⚠️ User does not have dev access. Skipping initialization in production.');
+      console.groupEnd();
+      return false;
+    }
+    
+    console.log('🔧 Initializing database with sample data...');
+    
+    // Add sample songs
+    console.log(`Adding ${mockSongs.length} sample songs...`);
     
     for (const song of mockSongs) {
       console.log(`Adding song: ${song.title}`);
@@ -95,17 +82,11 @@ export const initializeFirestore = async (): Promise<boolean> => {
         song.lyrics = [];
       }
       
-      if (isDev) {
-        // Use Firebase SDK directly
-        // Create a copy of the song without the id field
-        const { id, ...songData } = song;
-        
-        // Use the id from the song as the document ID
-        await setDoc(doc(db, COLLECTIONS.SONGS, id), songData);
-      } else {
-        // Use REST client
-        await firestoreRest.set(COLLECTIONS.SONGS, song.id, song);
-      }
+      // Create a copy of the song without the id field
+      const { id, ...songData } = song;
+      
+      // Use the id from the song as the document ID
+      await setDoc(doc(db, COLLECTIONS.SONGS, id), songData);
     }
     
     console.log('✅ Successfully added sample songs to Firestore');
