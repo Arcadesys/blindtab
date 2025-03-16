@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "github": {
+    "enabled": true,
+    "silent": true
+  },
+  "buildCommand": "cd blindtab-react && npm install && VITE_APP_ENV=staging npm run build:staging",
+  "outputDirectory": "blindtab-react/dist",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "staging": true
+    }
+  },
+  "env": {
+    "VITE_APP_ENV": "staging"
+  }
+} 
