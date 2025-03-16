@@ -1,9 +1,7 @@
 import Link from 'next/link';
 import { PrismaClient } from '@prisma/client';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import { cookies } from 'next/headers';
-import { verifyToken } from '@/lib/jwt';
 
 const prisma = new PrismaClient();
 
@@ -69,19 +67,6 @@ function formatMarkdown(content: string) {
 }
 
 export default async function SongDetailPage({ params }: SongPageProps) {
-  // Get auth token from cookies
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth-token')?.value;
-  
-  // Verify token and get user info
-  let userId = null;
-  if (token) {
-    const payload = verifyToken(token);
-    if (payload) {
-      userId = payload.userId;
-    }
-  }
-  
   const { id } = params;
   
   // Get the song
@@ -104,15 +89,6 @@ export default async function SongDetailPage({ params }: SongPageProps) {
     notFound();
   }
   
-  // Check if user is authorized to view this song
-  const isPublic = song.isPublic;
-  const isOwner = userId === song.userId;
-  
-  // If song is not public and user is not the owner, redirect to songs page
-  if (!isPublic && !isOwner) {
-    redirect('/songs');
-  }
-  
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-6">
@@ -125,16 +101,14 @@ export default async function SongDetailPage({ params }: SongPageProps) {
         <h1 className="text-4xl font-bold mb-2">{song.title}</h1>
         <p className="text-xl text-gray-600">By {song.artist}</p>
         
-        {isOwner && (
-          <div className="mt-4 flex gap-2">
-            <Link 
-              href={`/songs/edit/${song.id}`}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-            >
-              Edit
-            </Link>
-          </div>
-        )}
+        <div className="mt-4 flex gap-2">
+          <Link 
+            href={`/songs/edit/${song.id}`}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          >
+            Edit
+          </Link>
+        </div>
       </div>
       
       <div className="flex flex-wrap gap-4 mb-6">
@@ -155,10 +129,6 @@ export default async function SongDetailPage({ params }: SongPageProps) {
             <span className="font-medium">Time Signature:</span> {song.timeSignature}
           </div>
         )}
-        
-        <div className="bg-gray-100 px-4 py-2 rounded">
-          <span className="font-medium">Visibility:</span> {isPublic ? 'Public' : 'Private'}
-        </div>
       </div>
       
       {song.tags.length > 0 && (

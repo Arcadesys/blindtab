@@ -1,13 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/app/context/AuthContext';
 import Link from 'next/link';
 
 export default function CreateSongPage() {
   const router = useRouter();
-  const { isAuthenticated, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -17,15 +15,7 @@ export default function CreateSongPage() {
   const [key, setKey] = useState('');
   const [tempo, setTempo] = useState('');
   const [timeSignature, setTimeSignature] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
   const [tags, setTags] = useState('');
-  
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, loading, router]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +35,7 @@ export default function CreateSongPage() {
           key: key || null,
           tempo: tempo ? parseInt(tempo) : null,
           timeSignature: timeSignature || null,
-          isPublic,
+          isPublic: true, // All songs are public now
           tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
         }),
       });
@@ -63,10 +53,6 @@ export default function CreateSongPage() {
       setIsLoading(false);
     }
   };
-  
-  if (loading) {
-    return <div className="max-w-4xl mx-auto p-6">Loading...</div>;
-  }
   
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -185,19 +171,6 @@ export default function CreateSongPage() {
             required
             placeholder="Enter your leadsheet content here..."
           />
-        </div>
-        
-        <div className="flex items-center">
-          <input
-            id="isPublic"
-            type="checkbox"
-            checked={isPublic}
-            onChange={(e) => setIsPublic(e.target.checked)}
-            className="h-5 w-5 text-blue-600"
-          />
-          <label htmlFor="isPublic" className="ml-2 text-lg">
-            Make this song public
-          </label>
         </div>
         
         <div className="flex justify-end">

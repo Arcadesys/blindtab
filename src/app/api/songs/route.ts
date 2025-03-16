@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { verifyToken } from '@/lib/jwt';
 
 const prisma = new PrismaClient();
 
@@ -24,41 +23,6 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get token from cookies
-    const token = request.cookies.get('auth-token')?.value;
-    
-    // Check if user is authenticated
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    
-    // Verify token
-    const payload = verifyToken(token);
-    
-    if (!payload) {
-      return NextResponse.json(
-        { message: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-    
-    // Get user from database
-    const user = await prisma.user.findUnique({
-      where: {
-        id: payload.userId,
-      },
-    });
-    
-    if (!user) {
-      return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
-      );
-    }
-    
     // Parse request body
     const { title, artist, content, key, tempo, timeSignature, isPublic, tags } = await request.json();
     
@@ -79,8 +43,7 @@ export async function POST(request: NextRequest) {
         key,
         tempo,
         timeSignature,
-        isPublic: isPublic || false,
-        userId: user.id,
+        isPublic: true, // All songs are public now
         tags: {
           connectOrCreate: tags.map((tag: string) => ({
             where: { name: tag },
