@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
 
 // This function needs to be in a server component
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const song = await getSong(params.id);
+  const id = (await params).id;
+  const song = await getSong(id);
   
   if (!song) {
     return {
@@ -35,7 +36,8 @@ async function getSong(id: string) {
 }
 
 export default async function SongDetailPage({ params }: { params: { id: string } }) {
-  const song = await getSong(params.id);
+  const id = (await params).id;
+  const song = await getSong(id);
   
   if (!song) {
     notFound();
