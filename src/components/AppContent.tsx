@@ -9,7 +9,7 @@ import SongListModal from './Modals/SongListModal';
 import SongLibraryModal from './Modals/SongLibraryModal';
 import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation';
 import useTour from '../hooks/useTour';
-import { TourGuide } from './common';
+import { TourGuide, NetworkStatus } from './common';
 import GlobalStyles from '../styles/GlobalStyles';
 import { checkDevSequence } from '../utils/devMode';
 
@@ -25,6 +25,42 @@ const MainContent = styled.main`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+`;
+
+// Empty state message when no song is loaded
+const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  text-align: center;
+  color: #666;
+`;
+
+const EmptyStateTitle = styled.h2`
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+`;
+
+const EmptyStateText = styled.p`
+  margin-bottom: 20px;
+  font-size: 1rem;
+`;
+
+const EmptyStateButton = styled.button`
+  padding: 10px 20px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  
+  &:hover {
+    background-color: #2980b9;
+  }
 `;
 
 // Tour steps for the onboarding guide
@@ -84,7 +120,7 @@ const AppContent: React.FC = () => {
   const [songListModalOpen, setSongListModalOpen] = useState(false);
   const [songLibraryModalOpen, setSongLibraryModalOpen] = useState(false);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
-  const { songs, playSong, currentSong } = useSong();
+  const { songs, playSong, currentSong, isLoading, error } = useSong();
   
   // Tour guide setup
   const { isTourOpen, startTour, closeTour, completeTour, resetTour } = useTour({
@@ -153,6 +189,31 @@ const AppContent: React.FC = () => {
     }
   };
   
+  // Render empty state when no song is loaded
+  const renderContent = () => {
+    if (!currentSong && !isLoading) {
+      return (
+        <EmptyState>
+          <EmptyStateTitle>No Song Loaded</EmptyStateTitle>
+          <EmptyStateText>
+            Select a song from the library to get started.
+            {error && <div style={{ color: 'red', marginTop: '10px' }}>Error: {error.message}</div>}
+          </EmptyStateText>
+          <EmptyStateButton onClick={() => setSongLibraryModalOpen(true)}>
+            Open Song Library
+          </EmptyStateButton>
+        </EmptyState>
+      );
+    }
+    
+    return (
+      <LeadsheetDisplay 
+        songData={currentSong} 
+        currentLineIndex={currentLineIndex}
+      />
+    );
+  };
+  
   return (
     <>
       <GlobalStyles />
@@ -164,10 +225,7 @@ const AppContent: React.FC = () => {
         />
         
         <MainContent>
-          <LeadsheetDisplay 
-            songData={currentSong} 
-            currentLineIndex={currentLineIndex}
-          />
+          {renderContent()}
         </MainContent>
         
         <ControlsPanel 
@@ -180,6 +238,9 @@ const AppContent: React.FC = () => {
           onSliderChange={setCurrentLineIndex}
         />
       </AppContainer>
+      
+      {/* Network status indicator and loading spinner */}
+      <NetworkStatus isLoading={isLoading} />
       
       <AccessibilityModal 
         isOpen={accessibilityModalOpen}
