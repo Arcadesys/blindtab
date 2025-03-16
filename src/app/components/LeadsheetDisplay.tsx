@@ -6,21 +6,64 @@ interface LeadsheetDisplayProps {
   content: string;
   autoScroll: boolean;
   fontSize: number;
+  displayMode?: 'default' | 'high-contrast' | 'yellow-black' | 'black-white';
 }
 
-export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDisplayProps) {
+export function LeadsheetDisplay({ 
+  content, 
+  autoScroll, 
+  fontSize,
+  displayMode = 'default'
+}: LeadsheetDisplayProps) {
   const [lines, setLines] = useState<string[]>([]);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [showControls, setShowControls] = useState(false);
+  const [lineTypes, setLineTypes] = useState<('chord' | 'lyric' | 'other')[]>([]);
+  const [lineGroups, setLineGroups] = useState<number[]>([]);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
-  // Parse content into lines
+  // Parse content into lines and identify chord/lyric pairs
   useEffect(() => {
     if (content) {
       const parsedLines = content.split('\n');
       setLines(parsedLines);
       lineRefs.current = lineRefs.current.slice(0, parsedLines.length);
+      
+      // Identify line types (chord, lyric, other)
+      const types: ('chord' | 'lyric' | 'other')[] = [];
+      parsedLines.forEach(line => {
+        if (isChordLine(line)) {
+          types.push('chord');
+        } else if (line.trim() === '') {
+          types.push('other');
+        } else {
+          types.push('lyric');
+        }
+      });
+      setLineTypes(types);
+      
+      // Group lines together (chord + lyric pairs)
+      const groups: number[] = [];
+      let currentGroup = 0;
+      
+      for (let i = 0; i < types.length; i++) {
+        if (i > 0 && types[i-1] === 'chord' && types[i] === 'lyric') {
+          // This lyric line belongs to the previous chord line's group
+          groups.push(currentGroup);
+        } else if (types[i] === 'chord') {
+          // Start a new group for each chord line
+          currentGroup++;
+          groups.push(currentGroup);
+        } else {
+          // Other lines get their own group
+          currentGroup++;
+          groups.push(currentGroup);
+        }
+      }
+      
+      setLineGroups(groups);
     }
   }, [content]);
 
@@ -29,10 +72,10 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown' || e.key === 'j' || e.key === ' ') {
         e.preventDefault();
-        setCurrentLineIndex(prev => Math.min(prev + 1, lines.length - 1));
+        navigateToNextGroup();
       } else if (e.key === 'ArrowUp' || e.key === 'k') {
         e.preventDefault();
-        setCurrentLineIndex(prev => Math.max(prev - 1, 0));
+        navigateToPreviousGroup();
       } else if (e.key === 'Home') {
         e.preventDefault();
         setCurrentLineIndex(0);
@@ -47,7 +90,7 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lines.length, showControls]);
+  }, [lines.length, showControls, lineGroups]);
 
   // Auto-scroll to current line
   useEffect(() => {
@@ -83,27 +126,138 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
     setCurrentLineIndex(index);
   };
 
+  // Navigate to the next group of lines
+  const navigateToNextGroup = () => {
+    if (currentLineIndex >= lines.length - 1) return;
+    
+    const currentGroup = lineGroups[currentLineIndex];
+    let nextIndex = currentLineIndex + 1;
+    
+    // Find the first line of the next group
+    while (nextIndex < lines.length && lineGroups[nextIndex] === currentGroup) {
+      nextIndex++;
+    }
+    
+    if (nextIndex < lines.length) {
+      setCurrentLineIndex(nextIndex);
+    }
+  };
+
+  // Navigate to the previous group of lines
+  const navigateToPreviousGroup = () => {
+    if (currentLineIndex <= 0) return;
+    
+    const currentGroup = lineGroups[currentLineIndex];
+    let prevIndex = currentLineIndex - 1;
+    
+    // Find the first line of the previous group
+    while (prevIndex > 0 && lineGroups[prevIndex] === currentGroup) {
+      prevIndex--;
+    }
+    
+    // If we're now in the middle of a group, find its first line
+    if (prevIndex > 0) {
+      const prevGroup = lineGroups[prevIndex];
+      while (prevIndex > 0 && lineGroups[prevIndex - 1] === prevGroup) {
+        prevIndex--;
+      }
+    }
+    
+    setCurrentLineIndex(prevIndex);
+  };
+
+  // Handle touch events for mobile swipe navigation
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY === null) return;
+    
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaY = touchEndY - touchStartY;
+    
+    // If the swipe is significant enough (more than 50px)
+    if (Math.abs(deltaY) > 50) {
+      if (deltaY > 0) {
+        // Swipe down - go to previous group
+        navigateToPreviousGroup();
+      } else {
+        // Swipe up - go to next group
+        navigateToNextGroup();
+      }
+    }
+    
+    setTouchStartY(null);
+  };
+
+  // Get display mode styles
+  const getDisplayModeStyles = (isCurrentLine: boolean, isChord: boolean) => {
+    switch (displayMode) {
+      case 'high-contrast':
+        return isCurrentLine 
+          ? 'bg-blue-600 text-white font-bold' 
+          : isChord 
+            ? 'text-yellow-500 dark:text-yellow-400 font-bold'
+            : 'text-white dark:text-white';
+      case 'yellow-black':
+        return isCurrentLine 
+          ? 'bg-yellow-400 text-black font-bold' 
+          : isChord 
+            ? 'text-yellow-500 font-bold'
+            : 'text-white';
+      case 'black-white':
+        return isCurrentLine 
+          ? 'bg-white text-black font-bold' 
+          : isChord 
+            ? 'text-white font-bold'
+            : 'text-gray-300';
+      default:
+        return isCurrentLine 
+          ? 'bg-blue-100 dark:bg-blue-900 font-bold' 
+          : isChord
+            ? 'text-blue-600 dark:text-blue-400 font-bold'
+            : '';
+    }
+  };
+
+  // Get background color based on display mode
+  const getBackgroundColor = () => {
+    switch (displayMode) {
+      case 'high-contrast':
+        return 'bg-gray-900';
+      case 'yellow-black':
+        return 'bg-black';
+      case 'black-white':
+        return 'bg-black';
+      default:
+        return '';
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full relative" onClick={() => setShowControls(!showControls)}>
+    <div 
+      className={`flex flex-col h-full relative ${getBackgroundColor()}`}
+      onClick={() => setShowControls(!showControls)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto px-2 md:px-4"
         style={{ fontSize: `${fontSize}px`, lineHeight: '1.5' }}
       >
-        <pre className="font-mono whitespace-pre break-normal w-full">
+        <pre className="font-mono whitespace-pre-wrap break-words w-full">
           {lines.map((line, index) => {
-            const isChord = isChordLine(line);
+            const isChord = lineTypes[index] === 'chord';
+            const currentGroup = lineGroups[currentLineIndex];
+            const isCurrentLine = lineGroups[index] === currentGroup;
+            
             return (
               <div
                 key={index}
                 ref={el => lineRefs.current[index] = el}
-                className={`py-1 cursor-pointer transition-colors ${
-                  index === currentLineIndex 
-                    ? 'bg-blue-100 dark:bg-blue-900 font-bold' 
-                    : isChord
-                      ? 'text-blue-600 dark:text-blue-400 font-bold'
-                      : ''
-                }`}
+                className={`py-1 cursor-pointer transition-colors ${getDisplayModeStyles(isCurrentLine, isChord)}`}
                 onClick={() => handleLineClick(index)}
               >
                 {line}
@@ -119,7 +273,7 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setCurrentLineIndex(prev => Math.max(prev - 1, 0));
+              navigateToPreviousGroup();
             }}
             className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
             aria-label="Previous line"
@@ -136,7 +290,7 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setCurrentLineIndex(prev => Math.min(prev + 1, lines.length - 1));
+              navigateToNextGroup();
             }}
             className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
             aria-label="Next line"
@@ -147,6 +301,11 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
           </button>
         </div>
       )}
+      
+      {/* Mobile navigation hint - only shown initially */}
+      <div className="md:hidden absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none">
+        Swipe up/down to navigate
+      </div>
     </div>
   );
 } 
