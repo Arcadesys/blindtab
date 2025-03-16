@@ -17,7 +17,7 @@ export default function ControlsPanel({
   onTempoChange,
   defaultTempo = 100,
   defaultAutoScroll = false,
-  defaultFontSize = 16
+  defaultFontSize = 24
 }: ControlsPanelProps) {
   const [autoScroll, setAutoScroll] = useState(defaultAutoScroll);
   const [fontSize, setFontSize] = useState(defaultFontSize);
@@ -49,14 +49,21 @@ export default function ControlsPanel({
   useEffect(() => {
     // Handle keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === ' ' && !e.repeat) {
+      if (e.key === ' ' && !e.repeat && e.ctrlKey) {
+        e.preventDefault();
         togglePlay();
       } else if (e.key === 'm' && !e.repeat) {
+        e.preventDefault();
         toggleMetronome();
       } else if (e.key === '+' || e.key === '=') {
-        handleFontSizeChange(fontSize + 1);
+        e.preventDefault();
+        handleFontSizeChange(fontSize + 2);
       } else if (e.key === '-' || e.key === '_') {
-        handleFontSizeChange(fontSize - 1);
+        e.preventDefault();
+        handleFontSizeChange(fontSize - 2);
+      } else if (e.key === 'a' && !e.repeat) {
+        e.preventDefault();
+        handleAutoScrollToggle();
       }
     };
 
@@ -131,8 +138,8 @@ export default function ControlsPanel({
   };
 
   const handleFontSizeChange = (newSize: number) => {
-    // Limit font size between 12 and 32
-    const clampedSize = Math.max(12, Math.min(32, newSize));
+    // Limit font size between 16 and 48
+    const clampedSize = Math.max(16, Math.min(48, newSize));
     setFontSize(clampedSize);
     onFontSizeChange(clampedSize);
   };
@@ -151,126 +158,102 @@ export default function ControlsPanel({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-      <h2 className="text-xl font-semibold mb-4">Controls</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Playback Controls */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Playback</span>
-            <div className="flex space-x-2">
-              <button
-                onClick={togglePlay}
-                className={`p-2 rounded-full ${
-                  isPlaying 
-                    ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300' 
-                    : 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300'
-                }`}
-                aria-label={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isPlaying ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-              <button
-                onClick={toggleMetronome}
-                className={`p-2 rounded-full ${
-                  metronomeEnabled 
-                    ? 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300' 
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                }`}
-                aria-label={metronomeEnabled ? 'Disable metronome' : 'Enable metronome'}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-          </div>
+    <div className="p-2 bg-white dark:bg-gray-800">
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Main Controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={togglePlay}
+            className={`p-2 rounded-full ${
+              isPlaying 
+                ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300' 
+                : 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300'
+            }`}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            title={isPlaying ? 'Pause (Ctrl+Space)' : 'Play (Ctrl+Space)'}
+          >
+            {isPlaying ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
           
-          {/* Tempo Control */}
-          <div>
-            <div className="flex justify-between mb-1">
-              <label htmlFor="tempo-slider" className="text-sm font-medium">Tempo: {tempo} BPM</label>
-            </div>
-            <input
-              id="tempo-slider"
-              type="range"
-              min="40"
-              max="240"
-              value={tempo}
-              onChange={(e) => handleTempoChange(parseInt(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-            />
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-              <span>Slow</span>
-              <span>Fast</span>
-            </div>
-          </div>
+          <button
+            onClick={toggleMetronome}
+            className={`p-2 rounded-full ${
+              metronomeEnabled 
+                ? 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300' 
+                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+            aria-label={metronomeEnabled ? 'Disable metronome' : 'Enable metronome'}
+            title={metronomeEnabled ? 'Disable metronome (M)' : 'Enable metronome (M)'}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={handleAutoScrollToggle}
+            className={`p-2 rounded-full ${
+              autoScroll 
+                ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' 
+                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+            aria-label={autoScroll ? 'Disable auto-scroll' : 'Enable auto-scroll'}
+            title={autoScroll ? 'Disable auto-scroll (A)' : 'Enable auto-scroll (A)'}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
         
-        {/* Display Controls */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Auto-scroll</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={autoScroll}
-                onChange={handleAutoScrollToggle}
-                className="sr-only peer" 
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
+        {/* Font Size Controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleFontSizeChange(fontSize - 2)}
+            className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full"
+            aria-label="Decrease font size"
+            title="Decrease font size (-)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 12H6" />
+            </svg>
+          </button>
           
-          {/* Font Size Control */}
-          <div>
-            <div className="flex justify-between mb-1">
-              <label htmlFor="font-size-slider" className="text-sm font-medium">Font Size: {fontSize}px</label>
-            </div>
-            <div className="flex items-center">
-              <button
-                onClick={() => handleFontSizeChange(fontSize - 1)}
-                className="p-1 bg-gray-100 dark:bg-gray-700 rounded-l"
-                aria-label="Decrease font size"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                </svg>
-              </button>
-              <input
-                id="font-size-slider"
-                type="range"
-                min="12"
-                max="32"
-                value={fontSize}
-                onChange={(e) => handleFontSizeChange(parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 mx-2"
-              />
-              <button
-                onClick={() => handleFontSizeChange(fontSize + 1)}
-                className="p-1 bg-gray-100 dark:bg-gray-700 rounded-r"
-                aria-label="Increase font size"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            </div>
-          </div>
+          <span className="text-sm font-medium">{fontSize}px</span>
+          
+          <button
+            onClick={() => handleFontSizeChange(fontSize + 2)}
+            className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full"
+            aria-label="Increase font size"
+            title="Increase font size (+)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+            </svg>
+          </button>
         </div>
-      </div>
-      
-      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-        <p>Keyboard shortcuts: Space (play/pause), M (metronome), + (increase font), - (decrease font)</p>
+        
+        {/* Tempo Controls */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium whitespace-nowrap">{tempo} BPM</span>
+          <input
+            type="range"
+            min="40"
+            max="240"
+            value={tempo}
+            onChange={(e) => handleTempoChange(parseInt(e.target.value))}
+            className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+            title="Adjust tempo"
+          />
+        </div>
       </div>
     </div>
   );
