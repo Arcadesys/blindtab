@@ -125,13 +125,25 @@ try {
         tabManager: persistentMultipleTabManager(),
         cacheSizeBytes: CACHE_SIZE_UNLIMITED
       }),
-      // Add CORS settings for production as well to avoid WebSocket issues
+      // Update connection settings to fix Bad Request errors
       experimentalForceLongPolling: true,
       experimentalAutoDetectLongPolling: true,
-      // Add additional connection settings to handle 400 Bad Request errors
       ssl: true,
       ignoreUndefinedProperties: true
     });
+    
+    // Apply additional settings to fix WebChannel connection issues
+    try {
+      // @ts-ignore - This is a workaround for Firebase WebChannel connection issues
+      db._settings = {
+        ...db._settings,
+        host: `firestore.googleapis.com`,
+        ssl: true
+      };
+      console.log('[Firebase] Applied additional connection settings for production');
+    } catch (error) {
+      console.error('[Firebase] Failed to apply additional settings:', error);
+    }
   }
 } catch (error) {
   console.error('[Firebase] Error initializing Firestore with persistent cache:', error);
@@ -149,6 +161,19 @@ try {
   try {
     console.log('[Firebase] Applying settings to fallback Firestore instance');
     initializeFirestore(app, settings);
+    
+    // Apply additional settings to fix WebChannel connection issues
+    try {
+      // @ts-ignore - This is a workaround for Firebase WebChannel connection issues
+      db._settings = {
+        ...db._settings,
+        host: `firestore.googleapis.com`,
+        ssl: true
+      };
+      console.log('[Firebase] Applied additional connection settings to fallback instance');
+    } catch (settingsError) {
+      console.error('[Firebase] Failed to apply settings to fallback instance:', settingsError);
+    }
   } catch (settingsError) {
     console.error('[Firebase] Failed to apply settings to fallback instance:', settingsError);
   }
@@ -222,6 +247,40 @@ const testConnection = async () => {
       }
     } else if (error.code === 'failed-precondition') {
       console.error('[Firebase] This might be due to incorrect project configuration or missing indexes');
+    } else if (error.message?.includes('400') || error.message?.includes('Bad Request')) {
+      console.error('[Firebase] Bad Request error detected. This is likely due to WebChannel connection issues.');
+      
+      // Try to fix the WebChannel connection issue
+      try {
+        console.log('[Firebase] Attempting to fix WebChannel connection issue...');
+        
+        // @ts-ignore - This is a workaround for Firebase WebChannel connection issues
+        db._settings = {
+          ...db._settings,
+          host: `firestore.googleapis.com`,
+          ssl: true
+        };
+        
+        // Try to reinitialize with different settings
+        const newDb = initializeFirestore(app, {
+          experimentalForceLongPolling: true,
+          ssl: true,
+          ignoreUndefinedProperties: true
+        });
+        
+        // Test the new connection
+        const newSongsRef = collection(newDb, COLLECTIONS.SONGS);
+        const newQ = query(newSongsRef, limit(1));
+        const newSnapshot = await getDocs(newQ);
+        
+        console.log('[Firebase] Connection fixed! Using new Firestore instance.');
+        db = newDb;
+        isFallbackMode = false;
+        return true;
+      } catch (fixError) {
+        console.error('[Firebase] Failed to fix WebChannel connection issue:', fixError);
+        isFallbackMode = true;
+      }
     } else {
       console.error('[Firebase] Error details:', {
         code: error.code,
@@ -231,7 +290,7 @@ const testConnection = async () => {
       });
       
       // For network errors in any environment, try to switch to fallback mode
-      if (error.name === 'FirebaseError' || error.message?.includes('network') || error.message?.includes('400') || error.message?.includes('Bad Request')) {
+      if (error.name === 'FirebaseError' || error.message?.includes('network') || error.message?.includes('jd')) {
         console.warn('[Firebase] Network error detected. Attempting to reinitialize with enhanced long polling.');
         
         try {
@@ -248,42 +307,25 @@ const testConnection = async () => {
           db = newDb;
           console.log('[Firebase] Reinitialized Firestore with enhanced connection settings');
           
-          // Try the connection test again
-          const songsRef = collection(db, COLLECTIONS.SONGS);
-          const q = query(songsRef, limit(1));
-          await getDocs(q);
-          console.log('[Firebase] Connection test successful after reinitialization');
+          // Apply additional settings to fix WebChannel connection issues
+          // @ts-ignore - This is a workaround for Firebase WebChannel connection issues
+          db._settings = {
+            ...db._settings,
+            host: `firestore.googleapis.com`,
+            ssl: true
+          };
+          
+          // Test the new connection
+          const newSongsRef = collection(db, COLLECTIONS.SONGS);
+          const newQ = query(newSongsRef, limit(1));
+          await getDocs(newQ);
+          
+          console.log('[Firebase] Connection fixed with enhanced settings!');
           isFallbackMode = false;
           return true;
         } catch (reinitError) {
-          console.error('[Firebase] Failed to reinitialize Firestore:', reinitError);
-          
-          // Try one more time with even more aggressive settings
-          try {
-            console.warn('[Firebase] Attempting final fallback connection method...');
-            const finalDb = initializeFirestore(app, {
-              experimentalForceLongPolling: true,
-              experimentalAutoDetectLongPolling: false, // Force long polling only
-              ssl: true,
-              ignoreUndefinedProperties: true,
-              cacheSizeBytes: 0, // Minimal cache
-              localCache: memoryLocalCache() // Use memory cache regardless of environment
-            });
-            
-            db = finalDb;
-            console.log('[Firebase] Using final fallback connection method');
-            
-            // Test one more time
-            const songsRef = collection(db, COLLECTIONS.SONGS);
-            const q = query(songsRef, limit(1));
-            await getDocs(q);
-            console.log('[Firebase] Connection successful with final fallback method');
-            isFallbackMode = true; // Still mark as fallback mode since we're using minimal settings
-            return true;
-          } catch (finalError) {
-            console.error('[Firebase] All connection attempts failed:', finalError);
-            isFallbackMode = true;
-          }
+          console.error('[Firebase] Failed to reinitialize with enhanced settings:', reinitError);
+          isFallbackMode = true;
         }
       }
     }
