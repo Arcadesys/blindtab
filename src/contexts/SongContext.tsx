@@ -15,6 +15,9 @@ import { getMockSongs, getMockUserSongs } from '../utils/mockData';
 import { isDev } from '../utils/env';
 import publicDomainSongs from '../utils/dummyData';
 
+// Type for public domain songs
+type PublicDomainSong = typeof publicDomainSongs[0];
+
 interface SongContextType {
   songs: Song[];
   userSongs: Song[];
@@ -73,6 +76,15 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       setError(null);
+
+      // If user is not logged in, load public domain songs and skip DB access
+      if (!user) {
+        console.log('[SongContext] Anonymous user, loading public domain songs only');
+        setSongs(publicDomainSongs as unknown as Song[]);
+        setUserSongs([]);
+        setIsLoading(false);
+        return;
+      }
 
       let allSongs: Song[] = [];
       
@@ -158,6 +170,8 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Add a new song
   const addSong = async (song: Omit<Song, 'id'>): Promise<string> => {
+    if (!user) throw new Error('User must be authenticated to add songs');
+    
     try {
       // Generate a unique ID for the new song
       const newId = `song_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -190,6 +204,8 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Update an existing song
   const updateSong = async (id: string, songUpdate: Partial<Song>): Promise<void> => {
+    if (!user) throw new Error('User must be authenticated to update songs');
+    
     try {
       // Get the current song
       const songDoc = await getDoc(doc(db, COLLECTIONS.SONGS, id));
@@ -222,6 +238,8 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Delete a song
   const deleteSong = async (id: string): Promise<void> => {
+    if (!user) throw new Error('User must be authenticated to delete songs');
+    
     try {
       // Delete the song
       await deleteDoc(doc(db, COLLECTIONS.SONGS, id));
@@ -261,6 +279,17 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Play a song (legacy API compatibility)
   const playSong = async (songId: string): Promise<Song> => {
+    // For anonymous users, check public domain songs first
+    if (!user) {
+      const pdSong = publicDomainSongs.find(s => s.id === songId);
+      if (pdSong) {
+        setCurrentSong(pdSong as unknown as Song);
+        return pdSong as unknown as Song;
+      }
+      throw new Error(`Song with ID ${songId} not found`);
+    }
+    
+    // For logged-in users, check regular songs
     const song = songs.find(s => s.id === songId);
     if (!song) throw new Error(`Song with ID ${songId} not found`);
     
@@ -277,11 +306,6 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     return song;
   };
-
-  // Load songs on mount and when user changes
-  useEffect(() => {
-    refreshSongs();
-  }, [user]);
 
   // Legacy API compatibility
   const legacyApi = {
@@ -304,10 +328,10 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       setError(null);
       
-      // If user is not logged in, load public domain songs
+      // If user is not logged in, load public domain songs only and skip DB access
       if (!user) {
         console.log('Loading public domain songs for anonymous user');
-        setSongs(publicDomainSongs);
+        setSongs(publicDomainSongs as unknown as Song[]);
         setIsLoading(false);
         return;
       }
@@ -349,10 +373,15 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (id.startsWith('pd-')) {
         const pdSong = publicDomainSongs.find(song => song.id === id);
         if (pdSong) {
-          setCurrentSong(pdSong);
+          setCurrentSong(pdSong as unknown as Song);
           setIsLoading(false);
           return;
         }
+      }
+      
+      // If user is not logged in and it's not a public domain song, throw error
+      if (!user) {
+        throw new Error('User must be authenticated to load non-public domain songs');
       }
       
       // Otherwise, load from Firestore
