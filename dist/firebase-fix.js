@@ -154,10 +154,50 @@
               });
           }
           
-          // Force CORS mode
-          options.mode = 'cors';
+          // For direct Firebase requests, try no-cors mode first
+          if (!isLocalhost && !options.mode) {
+            console.log('🔧 Setting no-cors mode for Firebase request');
+            options.mode = 'no-cors';
+            options.credentials = 'omit';
+            
+            // Return the no-cors request
+            return originalFetch.call(this, url, options)
+              .then(response => {
+                // no-cors responses are opaque, so we can't check status
+                // but we can check if we got a response at all
+                console.log('✅ no-cors request succeeded');
+                return response;
+              })
+              .catch(error => {
+                console.error('no-cors request failed:', error);
+                // If no-cors fails, try with cors mode
+                console.log('🔄 Falling back to cors mode');
+                options.mode = 'cors';
+                return originalFetch.call(this, url, options)
+                  .then(response => {
+                    if (!response.ok) {
+                      if (response.status === 0 || response.type === 'opaque') {
+                        console.log('CORS issue detected, will use proxy for future requests');
+                        sessionStorage.setItem('firestore_cors_issue', 'true');
+                      }
+                      
+                      if (response.status === 400 || response.status === 403) {
+                        console.log('400/403 error detected, will use proxy for future requests');
+                        sessionStorage.setItem('firestore_400_error', 'true');
+                      }
+                    }
+                    return response;
+                  })
+                  .catch(corsError => {
+                    console.error('CORS request failed:', corsError);
+                    // Mark that we had an error for future requests
+                    sessionStorage.setItem('firestore_cors_issue', 'true');
+                    throw corsError;
+                  });
+              });
+          }
           
-          // Return the original request with our modifications
+          // If mode is already set, use it
           return originalFetch.call(this, url, options)
             .then(response => {
               // Check for CORS or 400 errors

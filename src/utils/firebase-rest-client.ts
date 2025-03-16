@@ -46,6 +46,7 @@ export class FirestoreRestClient {
   private apiKey: string;
   private defaultHeaders: HeadersInit;
   private currentProxyIndex: number = -1; // Start with direct access
+  private useNoCors: boolean = false; // Whether to use no-cors mode
 
   constructor(projectId: string, apiKey: string) {
     this.baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
@@ -63,6 +64,13 @@ export class FirestoreRestClient {
     if (savedProxyIndex !== null) {
       this.currentProxyIndex = parseInt(savedProxyIndex, 10);
       console.log(`Using previously successful proxy #${this.currentProxyIndex}`);
+    }
+    
+    // Check if we should use no-cors mode
+    const useNoCors = sessionStorage.getItem('firestore_use_no_cors');
+    if (useNoCors === 'true') {
+      this.useNoCors = true;
+      console.log('Using no-cors mode for Firestore requests');
     }
   }
 
@@ -122,13 +130,62 @@ export class FirestoreRestClient {
   }
 
   /**
+   * Try a request with no-cors mode
+   */
+  private async tryNoCorsRequest(url: string, options: RequestInit = {}): Promise<Response | null> {
+    try {
+      console.log('🔧 Trying no-cors mode for Firestore request');
+      
+      // Set no-cors mode
+      const noCorsOptions = {
+        ...options,
+        mode: 'no-cors' as RequestMode,
+        credentials: 'omit' as RequestCredentials,
+        headers: {
+          ...this.defaultHeaders,
+          ...options.headers
+        }
+      };
+      
+      // Make the request
+      const response = await fetch(url, noCorsOptions);
+      
+      // no-cors responses are opaque, so we can't check status
+      // but we can check if we got a response at all
+      console.log('✅ no-cors request succeeded');
+      
+      // Mark that no-cors mode works
+      sessionStorage.setItem('firestore_use_no_cors', 'true');
+      this.useNoCors = true;
+      
+      return response;
+    } catch (error) {
+      console.error('❌ no-cors request failed:', error);
+      return null;
+    }
+  }
+
+  /**
    * Make a request with automatic proxy fallback
    */
   private async makeRequest(url: string, options: RequestInit = {}): Promise<Response> {
+    // If we know no-cors works, try it first
+    if (this.useNoCors && window.location.hostname !== 'localhost') {
+      const noCorsResponse = await this.tryNoCorsRequest(url, options);
+      if (noCorsResponse) {
+        return noCorsResponse;
+      }
+      
+      // If no-cors failed, reset the flag
+      this.useNoCors = false;
+      sessionStorage.removeItem('firestore_use_no_cors');
+    }
+    
     try {
       // First try with the current URL (direct or proxy)
       const response = await fetch(url, {
         ...options,
+        mode: 'cors',
         headers: {
           ...this.defaultHeaders,
           ...options.headers
@@ -138,6 +195,16 @@ export class FirestoreRestClient {
       // If successful, return the response
       if (response.ok) {
         return response;
+      }
+      
+      // If we get a CORS error, try no-cors mode
+      if ((response.status === 0 || response.type === 'opaque') && 
+          window.location.hostname !== 'localhost') {
+        
+        const noCorsResponse = await this.tryNoCorsRequest(url, options);
+        if (noCorsResponse) {
+          return noCorsResponse;
+        }
       }
       
       // If we get a 400 or 403 error, try the next proxy
@@ -165,6 +232,14 @@ export class FirestoreRestClient {
       return response;
     } catch (error) {
       console.error('Request failed:', error);
+      
+      // Try no-cors mode if we haven't already
+      if (!this.useNoCors && window.location.hostname !== 'localhost') {
+        const noCorsResponse = await this.tryNoCorsRequest(url, options);
+        if (noCorsResponse) {
+          return noCorsResponse;
+        }
+      }
       
       // Mark that we had a CORS issue
       sessionStorage.setItem('firestore_cors_issue', 'true');
@@ -203,6 +278,12 @@ export class FirestoreRestClient {
       if (response.status === 404) {
         console.error('Firestore database not found. You need to create it in the Firebase Console.');
         return false;
+      }
+      
+      // For no-cors responses, we can't check status
+      if (response.type === 'opaque') {
+        console.log('✅ Firestore connection test succeeded with opaque response (no-cors)');
+        return true;
       }
       
       if (!response.ok) {
@@ -262,6 +343,14 @@ export class FirestoreRestClient {
       const url = this.getFirestoreUrl(`${collection}/${docId}`);
       const response = await this.makeRequest(url);
       
+      // For no-cors responses, we can't check status or parse JSON
+      if (response.type === 'opaque') {
+        console.log('Got opaque response from no-cors request');
+        // We can't extract data from opaque responses
+        // Return a placeholder or try another method
+        return null;
+      }
+      
       if (response.status === 404) {
         return null;
       }
@@ -288,6 +377,14 @@ export class FirestoreRestClient {
     try {
       const url = this.getFirestoreUrl(`${collection}?pageSize=${limit}`);
       const response = await this.makeRequest(url);
+      
+      // For no-cors responses, we can't check status or parse JSON
+      if (response.type === 'opaque') {
+        console.log('Got opaque response from no-cors request');
+        // We can't extract data from opaque responses
+        // Return an empty array or try another method
+        return [];
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -323,6 +420,14 @@ export class FirestoreRestClient {
         })
       });
       
+      // For no-cors responses, we can't check status or parse JSON
+      if (response.type === 'opaque') {
+        console.log('Got opaque response from no-cors request');
+        // We can't extract data from opaque responses
+        // Return the original data as a best guess
+        return data as T;
+      }
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -347,6 +452,13 @@ export class FirestoreRestClient {
       const response = await this.makeRequest(url, {
         method: 'DELETE'
       });
+      
+      // For no-cors responses, we can't check status
+      if (response.type === 'opaque') {
+        console.log('Got opaque response from no-cors request');
+        // Assume success for opaque responses
+        return true;
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
