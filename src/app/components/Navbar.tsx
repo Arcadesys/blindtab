@@ -35,20 +35,12 @@ export default function Navbar() {
             </button>
           </>
         ) : (
-          <>
-            <Link 
-              href="/login" 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-            >
-              Login
-            </Link>
-            <Link 
-              href="/register" 
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-            >
-              Register
-            </Link>
-          </>
+          <Link 
+            href="/auth" 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          >
+            Login / Register
+          </Link>
         )}
       </div>
     </nav>

@@ -10,10 +10,10 @@ const protectedRoutes = [
 
 // Define public routes that should never redirect to login
 const publicRoutes = [
-  '/login',
-  '/register',
+  '/auth',
   '/api/auth/login',
   '/api/auth/logout',
+  '/api/register',
   // Add other public routes here
 ];
 
@@ -33,9 +33,9 @@ export function middleware(request: NextRequest) {
   // Get the token from the cookies
   const token = request.cookies.get('auth-token')?.value;
   
-  // If there's no token, redirect to login
+  // If there's no token, redirect to auth page
   if (!token) {
-    const url = new URL('/login', request.url);
+    const url = new URL('/auth', request.url);
     url.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(url);
   }
@@ -43,9 +43,9 @@ export function middleware(request: NextRequest) {
   // Verify the token
   const payload = verifyToken(token);
   
-  // If the token is invalid, redirect to login
+  // If the token is invalid, redirect to auth page
   if (!payload) {
-    const url = new URL('/login', request.url);
+    const url = new URL('/auth', request.url);
     url.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(url);
   }

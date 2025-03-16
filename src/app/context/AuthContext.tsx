@@ -27,12 +27,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/auth/me');
+        
+        // If response is OK, set the user
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
+        } 
+        // If unauthorized, that's expected when not logged in
+        else if (response.status === 401) {
+          setUser(null);
+        }
+        // For other errors, log them
+        else {
+          console.error('Auth check error:', response.statusText);
         }
       } catch (error) {
-        console.error('Auth check error:', error);
+        // Only log network errors
+        console.error('Auth check network error:', error);
       } finally {
         setLoading(false);
       }
