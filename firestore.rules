@@ -28,9 +28,10 @@ service cloud.firestore {
 
     function isProduction() {
       return request.auth == null && request.origin != null && (
-        request.origin.matches('blindtab.thearcades.me') ||
-        request.origin.matches('bt.thearcades.me') ||
-        request.origin.matches('tab.thearcades.me')
+        request.origin.matches('https://blindtab.thearcades.me') ||
+        request.origin.matches('https://bt.thearcades.me') ||
+        request.origin.matches('https://tab.thearcades.me') ||
+        request.origin.matches('.*blindtab-.*vercel.app')
       );
     }
 
