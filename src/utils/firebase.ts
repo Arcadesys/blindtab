@@ -61,7 +61,9 @@ const firebaseConfig = {
 // Detect if we're in a preview deployment
 const isPreviewDeployment = window.location.hostname.includes('-projects.vercel.app') || 
                            window.location.hostname.includes('-staging.vercel.app') ||
-                           window.location.hostname.includes('-preview.vercel.app');
+                           window.location.hostname.includes('-preview.vercel.app') ||
+                           window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1';
 
 // Log config for debugging (excluding sensitive data)
 console.log('[Firebase] Configuration:', {
@@ -73,7 +75,8 @@ console.log('[Firebase] Configuration:', {
   currentOrigin: window.location.origin,
   currentPath: window.location.pathname,
   isPreviewDeployment,
-  isDev
+  isDev,
+  usingEmulator: isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true'
 });
 
 // Initialize Firebase app
@@ -109,14 +112,23 @@ const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 // Use emulator in development if available
-if (isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR) {
+if (isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   try {
-    connectFirestoreEmulator(db, 'localhost', 8080);
+    const firestoreHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || 'localhost:8080';
+    const [host, portStr] = firestoreHost.split(':');
+    const port = parseInt(portStr, 10);
+    
+    console.log(`[Firebase] Connecting to Firestore emulator at ${host}:${port}`);
+    connectFirestoreEmulator(db, host, port);
     connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+    
     console.log('[Firebase] Connected to local emulators:', {
-      firestore: 'localhost:8080',
+      firestore: firestoreHost,
       auth: 'localhost:9099'
     });
+    
+    // Set a flag to indicate we're using emulators
+    isFallbackMode = false;
   } catch (error) {
     console.error('[Firebase] Failed to connect to emulators:', error);
   }

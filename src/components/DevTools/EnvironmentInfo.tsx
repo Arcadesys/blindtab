@@ -1,95 +1,99 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import styled from 'styled-components';
-import { getConfig, AppConfig } from '../../utils/config';
-import { env } from '../../utils/env';
+import { useSong } from '../../contexts/SongContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { isPreviewDeployment, isFallbackMode } from '../../utils/firebase';
 
 const Container = styled.div`
-  padding: 20px;
-`;
-
-const Section = styled.div`
-  margin-bottom: 20px;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  color: #e0e0e0;
+  font-family: monospace;
 `;
 
 const Title = styled.h3`
-  margin-bottom: 10px;
-  color: #333;
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #61dafb;
 `;
 
-const CodeBlock = styled.pre`
-  background: #f5f5f5;
-  padding: 15px;
-  border-radius: 4px;
-  overflow-x: auto;
+const InfoRow = styled.div`
+  display: flex;
+  margin-bottom: 8px;
 `;
 
-const Status = styled.div<{ status: 'success' | 'error' | 'loading' }>`
-  padding: 8px 12px;
-  border-radius: 4px;
-  margin-bottom: 10px;
-  background-color: ${({ status }) => 
-    status === 'success' ? '#e6ffe6' :
-    status === 'error' ? '#ffe6e6' :
-    '#f0f0f0'};
-  color: ${({ status }) => 
-    status === 'success' ? '#006600' :
-    status === 'error' ? '#660000' :
-    '#666666'};
+const Label = styled.div`
+  width: 180px;
+  color: #9cdcfe;
+`;
+
+const Value = styled.div`
+  flex: 1;
+  word-break: break-all;
 `;
 
 const EnvironmentInfo: React.FC = () => {
-  const [config, setConfig] = useState<AppConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadConfig = useCallback(async () => {
-    try {
-      setLoading(true);
-      const appConfig = await getConfig();
-      setConfig(appConfig);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadConfig();
-  }, [loadConfig]);
-
+  const { isPreviewMode } = useSong();
+  const { user } = useAuth();
+  
   return (
     <Container>
-      <Section>
-        <Title>Environment</Title>
-        <CodeBlock>
-          {JSON.stringify(env, null, 2)}
-        </CodeBlock>
-      </Section>
-
-      <Section>
-        <Title>Configuration</Title>
-        {loading ? (
-          <Status status="loading">Loading configuration...</Status>
-        ) : error ? (
-          <Status status="error">Error: {error}</Status>
-        ) : (
-          <>
-            <Status status="success">Configuration loaded successfully</Status>
-            <CodeBlock>
-              {JSON.stringify(config, null, 2)}
-            </CodeBlock>
-          </>
-        )}
-      </Section>
-
-      <Section>
-        <Title>Actions</Title>
-        <button onClick={loadConfig} disabled={loading}>
-          Refresh Configuration
-        </button>
-      </Section>
+      <Title>Environment Information</Title>
+      
+      <InfoRow>
+        <Label>App Environment:</Label>
+        <Value>{import.meta.env.VITE_APP_ENV || 'development'}</Value>
+      </InfoRow>
+      
+      <InfoRow>
+        <Label>Firebase Emulator:</Label>
+        <Value>{import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true' ? 'Enabled' : 'Disabled'}</Value>
+      </InfoRow>
+      
+      <InfoRow>
+        <Label>Firestore Host:</Label>
+        <Value>{import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || 'Production'}</Value>
+      </InfoRow>
+      
+      <InfoRow>
+        <Label>Current Domain:</Label>
+        <Value>{window.location.hostname}</Value>
+      </InfoRow>
+      
+      <InfoRow>
+        <Label>Preview Deployment:</Label>
+        <Value>{isPreviewDeployment ? 'Yes' : 'No'}</Value>
+      </InfoRow>
+      
+      <InfoRow>
+        <Label>Fallback Mode:</Label>
+        <Value>{isFallbackMode ? 'Yes' : 'No'}</Value>
+      </InfoRow>
+      
+      <InfoRow>
+        <Label>Preview Mode:</Label>
+        <Value>{isPreviewMode ? 'Yes' : 'No'}</Value>
+      </InfoRow>
+      
+      <InfoRow>
+        <Label>User Authenticated:</Label>
+        <Value>{user ? 'Yes' : 'No'}</Value>
+      </InfoRow>
+      
+      {user && (
+        <>
+          <InfoRow>
+            <Label>User ID:</Label>
+            <Value>{user.uid}</Value>
+          </InfoRow>
+          <InfoRow>
+            <Label>User Email:</Label>
+            <Value>{user.email}</Value>
+          </InfoRow>
+        </>
+      )}
     </Container>
   );
 };

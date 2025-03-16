@@ -34,7 +34,10 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [isPreviewMode] = useState(isPreviewDeployment || isFallbackMode);
+  
+  // Only enable preview mode if we're in a preview deployment AND not using emulators
+  const usingEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
+  const [isPreviewMode] = useState(isPreviewDeployment && !usingEmulator && isFallbackMode);
   
   const { user } = useAuth();
 
