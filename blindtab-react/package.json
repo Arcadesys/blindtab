@@ -19,7 +19,7 @@
     "seed:prod": "NODE_ENV=production node prisma/seed.js",
     "setup-env": "node scripts/setup-env.js",
     "typecheck": "tsc -b",
-    "vercel-build": "vite build --mode production",
+    "vercel-build": "vite build --mode $VITE_APP_ENV",
     "test": "vitest",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
