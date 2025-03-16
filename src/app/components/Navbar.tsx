@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 
@@ -8,6 +8,12 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme();
   const [fontSize, setFontSize] = useState(16);
   const [accessibilityMenuOpen, setAccessibilityMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Only render theme-dependent UI after mounting on the client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -22,6 +28,9 @@ export default function Navbar() {
     setFontSize(prev => Math.max(prev - 2, 12));
     document.documentElement.style.fontSize = `${fontSize}px`;
   };
+
+  // Determine the current theme safely
+  const currentTheme = mounted ? theme : 'dark'; // Default to dark to avoid flicker
 
   return (
     <nav className="bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700">
@@ -49,18 +58,20 @@ export default function Navbar() {
               <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 z-10 border border-gray-200 dark:border-gray-700">
                 <h3 className="text-lg font-semibold mb-2">Accessibility Options</h3>
                 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Theme</label>
-                  <button
-                    onClick={toggleTheme}
-                    className="w-full p-2 bg-gray-100 dark:bg-gray-700 rounded flex justify-between items-center"
-                  >
-                    <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
-                    <span className="text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 px-2 py-1 rounded">
-                      Press D
-                    </span>
-                  </button>
-                </div>
+                {mounted && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Theme</label>
+                    <button
+                      onClick={toggleTheme}
+                      className="w-full p-2 bg-gray-100 dark:bg-gray-700 rounded flex justify-between items-center"
+                    >
+                      <span>{currentTheme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+                      <span className="text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 px-2 py-1 rounded">
+                        Press D
+                      </span>
+                    </button>
+                  </div>
+                )}
                 
                 <div className="mb-4">
                   <label className="block text-sm font-medium mb-1">Font Size</label>
@@ -92,22 +103,26 @@ export default function Navbar() {
             )}
           </div>
           
-          {/* Theme Toggle Button */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme === 'dark' ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
-          </button>
+          {/* Theme Toggle Button - Only render theme-dependent content after mounting */}
+          {mounted ? (
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+              aria-label={`Switch to ${currentTheme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {currentTheme === 'dark' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+          ) : (
+            <div className="w-10 h-10"></div> // Placeholder with same dimensions to avoid layout shift
+          )}
           
           <Link href="/songs/create" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
             Create Song
