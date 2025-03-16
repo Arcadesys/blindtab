@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { PrismaClient } from '@prisma/client';
 import { notFound, redirect } from 'next/navigation';
 import { Metadata } from 'next';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../api/auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
 
@@ -68,7 +69,7 @@ function formatMarkdown(content: string) {
 }
 
 export default async function SongDetailPage({ params }: SongPageProps) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   const { id } = params;
   
   // Get the song
