@@ -33,16 +33,11 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Get collection prefix based on environment
-const collectionPrefix = import.meta.env.VITE_FIREBASE_COLLECTION_PREFIX || '';
-
 // Log config for debugging (excluding sensitive data)
 console.log('[Firebase] Configuration:', {
   authDomain: firebaseConfig.authDomain,
   projectId: firebaseConfig.projectId,
-  storageBucket: firebaseConfig.storageBucket,
-  environment: import.meta.env.VITE_APP_ENV,
-  collectionPrefix
+  storageBucket: firebaseConfig.storageBucket
 });
 
 let db;
@@ -66,9 +61,9 @@ try {
 // Export the initialized Firestore instance
 export { db };
 
-// Collection references with environment-specific prefixes
+// Collection references
 export const COLLECTIONS = {
-  SONGS: `${collectionPrefix}songs`,
-  TAGS: `${collectionPrefix}tags`,
-  CONFIG: `${collectionPrefix}config`
+  SONGS: 'songs',
+  TAGS: 'tags',
+  CONFIG: 'config'
 } as const; 
