@@ -55,22 +55,33 @@
         isEmulator
       });
       
-      // 1. Fix CORS issues by adding proper headers
+      // 1. Fix CORS issues by adding proper headers and using a proxy if needed
       const originalFetch = window.fetch;
       window.fetch = function(url, options = {}) {
         // Only intercept Firebase API calls
         if (typeof url === 'string' && url.includes('firestore.googleapis.com')) {
-          // Add CORS headers
-          options.headers = options.headers || {};
-          options.headers = {
-            ...options.headers,
-            'X-Origin': window.location.origin,
-            'X-Requested-With': 'XMLHttpRequest'
-          };
+          console.log('Intercepting Firebase fetch request:', url);
           
-          // Force CORS mode
-          options.mode = 'cors';
-          options.credentials = 'omit';
+          // Check if we should use a CORS proxy
+          const hasCorsIssue = sessionStorage.getItem('firestore_cors_issue') === 'true';
+          
+          if (!isLocalhost && hasCorsIssue) {
+            // Use a CORS proxy service
+            console.log('🔧 Using CORS proxy for Firebase request');
+            url = 'https://corsproxy.io/?' + encodeURIComponent(url);
+          } else {
+            // Add CORS headers
+            options.headers = options.headers || {};
+            options.headers = {
+              ...options.headers,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            };
+            
+            // Force CORS mode
+            options.mode = 'cors';
+            options.credentials = 'omit';
+          }
           
           console.log('🔧 Applied CORS fix to Firebase fetch request');
         }
@@ -128,6 +139,10 @@
             })
             .catch(error => {
               console.error('❌ Firestore connection test failed:', error);
+              
+              // If we get a CORS error, mark it for future requests
+              console.log('Marking CORS issue for future requests');
+              sessionStorage.setItem('firestore_cors_issue', 'true');
             });
         }
       }
