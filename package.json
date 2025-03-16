@@ -9,10 +9,10 @@
   "scripts": {
     "dev": "vite --mode development",
     "dev:staging": "vite --mode staging",
-    "build": "vite build --mode production",
+    "build": "tsc && vite build",
     "build:staging": "vite build --mode staging",
     "build:dev": "vite build --mode development",
-    "lint": "eslint .",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "seed": "node prisma/seed.js",
     "seed:staging": "NODE_ENV=staging node prisma/seed.js",
@@ -23,7 +23,8 @@
     "test": "vitest",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "clear-emulator": "node scripts/clearEmulator.js"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",

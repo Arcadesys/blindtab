@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../utils/firebase';
 import { useAuth } from './AuthContext';
 import type { Song } from '../types/firebase';
@@ -21,6 +21,7 @@ interface SongContextType {
   removeSongFromCollection: (songId: string) => Promise<void>;
   playSong: (songId: string) => Promise<void>;
   refreshSongs: () => Promise<void>;
+  createNewSong: (songData: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
 }
 
 const SongContext = createContext<SongContextType | null>(null);
@@ -108,6 +109,38 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const createNewSong = async (songData: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
+    try {
+      const timestamp = serverTimestamp();
+      
+      // Clean up the data to remove undefined values
+      const cleanData = {
+        title: songData.title,
+        artist: songData.artist,
+        lyrics: songData.lyrics,
+        ...(songData.key ? { key: songData.key } : {}),
+        ...(songData.tempo ? { tempo: songData.tempo } : {}),
+        ...(songData.timeSignature ? { timeSignature: songData.timeSignature } : {}),
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+
+      const docRef = await addDoc(collection(db, COLLECTIONS.SONGS), cleanData);
+
+      // Add to user's collection if authenticated
+      if (user) {
+        await addSongToCollection(docRef.id);
+      }
+
+      await refreshSongs();
+      return docRef.id;
+    } catch (err) {
+      console.error('Error creating new song:', err);
+      setError(err instanceof Error ? err : new Error('Failed to create song'));
+      throw err;
+    }
+  };
+
   return (
     <SongContext.Provider
       value={{
@@ -120,6 +153,7 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
         removeSongFromCollection,
         playSong,
         refreshSongs,
+        createNewSong
       }}
     >
       {children}
@@ -127,7 +161,8 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useSong() {
+// Fix Fast Refresh compatibility by using function declaration
+export function useSong(): SongContextType {
   const context = useContext(SongContext);
   if (!context) {
     throw new Error('useSong must be used within a SongProvider');

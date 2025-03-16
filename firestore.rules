@@ -14,7 +14,9 @@ service cloud.firestore {
     function isDevelopment() {
       return request.auth == null && (
         request.origin.matches('localhost:.*') ||
-        request.origin.matches('127.0.0.1:.*')
+        request.origin.matches('127.0.0.1:.*') ||
+        // Allow emulator operations without origin check
+        request.origin == null
       );
     }
 
@@ -29,34 +31,38 @@ service cloud.firestore {
     // Base rules for development and staging
     match /{document=**} {
       allow read: if true;  // Anyone can read
-      allow write: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes in development, staging, or if authenticated
+      allow create, update: if isDevelopment() || isStaging() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isAuthenticated();
     }
 
     // Songs collection - public songs available to everyone
     match /songs/{songId} {
       allow read: if true;  // Anyone can read songs
-      allow write: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes if authenticated
+      allow create, update: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes if authenticated
+      allow delete: if isDevelopment() || isStaging() || isAuthenticated();
     }
 
     // User songs collection - personal song lists
     match /user_songs/{userId} {
       allow read: if isOwner(userId) || isDevelopment() || isStaging();
-      allow write: if isOwner(userId) || isDevelopment() || isStaging();
+      allow create, update, delete: if isOwner(userId) || isDevelopment() || isStaging();
       
       match /songs/{songId} {
         allow read: if isOwner(userId) || isDevelopment() || isStaging();
-        allow write: if isOwner(userId) || isDevelopment() || isStaging();
+        allow create, update, delete: if isOwner(userId) || isDevelopment() || isStaging();
       }
     }
 
     match /config/{configId} {
       allow read: if true;
-      allow write: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes if authenticated
+      allow create, update: if isDevelopment() || isStaging() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isAuthenticated();
     }
 
     match /tags/{tagId} {
       allow read: if true;
-      allow write: if isDevelopment() || isStaging() || isAuthenticated();  // Allow writes if authenticated
+      allow create, update: if isDevelopment() || isStaging() || isAuthenticated();
+      allow delete: if isDevelopment() || isStaging() || isAuthenticated();
     }
   }
 } 

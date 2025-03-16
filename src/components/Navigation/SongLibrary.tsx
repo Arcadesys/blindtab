@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useSong } from '../../contexts/SongContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
-import { Song } from '../../types/song';
+import { Song } from '../../types/firebase';
 import SongEditorModal from '../Modals/SongEditorModal.tsx';
 
 const LibraryContainer = styled.div`
@@ -157,6 +158,26 @@ const Button = styled.button<{ $variant?: 'danger' | 'primary' }>`
   }
 `;
 
+const Tabs = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+`;
+
+const Tab = styled.button<{ active: boolean }>`
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background: ${props => props.active ? 'var(--primary)' : 'var(--bg-secondary)'};
+  color: ${props => props.active ? 'white' : 'var(--text-primary)'};
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
 interface SongLibraryProps {
   onSongLoad: (songId: string) => void;
   onClose?: () => void;
@@ -168,9 +189,14 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
   onClose,
   searchTerm = ''
 }) => {
-  const { songs, refreshSongList, isLoading, error } = useSong();
+  const { songs, userSongs, addSongToCollection, removeSongFromCollection, playSong, refreshSongList, isLoading, error } = useSong();
+  const { user } = useAuth();
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [activeTab, setActiveTab] = React.useState<'all' | 'collection'>('all');
+
+  const displaySongs = activeTab === 'all' ? songs : userSongs;
+  const userSongIds = new Set(userSongs.map(song => song.id));
 
   const handleSongSelect = (song: Song) => {
     setSelectedSongId(song.id);
@@ -194,13 +220,26 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
     announceToScreenReader('Song updated successfully');
   };
 
-  // Filter songs based on search term from props
-  const filteredSongs = songs.available.filter(song => 
-    song.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    song.artist.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSongAction = async (song: Song) => {
+    if (!user) return;
+    
+    if (userSongIds.has(song.id)) {
+      await removeSongFromCollection(song.id);
+    } else {
+      await addSongToCollection(song.id);
+    }
+  };
 
-  if (isLoading && filteredSongs.length === 0) {
+  // Filter songs based on search term from props
+  const filteredSongs = displaySongs.filter(song => {
+    if (!song?.title || !song?.artist) return false;
+    return (
+      song.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      song.artist.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  if (isLoading && !filteredSongs.length) {
     return (
       <LibraryContainer>
         <LoadingState>
@@ -225,6 +264,21 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
 
   return (
     <LibraryContainer>
+      <Tabs>
+        <Tab 
+          active={activeTab === 'all'} 
+          onClick={() => setActiveTab('all')}
+        >
+          All Songs
+        </Tab>
+        <Tab 
+          active={activeTab === 'collection'} 
+          onClick={() => setActiveTab('collection')}
+        >
+          My Collection
+        </Tab>
+      </Tabs>
+
       {filteredSongs.length === 0 ? (
         <EmptyState>
           <div>No songs found</div>

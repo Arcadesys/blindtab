@@ -2,9 +2,14 @@ export interface Song {
   id: string;
   title: string;
   artist: string;
-  album?: string;
-  year?: number;
-  tags?: string[];
+  key?: string;
+  tempo?: number;
+  timeSignature?: string;
+  lyrics: {
+    line: string;
+    chords: string;
+    position: number;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -14,7 +19,6 @@ export interface UserSong {
   addedAt: Date;
   lastPlayedAt?: Date;
   playCount?: number;
-  // Additional user-specific metadata can go here
 }
 
 export interface UserSongCollection {
