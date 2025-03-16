@@ -181,7 +181,9 @@ export {
   auth, 
   googleProvider, 
   restClient as firestoreRest,
-  isFallbackMode
+  isFallbackMode,
+  isPreviewDeployment,
+  isLocalDevelopment
 };
 
 // Default export is now the REST client
