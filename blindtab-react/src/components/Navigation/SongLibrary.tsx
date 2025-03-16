@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { useSong } from '../../contexts/SongContext';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
 import { Song } from '../../types/song';
-import SongEditModal from '../DevTools/SongEditModal';
+import SongEditorModal from '../Modals/SongEditorModal.tsx';
 
 const LibraryContainer = styled.div`
   display: flex;
@@ -12,10 +12,10 @@ const LibraryContainer = styled.div`
   overflow: hidden;
 `;
 
-const SongGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 16px;
+const SongList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 16px;
   overflow-y: auto;
 `;
@@ -24,83 +24,105 @@ const SongCard = styled.div<{ $isSelected?: boolean }>`
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px;
-  background: ${props => props.$isSelected ? 'var(--primary-color)' : 'var(--bg-secondary)'};
-  color: ${props => props.$isSelected ? 'white' : 'var(--text-primary)'};
+  background: ${props => props.$isSelected ? 'var(--bg-hover)' : 'var(--bg-secondary)'};
+  color: var(--text-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 12px;
+  transition: all 0.2s ease;
   
   &:hover {
     border-color: var(--primary-color);
+    background: var(--bg-hover);
+    transform: translateX(4px);
   }
+
+  ${props => props.$isSelected && `
+    border-color: var(--primary-color);
+    border-left: 4px solid var(--primary-color);
+  `}
 `;
 
 const SongInfo = styled.div`
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 `;
 
 const SongTitle = styled.h3`
   margin: 0;
   font-size: 1.1rem;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text-primary);
 `;
 
 const SongArtist = styled.p`
-  margin: 4px 0 0 0;
+  margin: 0;
   font-size: 0.9rem;
-  opacity: 0.8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text-secondary);
 `;
 
 const Tags = styled.div`
   font-size: 0.8rem;
-  opacity: 0.7;
+  color: var(--text-tertiary);
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+`;
+
+const Tag = styled.span`
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 `;
 
 const ButtonGroup = styled.div`
   display: flex;
   gap: 8px;
-  margin-left: auto;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-color);
 `;
 
-const IconButton = styled.button<{ variant?: 'primary' | 'danger' }>`
-  width: 32px;
-  height: 32px;
+const IconButton = styled.button<{ $variant?: 'primary' | 'danger' }>`
+  width: 36px;
+  height: 36px;
   border: none;
-  border-radius: 50%;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   background: ${props => 
-    props.variant === 'primary' ? 'var(--primary-color)' : 
-    props.variant === 'danger' ? 'var(--error-color)' : 
-    'var(--bg-tertiary)'
+    props.$variant === 'primary' ? 'var(--primary-color)' : 
+    props.$variant === 'danger' ? 'var(--error-color)' : 
+    'transparent'
   };
-  color: ${props => props.variant ? 'white' : 'var(--text-primary)'};
+  color: ${props => props.$variant ? 'white' : 'var(--text-secondary)'};
+  transition: all 0.2s ease;
   
   &:hover {
-    opacity: 0.9;
+    background: ${props => 
+      props.$variant === 'primary' ? 'var(--primary-color-dark)' : 
+      props.$variant === 'danger' ? 'var(--error-color-dark)' : 
+      'var(--bg-hover)'
+    };
+    color: ${props => props.$variant ? 'white' : 'var(--text-primary)'};
     transform: scale(1.05);
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 
   svg {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
   }
 `;
 
@@ -148,8 +170,7 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
 }) => {
   const { songs, refreshSongList, isLoading, error } = useSong();
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   const handleSongSelect = (song: Song) => {
     setSelectedSongId(song.id);
@@ -163,13 +184,14 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
 
   const handleEdit = (song: Song, e: React.MouseEvent) => {
     e.stopPropagation();
-    setEditingSong(song);
-    setIsEditing(true);
+    setSelectedSongId(song.id);
+    setIsEditorOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsEditing(false);
-    setEditingSong(null);
+  const handleEditorClose = async () => {
+    setIsEditorOpen(false);
+    await refreshSongList();
+    announceToScreenReader('Song updated successfully');
   };
 
   // Filter songs based on search term from props
@@ -209,52 +231,57 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
           <div>{searchTerm ? 'Try a different search term' : 'Add some songs to get started'}</div>
         </EmptyState>
       ) : (
-        <SongGrid>
-          {filteredSongs.map(song => (
-            <SongCard 
-              key={song.id}
-              $isSelected={selectedSongId === song.id}
-              onClick={() => handleSongSelect(song)}
-            >
-              <SongInfo>
-                <SongTitle>{song.title}</SongTitle>
-                <SongArtist>{song.artist}</SongArtist>
-                {song.tags && song.tags.length > 0 && (
-                  <Tags>Tags: {song.tags.join(', ')}</Tags>
-                )}
-              </SongInfo>
-              <ButtonGroup>
-                <IconButton 
-                  onClick={(e) => handleEdit(song, e)}
-                  title="Edit song"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                </IconButton>
-                <IconButton 
-                  variant="primary" 
-                  onClick={() => handleLoadSong(song)}
-                  title="Load song"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M5 12h14" />
-                    <path d="m12 5 7 7-7 7" />
-                  </svg>
-                </IconButton>
-              </ButtonGroup>
-            </SongCard>
-          ))}
-        </SongGrid>
-      )}
+        <>
+          <SongList>
+            {filteredSongs.map(song => (
+              <SongCard 
+                key={song.id}
+                $isSelected={selectedSongId === song.id}
+                onClick={() => handleSongSelect(song)}
+              >
+                <SongInfo>
+                  <SongTitle>{song.title}</SongTitle>
+                  <SongArtist>{song.artist}</SongArtist>
+                  {song.tags && song.tags.length > 0 && (
+                    <Tags>
+                      {song.tags.map((tag, index) => (
+                        <Tag key={index}>{tag}</Tag>
+                      ))}
+                    </Tags>
+                  )}
+                </SongInfo>
+                <ButtonGroup>
+                  <IconButton 
+                    onClick={(e) => handleEdit(song, e)}
+                    title="Edit song"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                  </IconButton>
+                  <IconButton 
+                    $variant="primary" 
+                    onClick={() => handleLoadSong(song)}
+                    title="Load song"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M5 12h14" />
+                      <path d="m12 5 7 7-7 7" />
+                    </svg>
+                  </IconButton>
+                </ButtonGroup>
+              </SongCard>
+            ))}
+          </SongList>
 
-      {isEditing && (
-        <SongEditModal
-          isOpen={isEditing}
-          onClose={handleCloseModal}
-          song={editingSong}
-        />
+          <SongEditorModal
+            isOpen={isEditorOpen}
+            onClose={handleEditorClose}
+            songId={selectedSongId}
+            isNewSong={false}
+          />
+        </>
       )}
     </LibraryContainer>
   );

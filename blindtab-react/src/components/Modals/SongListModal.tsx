@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import SongList from '../Navigation/SongList';
+import SongLibrary from '../Navigation/SongLibrary';
 import { useSong } from '../../contexts/SongContext';
+import SongEditorModal from './SongEditorModal.tsx';
+import { ImportSong } from '../ImportSong';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
-import { SongEditorModal } from './SongEditorModal';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -185,7 +186,7 @@ const SongListModal: React.FC<SongListModalProps> = ({
           </ModalHeader>
           
           <ModalBody>
-            <SongList>
+            <SongLibrary>
               {songs.available.map(song => (
                 <SongItem
                   key={song.id}
@@ -209,7 +210,7 @@ const SongListModal: React.FC<SongListModalProps> = ({
                   </SongActions>
                 </SongItem>
               ))}
-            </SongList>
+            </SongLibrary>
           </ModalBody>
           
           <ModalFooter>

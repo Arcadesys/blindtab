@@ -140,7 +140,7 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
   
   // Handle line navigation with animation
   useEffect(() => {
-    if (!songData) {
+    if (!songData || !lyrics.length) {
       setVisibleLines([]);
       return;
     }
@@ -182,11 +182,13 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
       setAnimationOffset(`${lineHeightRef.current}px`);
       
       // After a tiny delay to ensure the DOM has updated, animate to the new position
-      requestAnimationFrame(() => {
-        setTimeout(() => {
+      const frameId = requestAnimationFrame(() => {
+        const timeoutId = setTimeout(() => {
           setAnimationOffset('0');
         }, 30);
+        return () => clearTimeout(timeoutId);
       });
+      return () => cancelAnimationFrame(frameId);
     } else {
       // Moving backward: load previous lines + current line
       const startIndex = Math.max(0, currentLineIndex - 1);
@@ -202,19 +204,24 @@ const LeadsheetDisplay: React.FC<LeadsheetDisplayProps> = ({
       setAnimationOffset(`-${lineHeightRef.current}px`);
       
       // After a tiny delay to ensure the DOM has updated, animate to the new position
-      requestAnimationFrame(() => {
-        setTimeout(() => {
+      const frameId = requestAnimationFrame(() => {
+        const timeoutId = setTimeout(() => {
           setAnimationOffset('0');
         }, 30);
+        return () => clearTimeout(timeoutId);
       });
+      return () => cancelAnimationFrame(frameId);
     }
     
     // Update the previous line index after animation completes
-    animationTimeoutRef.current = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       setPrevLineIndex(currentLineIndex);
     }, 850);
     
-  }, [songData, currentLineIndex, prevLineIndex, linesToDisplay, enableAnimations, lyrics]);
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [songData, currentLineIndex, linesToDisplay, enableAnimations, lyrics.length]);
   
   // Render a line with chords
   const renderLineWithChords = (line: SongLine, index: number) => {

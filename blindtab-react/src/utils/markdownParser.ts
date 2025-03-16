@@ -18,7 +18,7 @@ export const parseMarkdown = (markdown: string): SongData => {
     title: 'Untitled',
     artist: 'Unknown'
   };
-  const songData: SongLine[] = [];
+  const lyrics: SongLine[] = [];
   
   // Process metadata
   let dataSection = true;
@@ -76,14 +76,14 @@ export const parseMarkdown = (markdown: string): SongData => {
     if (!dataSection) {
       // Skip empty lines in the song body
       if (line === '') {
-        songData.push({ lyric: '' });
+        lyrics.push({ line: '' });
         i++;
         continue;
       }
       
       // Process a line with potential chord markers
       const songLine: SongLine = {
-        lyric: '',
+        line: '',
         chords: []
       };
       
@@ -115,14 +115,14 @@ export const parseMarkdown = (markdown: string): SongData => {
       // Add any remaining text after the last chord
       lyricLine += line.substring(lastIndex);
       
-      songLine.lyric = lyricLine;
-      songData.push(songLine);
+      songLine.line = lyricLine;
+      lyrics.push(songLine);
     }
     
     i++;
   }
   
-  return { songInfo, songData };
+  return { songInfo, lyrics };
 };
 
 /**
@@ -152,27 +152,33 @@ export const songDataToMarkdown = (songData: SongData): string => {
   markdown += '\n';
   
   // Process each line of the song
-  songData.songData.forEach(line => {
-    if (!line.lyric && !line.chords?.length) {
+  const lines = songData.lyrics || songData.songData || [];
+  lines.forEach(line => {
+    if (!line.lyric && !line.line && !line.chords?.length && !line.chord) {
       markdown += '\n';
       return;
     }
     
-    let lineText = line.lyric || '';
+    let lineText = line.lyric || line.line || '';
     
     // Insert chord markers
-    if (line.chords && line.chords.length > 0) {
-      // Sort chords by position (right to left to avoid position shifts)
-      const sortedChords = [...line.chords].sort((a, b) => b.position - a.position);
-      
-      // Insert each chord at its position
-      sortedChords.forEach(chord => {
-        const position = Math.min(chord.position, lineText.length);
-        lineText = 
-          lineText.substring(0, position) + 
-          `[${chord.text}]` + 
-          lineText.substring(position);
-      });
+    if ((line.chords && line.chords.length > 0) || line.chord) {
+      if (line.chords) {
+        // Sort chords by position (right to left to avoid position shifts)
+        const sortedChords = [...line.chords].sort((a, b) => b.position - a.position);
+        
+        // Insert each chord at its position
+        sortedChords.forEach(chord => {
+          const position = Math.min(chord.position, lineText.length);
+          lineText = 
+            lineText.substring(0, position) + 
+            `[${chord.text}]` + 
+            lineText.substring(position);
+        });
+      } else if (line.chord) {
+        // Handle single chord at the start of the line
+        lineText = `[${line.chord}]${lineText}`;
+      }
     }
     
     markdown += lineText + '\n';

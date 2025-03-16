@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import SongLibrary from '../Navigation/SongLibrary';
 import { useSong } from '../../contexts/SongContext';
-import AddSongModal from './AddSongModal';
+import SongEditorModal from './SongEditorModal.tsx';
 import { ImportSong } from '../ImportSong';
 import { announceToScreenReader } from '../../hooks/useKeyboardNavigation';
 
@@ -131,17 +131,16 @@ const SongLibraryModal: React.FC<SongLibraryModalProps> = ({
   const { isLoading, error, refreshSongList, checkDatabaseConnection } = useSong();
   const [activeTab, setActiveTab] = useState<'all' | 'search'>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [addSongModalOpen, setAddSongModalOpen] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   
   const handleAddNewSong = () => {
-    setAddSongModalOpen(true);
+    setIsEditorOpen(true);
   };
   
-  const handleSongSaved = async (songId: string) => {
+  const handleEditorClose = async () => {
+    setIsEditorOpen(false);
     await refreshSongList();
     announceToScreenReader('Song created successfully');
-    onSongLoad(songId);
-    onClose();
   };
   
   if (!isOpen) return null;
@@ -191,14 +190,11 @@ const SongLibraryModal: React.FC<SongLibraryModalProps> = ({
           />
         </SongList>
         
-        {addSongModalOpen && (
-          <AddSongModal
-            isOpen={addSongModalOpen}
-            onClose={() => setAddSongModalOpen(false)}
-            isEditMode={false}
-            onSongSaved={handleSongSaved}
-          />
-        )}
+        <SongEditorModal
+          isOpen={isEditorOpen}
+          onClose={handleEditorClose}
+          isNewSong={true}
+        />
       </ModalContent>
     </ModalOverlay>
   );

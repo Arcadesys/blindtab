@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSong } from '../../contexts/SongContext';
 import { Song } from '../../types/song';
 import styled from 'styled-components';
-import { SongEditorModal } from '../Modals/SongEditorModal';
+import SongEditorModal from '../Modals/SongEditorModal.tsx';
 
 const Container = styled.div`
   padding: 20px;
