@@ -44,6 +44,15 @@ console.log('[Firebase] Configuration:', {
 let db;
 
 try {
+  console.log(`[Firebase] Initializing Firebase in ${env} environment`);
+  
+  // Validate config values
+  Object.entries(firebaseConfig).forEach(([key, value]) => {
+    if (!value || value === 'undefined') {
+      throw new Error(`Invalid Firebase config: ${key} is ${value}`);
+    }
+  });
+
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
 
@@ -62,9 +71,17 @@ try {
     // Add any production-specific initialization here
   }
 
+  // Test the connection
+  db.collection(COLLECTIONS.SONGS).limit(1).get()
+    .then(() => console.log('[Firebase] Connection test successful'))
+    .catch(error => console.error('[Firebase] Connection test failed:', error));
+
   console.log('[Firebase] Initialization successful');
 } catch (error) {
   console.error('[Firebase] Initialization failed:', error);
+  console.error('[Firebase] Current environment:', env);
+  console.error('[Firebase] Auth domain:', firebaseConfig.authDomain);
+  console.error('[Firebase] Project ID:', firebaseConfig.projectId);
   throw error;
 }
 
