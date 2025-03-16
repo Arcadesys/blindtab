@@ -110,7 +110,11 @@ try {
       localCache: memoryLocalCache(),
       // Add CORS settings for preview deployments
       experimentalForceLongPolling: true, // Use long polling instead of WebSockets
-      experimentalAutoDetectLongPolling: true
+      experimentalAutoDetectLongPolling: true,
+      // Add additional connection settings to handle 400 Bad Request errors
+      ssl: true,
+      ignoreUndefinedProperties: true,
+      cacheSizeBytes: CACHE_SIZE_UNLIMITED
     });
   } 
   // For production, use persistent cache
@@ -123,7 +127,10 @@ try {
       }),
       // Add CORS settings for production as well to avoid WebSocket issues
       experimentalForceLongPolling: true,
-      experimentalAutoDetectLongPolling: true
+      experimentalAutoDetectLongPolling: true,
+      // Add additional connection settings to handle 400 Bad Request errors
+      ssl: true,
+      ignoreUndefinedProperties: true
     });
   }
 } catch (error) {
@@ -135,7 +142,9 @@ try {
   // Apply settings to the fallback instance as well
   const settings = {
     experimentalForceLongPolling: true,
-    experimentalAutoDetectLongPolling: true
+    experimentalAutoDetectLongPolling: true,
+    ssl: true,
+    ignoreUndefinedProperties: true
   };
   try {
     console.log('[Firebase] Applying settings to fallback Firestore instance');
@@ -222,19 +231,22 @@ const testConnection = async () => {
       });
       
       // For network errors in any environment, try to switch to fallback mode
-      if (error.name === 'FirebaseError' || error.message?.includes('network')) {
-        console.warn('[Firebase] Network error detected. Attempting to reinitialize with long polling.');
+      if (error.name === 'FirebaseError' || error.message?.includes('network') || error.message?.includes('400') || error.message?.includes('Bad Request')) {
+        console.warn('[Firebase] Network error detected. Attempting to reinitialize with enhanced long polling.');
         
         try {
-          // Try to reinitialize Firestore with long polling
+          // Try to reinitialize Firestore with enhanced connection settings
           const newDb = initializeFirestore(app, {
             experimentalForceLongPolling: true,
-            experimentalAutoDetectLongPolling: true
+            experimentalAutoDetectLongPolling: true,
+            ssl: true,
+            ignoreUndefinedProperties: true,
+            cacheSizeBytes: CACHE_SIZE_UNLIMITED
           });
           
           // If successful, replace the existing db instance
           db = newDb;
-          console.log('[Firebase] Reinitialized Firestore with long polling');
+          console.log('[Firebase] Reinitialized Firestore with enhanced connection settings');
           
           // Try the connection test again
           const songsRef = collection(db, COLLECTIONS.SONGS);
@@ -245,7 +257,33 @@ const testConnection = async () => {
           return true;
         } catch (reinitError) {
           console.error('[Firebase] Failed to reinitialize Firestore:', reinitError);
-          isFallbackMode = true;
+          
+          // Try one more time with even more aggressive settings
+          try {
+            console.warn('[Firebase] Attempting final fallback connection method...');
+            const finalDb = initializeFirestore(app, {
+              experimentalForceLongPolling: true,
+              experimentalAutoDetectLongPolling: false, // Force long polling only
+              ssl: true,
+              ignoreUndefinedProperties: true,
+              cacheSizeBytes: 0, // Minimal cache
+              localCache: memoryLocalCache() // Use memory cache regardless of environment
+            });
+            
+            db = finalDb;
+            console.log('[Firebase] Using final fallback connection method');
+            
+            // Test one more time
+            const songsRef = collection(db, COLLECTIONS.SONGS);
+            const q = query(songsRef, limit(1));
+            await getDocs(q);
+            console.log('[Firebase] Connection successful with final fallback method');
+            isFallbackMode = true; // Still mark as fallback mode since we're using minimal settings
+            return true;
+          } catch (finalError) {
+            console.error('[Firebase] All connection attempts failed:', finalError);
+            isFallbackMode = true;
+          }
         }
       }
     }
