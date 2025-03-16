@@ -49,7 +49,14 @@ export class FirestoreRestClient {
   async testConnection(): Promise<boolean> {
     try {
       // Try to list a small number of documents from any collection
-      const response = await fetch(`${this.baseUrl}?pageSize=1&key=${this.apiKey}`);
+      const response = await fetch(`${this.baseUrl}?pageSize=1&key=${this.apiKey}`, {
+        // Add CORS mode
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
       
       if (response.status === 404) {
         console.error('Firestore database not found. You need to create it in the Firebase Console.');
@@ -64,7 +71,33 @@ export class FirestoreRestClient {
       return true;
     } catch (error) {
       console.error('Firestore connection test failed:', error);
-      return false;
+      console.log('This might be a CORS issue when testing locally. Trying direct database access...');
+      
+      // If we get a CORS error, try using the Firebase SDK directly
+      try {
+        // Import Firebase SDK dynamically to avoid circular dependencies
+        const { collection, getDocs, query, limit } = await import('firebase/firestore');
+        const { db } = await import('./firebase');
+        
+        // Try to access any collection
+        const testQuery = query(collection(db, 'firebase_test'), limit(1));
+        await getDocs(testQuery);
+        
+        console.log('Direct Firestore access successful. Database exists but REST API has CORS issues.');
+        return true;
+      } catch (sdkError: any) {
+        // If this also fails with a "not found" error, the database doesn't exist
+        if (sdkError.code === 'not-found' || 
+            sdkError.message?.includes('not found') || 
+            sdkError.message?.includes('404')) {
+          console.error('Firestore database not found using direct access.');
+          return false;
+        }
+        
+        // For other errors, we're not sure
+        console.error('Direct Firestore access also failed:', sdkError);
+        return false;
+      }
     }
   }
 

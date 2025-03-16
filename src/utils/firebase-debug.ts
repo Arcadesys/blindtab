@@ -9,6 +9,7 @@ import { db, auth, isPreviewDeployment, firestoreRest } from './firebase';
 import { collection, getDocs, query, limit, initializeFirestore } from 'firebase/firestore';
 import { COLLECTIONS } from './firebase';
 import { getApp } from 'firebase/app';
+import { isDev } from './env';
 
 /**
  * Comprehensive Firebase connection test
@@ -25,6 +26,7 @@ export const runFirebaseDebug = async () => {
   console.log('- Protocol:', window.location.protocol);
   console.log('- User Agent:', navigator.userAgent);
   console.log('- Preview Deployment:', isPreviewDeployment ? 'Yes' : 'No');
+  console.log('- Development Mode:', isDev ? 'Yes' : 'No');
   console.log('- Firebase Config:', {
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -36,64 +38,44 @@ export const runFirebaseDebug = async () => {
   
   // Check if Firestore database exists
   console.log('Checking if Firestore database exists...');
-  try {
-    // Use the REST client to test the connection
-    const databaseExists = await firestoreRest.testConnection();
-    
-    if (databaseExists) {
+  
+  let databaseExists = false;
+  
+  if (isDev) {
+    // In development mode, use Firebase SDK directly to avoid CORS issues
+    try {
+      console.log('Using Firebase SDK directly (development mode)');
+      const testQuery = query(collection(db, 'firebase_test'), limit(1));
+      await getDocs(testQuery);
+      databaseExists = true;
       console.log('✅ Firestore database exists and is accessible');
-    } else {
-      console.error('❌ Firestore database does not exist or is not accessible!');
-      console.log('🔧 You need to create a Firestore database in the Firebase Console:');
-      console.log('   1. Go to https://console.firebase.google.com/project/' + import.meta.env.VITE_FIREBASE_PROJECT_ID + '/firestore');
-      console.log('   2. Click "Create database"');
-      console.log('   3. Choose either production or test mode');
-      console.log('   4. Select a location close to your users');
-      console.log('   5. Wait for the database to be provisioned (this can take a few minutes)');
-      console.log('   6. Create a collection called "songs" to store your songs');
+    } catch (error: any) {
+      if (error.code === 'permission-denied') {
+        // This means the database exists but we don't have permission
+        console.log('✅ Firestore database exists but permission denied for test collection');
+        databaseExists = true;
+      } else if (error.code === 'not-found' || error.message?.includes('not found')) {
+        console.error('❌ Firestore database not found');
+        databaseExists = false;
+      } else {
+        console.error('❌ Error checking database:', error);
+        databaseExists = false;
+      }
     }
-  } catch (error) {
-    console.error('❌ Error checking if Firestore database exists:', error);
+  } else {
+    // In production, use REST client
+    databaseExists = await firestoreRest.testConnection();
   }
   
-  // Test REST client connection
-  console.log('Testing REST Client Connection...');
-  try {
-    const testCollection = 'firebase_test';
-    const testDocId = 'rest_test_' + Date.now();
-    const testData = {
-      message: 'Hello from REST API',
-      timestamp: new Date(),
-      testValue: 42
-    };
-    
-    // Create test document
-    await firestoreRest.set(testCollection, testDocId, testData);
-    console.log('✅ REST Client Connection Successful');
-    
-    // Get the document
-    const doc = await firestoreRest.get(testCollection, testDocId);
-    console.log('- Test Document:', doc);
-    
-    // Delete the document
-    await firestoreRest.delete(testCollection, testDocId);
-    console.log('- Test Document Deleted');
-  } catch (error: any) {
-    console.error('❌ REST Client Connection Failed:', error);
-    console.log('- Error Code:', error.code);
-    console.log('- Error Message:', error.message);
-    
-    // Check for common REST API issues
-    if (error.message?.includes('404')) {
-      console.log('🔧 Possible Fix: Project ID may be incorrect or Firestore database not created.');
-      console.log(`   Current Project ID: ${import.meta.env.VITE_FIREBASE_PROJECT_ID}`);
-      console.log('   You need to create a Firestore database in the Firebase Console.');
-    } else if (error.message?.includes('403')) {
-      console.log('🔧 Possible Fix: API Key may be invalid or missing permissions.');
-      console.log('   Check your Firebase API key and make sure it has Firestore permissions.');
-    } else if (error.message?.includes('401')) {
-      console.log('🔧 Possible Fix: Authentication issue. API Key may be invalid.');
-    }
+  if (!databaseExists) {
+    console.error('❌ Firestore database does not exist or is not accessible!');
+    console.log('🔧 You need to create a Firestore database in the Firebase Console:');
+    console.log('   1. Go to https://console.firebase.google.com/project/' + import.meta.env.VITE_FIREBASE_PROJECT_ID + '/firestore');
+    console.log('   2. Click "Create database"');
+    console.log('   3. Choose either production or test mode');
+    console.log('   4. Select a location close to your users');
+    console.log('   5. Wait for the database to be provisioned (this can take a few minutes)');
+    console.log('   6. Create a collection called "songs" to store your songs');
   }
   
   // Test Firestore connection
@@ -199,14 +181,19 @@ db._settings = {
   console.log('Network Diagnostics:');
   console.log('- Online Status:', navigator.onLine ? 'Online' : 'Offline');
   
-  // Check for CORS issues
-  console.log('Testing CORS Configuration...');
-  try {
-    const response = await fetch(`https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseio.com/.json?shallow=true`);
-    console.log('- CORS Test Status:', response.status);
-    console.log('- CORS Test OK:', response.ok);
-  } catch (error) {
-    console.error('- CORS Test Failed:', error);
+  // Skip CORS test in development mode as it will likely fail
+  if (!isDev) {
+    // Check for CORS issues
+    console.log('Testing CORS Configuration...');
+    try {
+      const response = await fetch(`https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseio.com/.json?shallow=true`);
+      console.log('- CORS Test Status:', response.status);
+      console.log('- CORS Test OK:', response.ok);
+    } catch (error) {
+      console.error('- CORS Test Failed:', error);
+    }
+  } else {
+    console.log('Skipping CORS test in development mode');
   }
   
   console.groupEnd();
