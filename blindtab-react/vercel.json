@@ -1,1 +1,12 @@
-{} 
+{
+  "git": {
+    "deploymentEnabled": {
+      "main": false,
+      "staging": true
+    }
+  },
+  "github": {
+    "enabled": true,
+    "silent": true
+  }
+} 
