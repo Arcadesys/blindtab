@@ -23,6 +23,18 @@ export function LeadsheetDisplay({
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [showTapHint, setShowTapHint] = useState(true);
+
+  // Hide tap hint after 5 seconds
+  useEffect(() => {
+    if (showTapHint) {
+      const timer = setTimeout(() => {
+        setShowTapHint(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showTapHint]);
 
   // Parse content into lines and identify chord/lyric pairs
   useEffect(() => {
@@ -169,16 +181,34 @@ export function LeadsheetDisplay({
   // Handle touch events for mobile swipe navigation
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStartY(e.touches[0].clientY);
+    setTouchStartX(e.touches[0].clientX);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartY === null) return;
+    if (touchStartY === null || touchStartX === null) return;
     
     const touchEndY = e.changedTouches[0].clientY;
+    const touchEndX = e.changedTouches[0].clientX;
     const deltaY = touchEndY - touchStartY;
+    const deltaX = touchEndX - touchStartX;
     
-    // If the swipe is significant enough (more than 50px)
-    if (Math.abs(deltaY) > 50) {
+    // If it's a tap (minimal movement), handle tap navigation
+    if (Math.abs(deltaY) < 10 && Math.abs(deltaX) < 10) {
+      // Get the tap position
+      const tapX = e.changedTouches[0].clientX;
+      const containerWidth = containerRef.current?.clientWidth || window.innerWidth;
+      
+      // If tap is on the right side of the screen, go to next group
+      if (tapX > containerWidth / 2) {
+        navigateToNextGroup();
+      } 
+      // If tap is on the left side of the screen, go to previous group
+      else {
+        navigateToPreviousGroup();
+      }
+    }
+    // If it's a significant vertical swipe, handle swipe navigation
+    else if (Math.abs(deltaY) > 50 && Math.abs(deltaY) > Math.abs(deltaX)) {
       if (deltaY > 0) {
         // Swipe down - go to previous group
         navigateToPreviousGroup();
@@ -189,6 +219,7 @@ export function LeadsheetDisplay({
     }
     
     setTouchStartY(null);
+    setTouchStartX(null);
   };
 
   // Get display mode styles
@@ -302,10 +333,48 @@ export function LeadsheetDisplay({
         </div>
       )}
       
+      {/* Tap navigation hints - only shown initially */}
+      {showTapHint && (
+        <>
+          <div className="md:hidden absolute top-1/2 left-4 transform -translate-y-1/2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Tap for previous
+          </div>
+          <div className="md:hidden absolute top-1/2 right-4 transform -translate-y-1/2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none flex items-center">
+            Tap for next
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </div>
+        </>
+      )}
+      
       {/* Mobile navigation hint - only shown initially */}
-      <div className="md:hidden absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none">
-        Swipe up/down to navigate
-      </div>
+      {showTapHint && (
+        <div className="md:hidden absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none">
+          Swipe up/down to navigate
+        </div>
+      )}
+      
+      {/* Left side tap area */}
+      <div 
+        className="absolute left-0 top-0 w-1/2 h-full opacity-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          navigateToPreviousGroup();
+        }}
+      />
+      
+      {/* Right side tap area */}
+      <div 
+        className="absolute right-0 top-0 w-1/2 h-full opacity-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          navigateToNextGroup();
+        }}
+      />
     </div>
   );
 } 
