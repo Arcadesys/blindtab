@@ -4,6 +4,16 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 
+// Get the base URL for API calls
+const getBaseUrl = () => {
+  // In development, use the local server
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3001';
+  }
+  // In production, use the deployed URL
+  return '';
+};
+
 export default function AuthPage() {
   const router = useRouter();
   const { login, isAuthenticated, loading } = useAuth();
@@ -11,6 +21,7 @@ export default function AuthPage() {
   const callbackUrl = searchParams.get('callbackUrl') || '/songs';
   const registered = searchParams.get('registered');
   const initialTab = searchParams.get('tab') || 'login';
+  const baseUrl = getBaseUrl();
   
   const [activeTab, setActiveTab] = useState(initialTab);
   
@@ -71,7 +82,7 @@ export default function AuthPage() {
     setRegisterError('');
 
     try {
-      const response = await fetch('/api/register', {
+      const response = await fetch(`${baseUrl}/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -10,7 +10,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = body;
 
+    console.log('Login attempt:', { email });
+
     if (!email || !password) {
+      console.log('Missing email or password');
       return NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
@@ -21,22 +24,34 @@ export async function POST(request: NextRequest) {
       where: { email }
     });
 
-    if (!user || !user.password) {
+    if (!user) {
+      console.log('User not found:', email);
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
 
+    if (!user.password) {
+      console.log('User has no password:', email);
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    console.log('User found, checking password');
     const isPasswordValid = await compare(password, user.password);
 
     if (!isPasswordValid) {
+      console.log('Invalid password for user:', email);
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
 
+    console.log('Password valid, creating token');
     // Create JWT token
     const token = createToken({
       userId: user.id,
@@ -67,6 +82,7 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
+    console.log('Login successful for user:', email);
     return response;
   } catch (error) {
     console.error('Login error:', error);

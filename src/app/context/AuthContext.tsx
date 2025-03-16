@@ -18,15 +18,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Get the base URL for API calls
+const getBaseUrl = () => {
+  // In development, use the local server
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3001';
+  }
+  // In production, use the deployed URL
+  return '';
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const baseUrl = getBaseUrl();
 
   useEffect(() => {
     // Check if user is logged in on mount
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/me');
+        const response = await fetch(`${baseUrl}/api/auth/me`);
         
         // If response is OK, set the user
         if (response.ok) {
@@ -50,11 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkAuth();
-  }, []);
+  }, [baseUrl]);
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', {
+      await fetch(`${baseUrl}/api/auth/logout`, {
         method: 'POST',
       });
       setUser(null);
