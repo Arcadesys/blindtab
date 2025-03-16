@@ -20,6 +20,7 @@ import { env, isDev } from './env';
 declare global {
   interface Window {
     fixFirebaseConnection?: () => void;
+    _firebaseInitialized?: boolean;
   }
 }
 
@@ -96,49 +97,38 @@ console.log('[Firebase] Configuration:', {
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 
+// Mark Firebase as initialized
+window._firebaseInitialized = true;
+
 // Expose Firebase app to window in production for debugging
 if (!isLocalDevelopment) {
   console.log('[Firebase] Exposing Firebase app to window for debugging');
   (window as any)._firebase_app = app;
 }
 
+// Check if we're using the emulator
+const isUsingEmulator = isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
+
 // Initialize Firestore with optimized settings
 const db = initializeFirestore(app, {
-  // Use persistent cache for better offline support
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager(),
-    cacheSizeBytes: CACHE_SIZE_UNLIMITED
-  }),
+  // Use persistent cache for better offline support, but not in emulator mode
+  localCache: !isUsingEmulator 
+    ? persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+        cacheSizeBytes: CACHE_SIZE_UNLIMITED
+      })
+    : memoryLocalCache(), // Use memory cache for emulator to avoid conflicts
+  
   // Improve connection reliability by forcing long polling
-  // This avoids WebChannel 400 Bad Request errors
   experimentalForceLongPolling: true,
   ignoreUndefinedProperties: true
 });
-
-// Apply additional settings to fix WebChannel connection issues
-try {
-  console.log('[Firebase] Applying additional connection settings');
-  
-  // @ts-ignore - This is a workaround for Firebase WebChannel connection issues
-  if (db._settings) {
-    // @ts-ignore
-    db._settings = {
-      // @ts-ignore
-      ...db._settings,
-      host: 'firestore.googleapis.com',
-      ssl: true
-    };
-    console.log('[Firebase] Applied additional settings to fix WebChannel issues');
-  }
-} catch (error) {
-  console.error('[Firebase] Error applying additional settings:', error);
-}
 
 // Initialize Auth
 const auth = getAuth(app);
 
 // Connect to emulators in development mode if enabled
-if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+if (isUsingEmulator) {
   console.log('[Firebase] Connecting to Firestore emulator');
   
   try {
@@ -162,17 +152,6 @@ if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR ==
       }
     }, 1000);
   }
-}
-
-// Enable offline persistence for better user experience
-if (!isLocalDevelopment || import.meta.env.VITE_USE_FIREBASE_EMULATOR !== 'true') {
-  enableIndexedDbPersistence(db)
-    .then(() => {
-      console.log('[Firebase] Offline persistence enabled');
-    })
-    .catch((error) => {
-      console.warn('[Firebase] Offline persistence could not be enabled:', error.code);
-    });
 }
 
 // Handle WebChannel transport errors
@@ -233,7 +212,7 @@ const testFirestoreConnection = async () => {
   }
 };
 
-// Run the connection test and don't enable persistence (it's already enabled via localCache)
+// Run the connection test
 testFirestoreConnection().then(success => {
   if (success) {
     console.log('[Firebase] Firestore is ready to use');

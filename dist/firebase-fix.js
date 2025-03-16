@@ -59,7 +59,10 @@
   
   // Main fix function
   function fixFirebaseConnection() {
-    if (hasAppliedFix) return;
+    if (hasAppliedFix) {
+      console.log('[Firebase Fix] Fixes already applied, skipping');
+      return;
+    }
     
     console.log('[Firebase Fix] Applying WebChannel connection fixes');
     
@@ -155,7 +158,18 @@
       }
       
       try {
+        // Check if Firestore is already initialized with cache settings
         const db = firebase.firestore();
+        
+        // Check if settings have already been applied by the app
+        if (db._settings && db._settings.cacheSizeBytes) {
+          console.log('[Firebase Fix] Firestore already has cache settings, skipping settings application');
+          
+          // Just test the connection without modifying settings
+          testFirestoreConnection(db);
+          hasAppliedFix = true;
+          return;
+        }
         
         // First, set the host property
         if (isEmulator) {
