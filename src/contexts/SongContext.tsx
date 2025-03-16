@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, deleteDoc, setDoc, query, where, limit } from 'firebase/firestore';
 import { db, COLLECTIONS, isPreviewDeployment } from '../utils/firebase';
 import { useAuth } from './AuthContext';
 import type { Song } from '../types/firebase';
@@ -13,6 +13,7 @@ import {
 } from '../utils/userSongs';
 import { getMockSongs, getMockUserSongs } from '../utils/mockData';
 import { isDev } from '../utils/env';
+import publicDomainSongs from '../utils/dummyData';
 
 interface SongContextType {
   songs: Song[];
@@ -38,6 +39,8 @@ interface SongContextType {
   refreshSongList?: () => Promise<void>;
   deleteSongById?: (songId: string) => Promise<void>;
   checkDatabaseConnection?: () => Promise<boolean>;
+  loadSongs: () => Promise<void>;
+  loadSong: (id: string) => Promise<void>;
 }
 
 const SongContext = createContext<SongContextType | null>(null);
@@ -290,28 +293,112 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkDatabaseConnection: async () => true
   };
 
+  // Load songs when the component mounts or when the user changes
+  useEffect(() => {
+    loadSongs();
+  }, [user]);
+
+  // Load songs from Firestore
+  const loadSongs = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // If user is not logged in, load public domain songs
+      if (!user) {
+        console.log('Loading public domain songs for anonymous user');
+        setSongs(publicDomainSongs);
+        setIsLoading(false);
+        return;
+      }
+
+      // Otherwise, load songs from Firestore
+      const songsQuery = query(
+        collection(db, COLLECTIONS.SONGS),
+        where('isPublic', '==', true),
+        limit(50)
+      );
+      
+      const querySnapshot = await getDocs(songsQuery);
+      const loadedSongs: Song[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const songData = doc.data() as Song;
+        loadedSongs.push({
+          ...songData,
+          id: doc.id
+        });
+      });
+      
+      setSongs(loadedSongs);
+    } catch (err) {
+      console.error('Error loading songs:', err);
+      setError(err instanceof Error ? err : new Error('Failed to load songs'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load a specific song by ID
+  const loadSong = async (id: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Check if it's a public domain song
+      if (id.startsWith('pd-')) {
+        const pdSong = publicDomainSongs.find(song => song.id === id);
+        if (pdSong) {
+          setCurrentSong(pdSong);
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Otherwise, load from Firestore
+      const songDoc = await getDoc(doc(db, COLLECTIONS.SONGS, id));
+      
+      if (songDoc.exists()) {
+        const songData = songDoc.data() as Song;
+        setCurrentSong({
+          ...songData,
+          id: songDoc.id
+        });
+      } else {
+        throw new Error(`Song with ID ${id} not found`);
+      }
+    } catch (err) {
+      console.error('Error loading song:', err);
+      setError(err instanceof Error ? err : new Error('Failed to load song'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const value = {
+    songs,
+    userSongs,
+    currentSong,
+    isLoading,
+    error,
+    isPreviewMode,
+    refreshSongs,
+    addSong,
+    updateSong,
+    deleteSong,
+    selectSong,
+    unselectSong,
+    setCurrentSong,
+    isUserSong,
+    updatePlayStats,
+    playSong,
+    ...legacyApi,
+    loadSongs,
+    loadSong
+  };
+
   return (
-    <SongContext.Provider
-      value={{
-        songs,
-        userSongs,
-        currentSong,
-        isLoading,
-        error,
-        isPreviewMode,
-        refreshSongs,
-        addSong,
-        updateSong,
-        deleteSong,
-        selectSong,
-        unselectSong,
-        setCurrentSong,
-        isUserSong,
-        updatePlayStats,
-        playSong,
-        ...legacyApi
-      }}
-    >
+    <SongContext.Provider value={value}>
       {children}
     </SongContext.Provider>
   );
