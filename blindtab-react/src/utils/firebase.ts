@@ -37,7 +37,8 @@ const firebaseConfig = {
 console.log('[Firebase] Configuration:', {
   authDomain: firebaseConfig.authDomain,
   projectId: firebaseConfig.projectId,
-  storageBucket: firebaseConfig.storageBucket
+  storageBucket: firebaseConfig.storageBucket,
+  environment: env
 });
 
 let db;
@@ -50,6 +51,15 @@ try {
   if (isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR) {
     connectFirestoreEmulator(db, 'localhost', 8080);
     console.log('[Firebase] Connected to local emulator');
+  }
+
+  // Initialize Firebase with environment-specific settings
+  if (env === 'staging') {
+    console.log('[Firebase] Initializing for staging environment');
+    // Add any staging-specific initialization here
+  } else if (env === 'production') {
+    console.log('[Firebase] Initializing for production environment');
+    // Add any production-specific initialization here
   }
 
   console.log('[Firebase] Initialization successful');
