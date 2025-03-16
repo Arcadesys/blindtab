@@ -136,6 +136,15 @@ const googleProvider = new GoogleAuthProvider();
 const testRestConnection = async () => {
   try {
     console.log('[Firebase] Testing REST client connection...');
+    
+    // First, test if the database exists and is accessible
+    const databaseExists = await restClient.testConnection();
+    if (!databaseExists) {
+      console.error('[Firebase] Firestore database not found or not accessible');
+      return false;
+    }
+    
+    // If database exists, try to create a test document
     const testCollection = 'firebase_test';
     const testDocId = 'rest_test_' + Date.now();
     const testData = {

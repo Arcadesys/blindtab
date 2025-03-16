@@ -8,7 +8,8 @@ import AppContent from './components/AppContent';
 import PreviewModeNotice from './components/PreviewModeNotice';
 import { useEffect } from 'react';
 import { addDebugToWindow, runFirebaseDebug } from './utils/firebase-debug';
-import { isProd } from './utils/env';
+import { addInitializerToWindow } from './utils/initializeFirestore';
+import { isProd, isDev } from './utils/env';
 
 function App() {
   // Add Firebase debug utility to window in production
@@ -21,6 +22,20 @@ function App() {
       addDebugToWindow();
       
       console.log('🔧 Firebase debug utility added. Run window.runFirebaseDebug() in console to diagnose issues.');
+    }
+  }, []);
+
+  useEffect(() => {
+    // Run Firebase debug in development mode
+    if (isDev) {
+      console.log('Running Firebase debug in development mode...');
+      runFirebaseDebug().then(result => {
+        console.log(result);
+      });
+      
+      // Add Firestore initializer to window
+      addInitializerToWindow();
+      console.log('🔧 Firestore initializer added. Run window.initializeFirestore() in console to add sample data.');
     }
   }, []);
 

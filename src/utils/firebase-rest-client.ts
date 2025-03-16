@@ -6,8 +6,8 @@
 
 // Firebase project configuration
 const PROJECT_CONFIG = {
-  projectId: 'blindtab-db',
-  apiKey: 'AIzaSyDummyKeyForSecurity', // Replace with your actual API key
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'blindtab-db',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
 };
 
 // Types for Firestore data
@@ -40,6 +40,32 @@ export class FirestoreRestClient {
   constructor(projectId: string, apiKey: string) {
     this.baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
     this.apiKey = apiKey;
+  }
+
+  /**
+   * Test if the Firestore database exists and is accessible
+   * @returns true if database exists and is accessible
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      // Try to list a small number of documents from any collection
+      const response = await fetch(`${this.baseUrl}?pageSize=1&key=${this.apiKey}`);
+      
+      if (response.status === 404) {
+        console.error('Firestore database not found. You need to create it in the Firebase Console.');
+        return false;
+      }
+      
+      if (!response.ok) {
+        console.error(`Firestore connection test failed with status: ${response.status}`);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Firestore connection test failed:', error);
+      return false;
+    }
   }
 
   /**

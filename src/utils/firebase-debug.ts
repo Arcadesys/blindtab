@@ -5,7 +5,7 @@
  * in production environments.
  */
 
-import { db, auth, isPreviewDeployment } from './firebase';
+import { db, auth, isPreviewDeployment, firestoreRest } from './firebase';
 import { collection, getDocs, query, limit, initializeFirestore } from 'firebase/firestore';
 import { COLLECTIONS } from './firebase';
 import { getApp } from 'firebase/app';
@@ -33,6 +33,68 @@ export const runFirebaseDebug = async () => {
   // Auth state
   console.log('Auth State:');
   console.log('- Current User:', auth.currentUser ? 'Signed In' : 'Not Signed In');
+  
+  // Check if Firestore database exists
+  console.log('Checking if Firestore database exists...');
+  try {
+    // Use the REST client to test the connection
+    const databaseExists = await firestoreRest.testConnection();
+    
+    if (databaseExists) {
+      console.log('✅ Firestore database exists and is accessible');
+    } else {
+      console.error('❌ Firestore database does not exist or is not accessible!');
+      console.log('🔧 You need to create a Firestore database in the Firebase Console:');
+      console.log('   1. Go to https://console.firebase.google.com/project/' + import.meta.env.VITE_FIREBASE_PROJECT_ID + '/firestore');
+      console.log('   2. Click "Create database"');
+      console.log('   3. Choose either production or test mode');
+      console.log('   4. Select a location close to your users');
+      console.log('   5. Wait for the database to be provisioned (this can take a few minutes)');
+      console.log('   6. Create a collection called "songs" to store your songs');
+    }
+  } catch (error) {
+    console.error('❌ Error checking if Firestore database exists:', error);
+  }
+  
+  // Test REST client connection
+  console.log('Testing REST Client Connection...');
+  try {
+    const testCollection = 'firebase_test';
+    const testDocId = 'rest_test_' + Date.now();
+    const testData = {
+      message: 'Hello from REST API',
+      timestamp: new Date(),
+      testValue: 42
+    };
+    
+    // Create test document
+    await firestoreRest.set(testCollection, testDocId, testData);
+    console.log('✅ REST Client Connection Successful');
+    
+    // Get the document
+    const doc = await firestoreRest.get(testCollection, testDocId);
+    console.log('- Test Document:', doc);
+    
+    // Delete the document
+    await firestoreRest.delete(testCollection, testDocId);
+    console.log('- Test Document Deleted');
+  } catch (error: any) {
+    console.error('❌ REST Client Connection Failed:', error);
+    console.log('- Error Code:', error.code);
+    console.log('- Error Message:', error.message);
+    
+    // Check for common REST API issues
+    if (error.message?.includes('404')) {
+      console.log('🔧 Possible Fix: Project ID may be incorrect or Firestore database not created.');
+      console.log(`   Current Project ID: ${import.meta.env.VITE_FIREBASE_PROJECT_ID}`);
+      console.log('   You need to create a Firestore database in the Firebase Console.');
+    } else if (error.message?.includes('403')) {
+      console.log('🔧 Possible Fix: API Key may be invalid or missing permissions.');
+      console.log('   Check your Firebase API key and make sure it has Firestore permissions.');
+    } else if (error.message?.includes('401')) {
+      console.log('🔧 Possible Fix: Authentication issue. API Key may be invalid.');
+    }
+  }
   
   // Test Firestore connection
   console.log('Testing Firestore Connection...');

@@ -10,6 +10,8 @@ import {
   hasUserSelectedSong,
   updateSongPlayStats 
 } from '../utils/userSongs';
+import { getMockSongs, getMockUserSongs } from '../utils/mockData';
+import { isDev } from '../utils/env';
 
 interface SongContextType {
   songs: Song[];
@@ -68,8 +70,67 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       setError(null);
 
-      // Fetch all songs using REST client
-      const allSongs = await firestoreRest.list<Song>(COLLECTIONS.SONGS);
+      let allSongs: Song[] = [];
+      
+      // Check if we're in development mode and should use mock data
+      if (isDev && isFallbackMode) {
+        console.log('[SongContext] Using mock data (development mode)');
+        allSongs = getMockSongs();
+        setSongs(allSongs);
+        
+        if (user) {
+          setUserSongs(getMockUserSongs());
+        } else {
+          setUserSongs([]);
+        }
+        
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check if we're in fallback mode
+      if (isFallbackMode) {
+        // Use standard Firestore SDK
+        console.log('[SongContext] Using standard Firestore SDK (fallback mode)');
+        try {
+          const songsRef = collection(db, COLLECTIONS.SONGS);
+          const songsSnapshot = await getDocs(songsRef);
+          allSongs = songsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Song[];
+        } catch (firestoreError) {
+          console.error('[SongContext] Firestore SDK failed:', firestoreError);
+          if (isDev) {
+            console.log('[SongContext] Falling back to mock data');
+            allSongs = getMockSongs();
+          }
+        }
+      } else {
+        // Use REST client
+        console.log('[SongContext] Using Firestore REST client');
+        try {
+          allSongs = await firestoreRest.list<Song>(COLLECTIONS.SONGS);
+        } catch (restError) {
+          console.error('[SongContext] REST client failed, falling back to standard Firestore:', restError);
+          // Fallback to standard Firestore
+          try {
+            const songsRef = collection(db, COLLECTIONS.SONGS);
+            const songsSnapshot = await getDocs(songsRef);
+            allSongs = songsSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            })) as Song[];
+          } catch (firestoreError) {
+            console.error('[SongContext] Firestore SDK also failed:', firestoreError);
+            if (isDev) {
+              console.log('[SongContext] Falling back to mock data');
+              allSongs = getMockSongs();
+            }
+          }
+        }
+      }
+      
       setSongs(allSongs);
 
       // If user is authenticated, fetch their songs
@@ -86,7 +147,11 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (userSongsError) {
           console.error('Error fetching user songs:', userSongsError);
-          setUserSongs([]);
+          if (isDev && isFallbackMode) {
+            setUserSongs(getMockUserSongs());
+          } else {
+            setUserSongs([]);
+          }
         }
       } else {
         setUserSongs([]);
@@ -94,8 +159,20 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.error('Error fetching songs:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch songs'));
-      setSongs([]);
-      setUserSongs([]);
+      
+      // In development mode, use mock data as a last resort
+      if (isDev) {
+        console.log('[SongContext] Using mock data after error');
+        setSongs(getMockSongs());
+        if (user) {
+          setUserSongs(getMockUserSongs());
+        } else {
+          setUserSongs([]);
+        }
+      } else {
+        setSongs([]);
+        setUserSongs([]);
+      }
     } finally {
       setIsLoading(false);
     }
