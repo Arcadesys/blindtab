@@ -324,7 +324,7 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
     return (
       <LibraryContainer>
         <ErrorState>
-          <div>{error}</div>
+          <div>{error.toString()}</div>
           <Button onClick={refreshSongs} $variant="primary">
             Retry
           </Button>

@@ -264,7 +264,7 @@ export default function SongEditorModal({
 
           {error && (
             <div style={{ color: 'var(--error)', marginTop: '1rem' }}>
-              {error}
+              {error.toString()}
             </div>
           )}
 
