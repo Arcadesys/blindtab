@@ -112,7 +112,20 @@ if (!isLocalDevelopment) {
 
 // Initialize Firestore with basic settings (for compatibility with existing code)
 // We'll primarily use the REST client for data operations
-let db = getFirestore(app);
+let db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+  ssl: true,
+  ignoreUndefinedProperties: true
+});
+
+// Apply additional settings to fix WebChannel connection issues
+// @ts-ignore - This is a workaround for Firebase WebChannel connection issues
+db._settings = {
+  // @ts-ignore
+  ...db._settings,
+  host: 'firestore.googleapis.com',
+  ssl: true
+};
 
 // For development, connect to emulator if needed
 if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {

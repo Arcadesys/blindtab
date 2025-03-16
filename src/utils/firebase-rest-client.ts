@@ -41,10 +41,13 @@ export class FirestoreRestClient {
   constructor(projectId: string, apiKey: string) {
     this.baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
     this.apiKey = apiKey;
+    
+    // Enhanced headers for CORS support
     this.defaultHeaders = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'Origin': window.location.origin
+      'X-Origin': window.location.origin,
+      'X-Requested-With': 'XMLHttpRequest'
     };
   }
 
@@ -54,10 +57,12 @@ export class FirestoreRestClient {
    */
   async testConnection(): Promise<boolean> {
     try {
-      // Try to list a small number of documents from any collection
+      // Try to list a small number of documents from the test collection
       const response = await fetch(`${this.baseUrl}?pageSize=1&key=${this.apiKey}`, {
+        method: 'GET',
         mode: 'cors',
-        headers: this.defaultHeaders
+        headers: this.defaultHeaders,
+        credentials: 'omit'
       });
       
       if (response.status === 404) {
@@ -73,7 +78,23 @@ export class FirestoreRestClient {
       return true;
     } catch (error) {
       console.error('Firestore connection test failed:', error);
-      console.log('This might be a CORS issue when testing locally. Trying direct database access...');
+      
+      // If we're in a browser environment, try a different approach
+      if (typeof window !== 'undefined') {
+        try {
+          // Try a simpler fetch with no custom headers
+          const simpleResponse = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT_CONFIG.projectId}/databases/(default)/documents?key=${this.apiKey}`);
+          
+          if (simpleResponse.ok) {
+            console.log('Simple fetch successful. Database exists but has CORS issues.');
+            return true;
+          }
+        } catch (simpleError) {
+          console.error('Simple fetch also failed:', simpleError);
+        }
+      }
+      
+      console.log('Trying direct database access as last resort...');
       
       // If we get a CORS error, try using the Firebase SDK directly
       try {
@@ -81,7 +102,7 @@ export class FirestoreRestClient {
         const { collection, getDocs, query, limit } = await import('firebase/firestore');
         const { db } = await import('./firebase');
         
-        // Try to access any collection
+        // Try to access the test collection
         const testQuery = query(collection(db, 'firebase_test'), limit(1));
         await getDocs(testQuery);
         
@@ -96,8 +117,8 @@ export class FirestoreRestClient {
           return false;
         }
         
-        // For other errors, we're not sure
-        console.error('Direct Firestore access also failed:', sdkError);
+        // For other errors, we can't be sure if the database exists
+        console.error('Direct Firestore access failed with error:', sdkError);
         return false;
       }
     }
@@ -113,7 +134,8 @@ export class FirestoreRestClient {
     try {
       const response = await fetch(`${this.baseUrl}/${collection}/${docId}?key=${this.apiKey}`, {
         mode: 'cors',
-        headers: this.defaultHeaders
+        headers: this.defaultHeaders,
+        credentials: 'omit'
       });
       
       if (response.status === 404) {
@@ -142,7 +164,8 @@ export class FirestoreRestClient {
     try {
       const response = await fetch(`${this.baseUrl}/${collection}?pageSize=${limit}&key=${this.apiKey}`, {
         mode: 'cors',
-        headers: this.defaultHeaders
+        headers: this.defaultHeaders,
+        credentials: 'omit'
       });
       
       if (!response.ok) {
@@ -175,6 +198,7 @@ export class FirestoreRestClient {
         method: 'PATCH',
         mode: 'cors',
         headers: this.defaultHeaders,
+        credentials: 'omit',
         body: JSON.stringify({
           fields: this._transformRequest(data)
         })
@@ -203,7 +227,8 @@ export class FirestoreRestClient {
       const response = await fetch(`${this.baseUrl}/${collection}/${docId}?key=${this.apiKey}`, {
         method: 'DELETE',
         mode: 'cors',
-        headers: this.defaultHeaders
+        headers: this.defaultHeaders,
+        credentials: 'omit'
       });
       
       if (!response.ok) {
