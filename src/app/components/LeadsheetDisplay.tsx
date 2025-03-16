@@ -70,7 +70,7 @@ export function LeadsheetDisplay({
       // Create a temporary span to measure text width
       const tempSpan = document.createElement('span');
       tempSpan.style.fontSize = '1px'; // Start with 1px
-      tempSpan.style.fontFamily = 'monospace';
+      tempSpan.style.fontFamily = 'var(--font-mono)';
       tempSpan.style.visibility = 'hidden';
       tempSpan.style.position = 'absolute';
       tempSpan.style.whiteSpace = 'pre';
@@ -364,12 +364,15 @@ export function LeadsheetDisplay({
     >
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto px-2 md:px-4"
-        style={{ fontSize: `${localFontSize}px`, lineHeight: '1.5' }}
+        className="flex-1 overflow-y-auto px-2 md:px-4 font-mono"
+        style={{ 
+          fontSize: `${localFontSize}px`, 
+          lineHeight: '1.5'
+        }}
       >
         <pre 
           ref={contentRef}
-          className="font-mono whitespace-pre-wrap break-words w-full"
+          className="whitespace-pre-wrap break-words w-full"
         >
           {lines.map((line, index) => {
             const isChord = lineTypes[index] === 'chord';
@@ -476,7 +479,7 @@ export function LeadsheetDisplay({
                   if (maxLineLength > 0) {
                     const tempSpan = document.createElement('span');
                     tempSpan.style.fontSize = '1px';
-                    tempSpan.style.fontFamily = 'monospace';
+                    tempSpan.style.fontFamily = 'var(--font-mono)';
                     tempSpan.style.visibility = 'hidden';
                     tempSpan.style.position = 'absolute';
                     tempSpan.style.whiteSpace = 'pre';
