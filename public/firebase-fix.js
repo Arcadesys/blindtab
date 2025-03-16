@@ -46,6 +46,8 @@
   let hasAppliedFix = false;
   let isUsingProxy = false;
   let isEmulator = false;
+  let listenStreamRetryCount = 0;
+  const MAX_LISTEN_RETRIES = 5;
 
   // Check if we're in an emulator environment
   function checkEmulator() {
@@ -82,7 +84,13 @@
           (input.includes('firestore.googleapis.com') || 
            input.includes('www.googleapis.com/identitytoolkit'))) {
         
-        console.log('[Firebase Fix] Intercepted Firebase request:', input.substring(0, 100) + '...');
+        // Special handling for Listen stream requests which often fail
+        const isListenRequest = input.includes('/Listen/channel');
+        if (isListenRequest) {
+          console.log('[Firebase Fix] Intercepted Listen stream request');
+        } else {
+          console.log('[Firebase Fix] Intercepted Firebase request:', input.substring(0, 100) + '...');
+        }
         
         // Clone the init object to avoid modifying the original
         const newInit = init ? { ...init } : {};
@@ -102,14 +110,62 @@
           };
         }
         
+        // For Listen stream requests, add special handling
+        if (isListenRequest) {
+          // Add a cache-busting parameter to avoid cached errors
+          const separator = input.includes('?') ? '&' : '?';
+          const cacheBuster = `_cb=${Date.now()}`;
+          input = `${input}${separator}${cacheBuster}`;
+          
+          // Force credentials inclusion for Listen requests
+          newInit.credentials = 'include';
+        }
+        
         // Handle WebChannel transport errors with retry logic
         return originalFetch(input, newInit)
           .then(response => {
-            if (!response.ok && (response.status === 400 || response.status === 0)) {
-              console.warn('[Firebase Fix] Request failed, may retry:', response.status);
+            if (!response.ok) {
+              console.warn('[Firebase Fix] Request failed with status:', response.status);
               
-              // Only retry a limited number of times
-              if (retryCount < MAX_RETRIES) {
+              // Special handling for Listen stream errors (status 400)
+              if (isListenRequest && response.status === 400) {
+                if (listenStreamRetryCount < MAX_LISTEN_RETRIES) {
+                  listenStreamRetryCount++;
+                  console.log(`[Firebase Fix] Retrying Listen stream (${listenStreamRetryCount}/${MAX_LISTEN_RETRIES})`);
+                  
+                  // Add a longer delay for Listen stream retries
+                  return new Promise(resolve => {
+                    setTimeout(() => {
+                      // Add an even more unique cache buster
+                      const uniqueInput = input.split('_cb=')[0] + `_cb=${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+                      resolve(originalFetch(uniqueInput, newInit));
+                    }, 1000 * listenStreamRetryCount); // Increasing backoff
+                  });
+                } else {
+                  console.log('[Firebase Fix] Max Listen stream retries reached, attempting to reset connection');
+                  // Reset retry count after max attempts to allow future retries
+                  listenStreamRetryCount = 0;
+                  
+                  // Try to trigger a connection reset if possible
+                  if (window.firebase && window.firebase.firestore) {
+                    try {
+                      // Force a disconnect and reconnect
+                      const db = window.firebase.firestore();
+                      console.log('[Firebase Fix] Attempting to reset Firestore connection');
+                      
+                      // Apply settings to force a reconnection
+                      db.settings({
+                        experimentalForceLongPolling: true,
+                        merge: true
+                      });
+                    } catch (e) {
+                      console.error('[Firebase Fix] Error resetting connection:', e);
+                    }
+                  }
+                }
+              }
+              // For other failed requests
+              else if (retryCount < MAX_RETRIES) {
                 retryCount++;
                 console.log(`[Firebase Fix] Retrying request (${retryCount}/${MAX_RETRIES})`);
                 
@@ -123,7 +179,11 @@
             }
             
             // Reset retry count on successful requests
-            retryCount = 0;
+            if (isListenRequest) {
+              listenStreamRetryCount = 0;
+            } else {
+              retryCount = 0;
+            }
             return response;
           })
           .catch(error => {
@@ -154,6 +214,29 @@
       // Check if we're using the modular SDK (v9+)
       if (window._firebaseInitialized) {
         console.log('[Firebase Fix] Using Firebase v9+ modular SDK, skipping legacy settings');
+        
+        // Add a global error handler for WebChannel transport errors
+        window.addEventListener('error', function(event) {
+          // Check if this is a WebChannel transport error
+          if (event && event.error && 
+              (event.error.message && event.error.message.includes('WebChannel transport errored') ||
+               event.message && event.message.includes('WebChannel transport errored'))) {
+            
+            console.log('[Firebase Fix] Caught WebChannel transport error, attempting recovery');
+            
+            // Try to reset the connection if we have access to the fixFirebaseConnection function
+            if (typeof window.fixFirebaseConnection === 'function') {
+              // Reset the hasAppliedFix flag to allow reapplication of fixes
+              hasAppliedFix = false;
+              
+              // Reapply fixes after a short delay
+              setTimeout(() => {
+                window.fixFirebaseConnection();
+              }, 1000);
+            }
+          }
+        });
+        
         hasAppliedFix = true;
         return;
       }
@@ -204,6 +287,32 @@
           
           console.log('[Firebase Fix] Applied production settings');
         }
+        
+        // Add a listener for WebChannel transport errors
+        window.addEventListener('error', function(event) {
+          // Check if this is a WebChannel transport error
+          if (event && event.error && 
+              (event.error.message && event.error.message.includes('WebChannel transport errored') ||
+               event.message && event.message.includes('WebChannel transport errored'))) {
+            
+            console.log('[Firebase Fix] Caught WebChannel transport error, attempting recovery');
+            
+            // Try to reset the connection
+            try {
+              // Reset settings to force a reconnection
+              db.settings({
+                experimentalForceLongPolling: true,
+                merge: true,
+                ignoreUndefinedProperties: true,
+                ssl: !isEmulator
+              });
+              
+              console.log('[Firebase Fix] Reset Firestore connection after WebChannel error');
+            } catch (e) {
+              console.error('[Firebase Fix] Error resetting connection:', e);
+            }
+          }
+        });
         
         // Test the connection
         testFirestoreConnection(db);
