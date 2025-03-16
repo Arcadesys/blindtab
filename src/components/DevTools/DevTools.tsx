@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import FirestoreTest from '../FirestoreTest';
 import EnvironmentInfo from './EnvironmentInfo';
 import SongManager from './SongManager';
+import AuthTester from './AuthTester';
 
 const DevTools: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('environment');
@@ -10,6 +11,10 @@ const DevTools: React.FC = () => {
     environment: {
       label: '⚙️ Environment',
       component: <EnvironmentInfo />
+    },
+    auth: {
+      label: '🔐 Authentication',
+      component: <AuthTester />
     },
     firestore: {
       label: '🔥 Firestore',

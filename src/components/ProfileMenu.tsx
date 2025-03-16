@@ -81,16 +81,32 @@ const UserInfo = styled.div`
   }
 `;
 
+const ErrorMessage = styled.div`
+  padding: 8px 16px;
+  color: #d32f2f;
+  font-size: 12px;
+  background-color: #ffebee;
+  margin: 8px;
+  border-radius: 4px;
+`;
+
 export const ProfileMenu: React.FC = () => {
-  const { user, signInWithGoogle, logout } = useAuth();
+  const { user, signIn, logout, error } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
 
   const handleSignIn = async () => {
     try {
-      await signInWithGoogle();
+      setSignInError(null);
+      await signIn();
       setIsOpen(false);
     } catch (error) {
       console.error('Failed to sign in:', error);
+      if (error instanceof Error && error.message.includes('auth/unauthorized-domain')) {
+        setSignInError('This domain is not authorized. Please contact the administrator.');
+      } else {
+        setSignInError('Failed to sign in. Please try again.');
+      }
     }
   };
 
@@ -130,9 +146,16 @@ export const ProfileMenu: React.FC = () => {
               </MenuItem>
             </>
           ) : (
-            <MenuItem onClick={handleSignIn}>
-              🔑 Sign in with Google
-            </MenuItem>
+            <>
+              <MenuItem onClick={handleSignIn}>
+                🔑 Sign in with Google
+              </MenuItem>
+              {signInError && (
+                <ErrorMessage>
+                  {signInError}
+                </ErrorMessage>
+              )}
+            </>
           )}
         </DropdownMenu>
       )}
