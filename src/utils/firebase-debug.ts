@@ -97,7 +97,7 @@ export const runFirebaseDebug = async () => {
           host: `firestore.googleapis.com`,
           ssl: true
         };
-        image.png        
+        
         // Test the new connection
         const newSongsRef = collection(newDb, COLLECTIONS.SONGS);
         const newQ = query(newSongsRef, limit(1));
