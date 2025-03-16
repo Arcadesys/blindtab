@@ -61,49 +61,62 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
 
   // Check if a line contains chords
   const isChordLine = (line: string) => {
-    // Simple regex to detect chord patterns like [Am] [C] [G7]
-    const chordPattern = /\[([A-G][#b]?m?7?)\]/;
-    return chordPattern.test(line);
+    // Regex to detect chord patterns
+    // This matches common chord patterns like D, A, Bm, G/B, etc.
+    const chordPattern = /^[A-G][#b]?(m|maj|min|aug|dim|sus|add|maj7|m7|7|9|11|13|6|5)?(\d)?(\/)?([\w#]+)?(\s+|$)/;
+    
+    // Check if the line has multiple chord-like patterns with spaces between them
+    const words = line.trim().split(/\s+/);
+    let chordCount = 0;
+    
+    for (const word of words) {
+      if (chordPattern.test(word)) {
+        chordCount++;
+      }
+    }
+    
+    // If most words in the line match chord patterns, it's likely a chord line
+    return chordCount > 0 && chordCount / words.length > 0.5;
   };
 
   const handleLineClick = (index: number) => {
     setCurrentLineIndex(index);
   };
 
-  const handleRangeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentLineIndex(parseInt(e.target.value));
-  };
-
   // Format line with highlighted chords
-  const formatLine = (line: string) => {
-    if (!isChordLine(line)) return line;
+  const formatLine = (line: string, isChord: boolean) => {
+    if (!isChord) return line;
     
-    // Replace chord patterns with highlighted spans
-    return line.replace(/\[([A-G][#b]?m?7?)\]/g, (match, chord) => {
-      return `<span class="text-blue-600 dark:text-blue-400 font-bold">[${chord}]</span>`;
-    });
+    // For chord lines, wrap each chord in a span for highlighting
+    return line.replace(/([A-G][#b]?(m|maj|min|aug|dim|sus|add|maj7|m7|7|9|11|13|6|5)?(\d)?(\/)?([\w#]+)?)/g, 
+      '<span class="text-blue-600 dark:text-blue-400 font-bold">$1</span>');
   };
 
   return (
     <div className="flex flex-col h-full relative" onClick={() => setShowControls(!showControls)}>
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto font-mono"
+        className="flex-1 overflow-y-auto font-mono whitespace-pre"
         style={{ fontSize: `${fontSize}px`, lineHeight: '1.5' }}
       >
-        {lines.map((line, index) => (
-          <div
-            key={index}
-            ref={el => lineRefs.current[index] = el}
-            className={`py-2 px-3 cursor-pointer transition-colors ${
-              index === currentLineIndex 
-                ? 'bg-blue-100 dark:bg-blue-900 font-bold' 
-                : ''
-            }`}
-            onClick={() => handleLineClick(index)}
-            dangerouslySetInnerHTML={{ __html: formatLine(line) }}
-          />
-        ))}
+        {lines.map((line, index) => {
+          const isChord = isChordLine(line);
+          return (
+            <div
+              key={index}
+              ref={el => lineRefs.current[index] = el}
+              className={`py-1 cursor-pointer transition-colors ${
+                index === currentLineIndex 
+                  ? 'bg-blue-100 dark:bg-blue-900 font-bold' 
+                  : isChord
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : ''
+              }`}
+              onClick={() => handleLineClick(index)}
+              dangerouslySetInnerHTML={{ __html: formatLine(line, isChord) }}
+            />
+          );
+        })}
       </div>
       
       {/* Floating mini controls that appear on interaction */}
