@@ -99,33 +99,67 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Function to check database connection - memoized to prevent infinite loops
   const checkDatabaseConnection = useCallback(async (): Promise<boolean> => {
     if (!initialized) {
-      // Try to initialize if not already initialized
+      console.log('[SongContext] Database not initialized, attempting initialization...', {
+        connectionAttempts,
+        timestamp: new Date().toISOString()
+      });
       const success = await songOperations.init();
       setInitialized(success);
       if (!success) {
-        setError('Database initialization failed. Using fallback data.');
+        const errorMsg = 'Database initialization failed. Using fallback data.';
+        console.error('[SongContext] ' + errorMsg, {
+          connectionAttempts,
+          initialized: false,
+          timestamp: new Date().toISOString()
+        });
+        setError(errorMsg);
         return false;
       }
     }
 
     try {
       setIsLoading(true);
+      console.log('[SongContext] Checking database connection...', {
+        connectionAttempts,
+        initialized,
+        timestamp: new Date().toISOString()
+      });
       const isConnected = await songOperations.checkConnection();
       
       if (isConnected) {
+        console.log('[SongContext] Database connection successful', {
+          connectionAttempts,
+          initialized,
+          timestamp: new Date().toISOString()
+        });
         setError(null);
       } else {
-        setError('Database connection failed. Using fallback data.');
+        const errorMsg = 'Database connection failed. Using fallback data.';
+        console.error('[SongContext] ' + errorMsg, {
+          connectionAttempts,
+          initialized,
+          timestamp: new Date().toISOString()
+        });
+        setError(errorMsg);
       }
       
       return isConnected;
     } catch (err) {
-      setError('Database connection check failed. Using fallback data.');
+      const errorMsg = 'Database connection check failed. Using fallback data.';
+      console.error('[SongContext] ' + errorMsg, {
+        error: err.message,
+        code: err.code,
+        connectionAttempts,
+        initialized,
+        timestamp: new Date().toISOString(),
+        stack: err.stack
+      });
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, [initialized]);
+  }, [initialized, connectionAttempts]);
 
   // Function to refresh the song list with better error handling - memoized to prevent infinite loops
   const refreshSongList = useCallback(async () => {

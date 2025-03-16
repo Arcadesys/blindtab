@@ -50,12 +50,25 @@ export const createSampleSong = async (): Promise<string | null> => {
 export const songOperations = {
   init: async (): Promise<boolean> => {
     try {
+      console.log('[Firestore] Initializing database...', {
+        environment: env,
+        timestamp: new Date().toISOString()
+      });
       // Test connection by trying to get a document
       await getDocs(collection(db, COLLECTIONS.SONGS));
-      console.log('[Firestore] Successfully initialized');
+      console.log('[Firestore] Successfully initialized', {
+        environment: env,
+        timestamp: new Date().toISOString()
+      });
       return true;
     } catch (error) {
-      console.error('[Firestore] Failed to initialize:', error);
+      console.error('[Firestore] Failed to initialize:', {
+        error: error.message,
+        code: error.code,
+        environment: env,
+        timestamp: new Date().toISOString(),
+        stack: error.stack
+      });
       return false;
     }
   },
@@ -73,7 +86,11 @@ export const songOperations = {
 
   getAllSongs: async (): Promise<Song[]> => {
     try {
-      console.log('[Firestore] Fetching all songs');
+      console.log('[Firestore] Fetching all songs', {
+        environment: env,
+        collection: COLLECTIONS.SONGS,
+        timestamp: new Date().toISOString()
+      });
       const snapshot = await getDocs(collection(db, COLLECTIONS.SONGS));
       const songs = snapshot.docs.map(doc => {
         const data = doc.data();
@@ -85,27 +102,60 @@ export const songOperations = {
           tags: data.tags || []
         } as Song;
       });
-      console.log(`[Firestore] Found ${songs.length} songs`);
+      console.log(`[Firestore] Found ${songs.length} songs`, {
+        environment: env,
+        songCount: songs.length,
+        songIds: songs.map(s => s.id),
+        timestamp: new Date().toISOString()
+      });
       return songs;
     } catch (error) {
-      console.error('[Firestore] Failed to get songs:', error);
+      console.error('[Firestore] Failed to get songs:', {
+        error: error.message,
+        code: error.code,
+        environment: env,
+        timestamp: new Date().toISOString(),
+        stack: error.stack
+      });
       return [];
     }
   },
 
   getSongById: async (id: string): Promise<SongData | null> => {
     try {
-      console.log(`[Firestore] Fetching song ${id}`);
+      console.log(`[Firestore] Fetching song ${id}`, {
+        environment: env,
+        songId: id,
+        timestamp: new Date().toISOString()
+      });
       const docRef = doc(db, COLLECTIONS.SONGS, id);
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
+        console.log(`[Firestore] Successfully fetched song ${id}`, {
+          environment: env,
+          songId: id,
+          timestamp: new Date().toISOString(),
+          hasData: true
+        });
         return docSnap.data() as SongData;
       }
-      console.log(`[Firestore] Song ${id} not found`);
+      console.log(`[Firestore] Song ${id} not found`, {
+        environment: env,
+        songId: id,
+        timestamp: new Date().toISOString(),
+        hasData: false
+      });
       return null;
     } catch (error) {
-      console.error(`[Firestore] Failed to get song ${id}:`, error);
+      console.error(`[Firestore] Failed to get song ${id}:`, {
+        error: error.message,
+        code: error.code,
+        environment: env,
+        songId: id,
+        timestamp: new Date().toISOString(),
+        stack: error.stack
+      });
       return null;
     }
   },

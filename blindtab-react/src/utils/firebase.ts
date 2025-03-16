@@ -45,7 +45,12 @@ console.log('[Firebase] Configuration:', {
   authDomain: firebaseConfig.authDomain,
   projectId: firebaseConfig.projectId,
   storageBucket: firebaseConfig.storageBucket,
-  environment: env
+  environment: env,
+  currentDomain: window.location.hostname,
+  currentOrigin: window.location.origin,
+  currentPath: window.location.pathname,
+  isStaging: window.location.hostname.includes('-staging.vercel.app'),
+  isDev: isDev
 });
 
 let db;
