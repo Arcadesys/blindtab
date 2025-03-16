@@ -246,8 +246,8 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Fix Fast Refresh compatibility by using function declaration
-export function useSong(): SongContextType {
+// Fix Fast Refresh compatibility by using const export
+export const useSong = (): SongContextType => {
   const context = useContext(SongContext);
   if (!context) {
     throw new Error('useSong must be used within a SongProvider');
