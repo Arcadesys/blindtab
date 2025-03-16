@@ -4,7 +4,7 @@
     "enabled": true,
     "silent": true
   },
-  "buildCommand": "cd blindtab-react && npm install && VITE_APP_ENV=staging npm run build:staging",
+  "buildCommand": "cd blindtab-react && npm install && npm run vercel-build",
   "outputDirectory": "blindtab-react/dist",
   "git": {
     "deploymentEnabled": {
