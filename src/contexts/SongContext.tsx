@@ -27,6 +27,14 @@ interface SongContextType {
   setCurrentSong: (song: Song | null) => void;
   isUserSong: (id: string) => boolean;
   updatePlayStats: (id: string) => Promise<void>;
+  // Legacy API compatibility
+  addSongToCollection?: (songId: string) => Promise<void>;
+  removeSongFromCollection?: (songId: string) => Promise<void>;
+  playSong?: (songId: string) => Promise<Song>;
+  createNewSong?: (songData: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+  refreshSongList?: () => Promise<void>;
+  deleteSongById?: (songId: string) => Promise<void>;
+  checkDatabaseConnection?: () => Promise<boolean>;
 }
 
 const SongContext = createContext<SongContextType | null>(null);
@@ -38,6 +46,9 @@ export const useSongs = () => {
   }
   return context;
 };
+
+// For backward compatibility
+export const useSong = useSongs;
 
 export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [songs, setSongs] = useState<Song[]>([]);
@@ -191,6 +202,34 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await updateSongPlayStats(user.uid, id);
   };
 
+  // Play a song (legacy API)
+  const playSong = async (songId: string): Promise<Song> => {
+    try {
+      const song = await firestoreRest.get<Song>(COLLECTIONS.SONGS, songId);
+      
+      if (!song) {
+        throw new Error(`Song with ID ${songId} not found`);
+      }
+      
+      setCurrentSong(song);
+      
+      // Update play stats if user is authenticated
+      if (user) {
+        try {
+          await updateSongPlayStats(user.uid, songId);
+        } catch (err) {
+          console.error('Error updating play stats:', err);
+          // Don't fail if play stats can't be updated
+        }
+      }
+      
+      return song;
+    } catch (err) {
+      console.error('Error playing song:', err);
+      throw err instanceof Error ? err : new Error('Failed to play song');
+    }
+  };
+
   // Load songs on mount and when user changes
   useEffect(() => {
     refreshSongs();
@@ -213,7 +252,15 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unselectSong,
         setCurrentSong,
         isUserSong,
-        updatePlayStats
+        updatePlayStats,
+        // Legacy API compatibility
+        addSongToCollection: selectSong,
+        removeSongFromCollection: unselectSong,
+        playSong,
+        createNewSong: addSong,
+        refreshSongList: refreshSongs,
+        deleteSongById: deleteSong,
+        checkDatabaseConnection: async () => true
       }}
     >
       {children}

@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { useSong } from '../../contexts/SongContext';
+import { useSongs } from '../../contexts/SongContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { isPreviewDeployment, isFallbackMode } from '../../utils/firebase';
 
@@ -35,7 +35,7 @@ const Value = styled.div`
 `;
 
 const EnvironmentInfo: React.FC = () => {
-  const { isPreviewMode } = useSong();
+  const { isPreviewMode } = useSongs();
   const { user } = useAuth();
   
   return (
