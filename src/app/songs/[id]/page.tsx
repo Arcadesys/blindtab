@@ -70,7 +70,7 @@ function formatMarkdown(content: string) {
 
 export default async function SongDetailPage({ params }: SongPageProps) {
   // Get auth token from cookies
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get('auth-token')?.value;
   
   // Verify token and get user info

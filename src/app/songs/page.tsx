@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 export default async function SongsPage() {
   // Get auth token from cookies
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get('auth-token')?.value;
   
   // Verify token and get user info
