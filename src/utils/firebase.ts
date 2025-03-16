@@ -61,9 +61,11 @@ const firebaseConfig = {
 // Detect if we're in a preview deployment
 const isPreviewDeployment = window.location.hostname.includes('-projects.vercel.app') || 
                            window.location.hostname.includes('-staging.vercel.app') ||
-                           window.location.hostname.includes('-preview.vercel.app') ||
-                           window.location.hostname === 'localhost' || 
-                           window.location.hostname === '127.0.0.1';
+                           window.location.hostname.includes('-preview.vercel.app');
+
+// Detect if we're in a local development environment
+const isLocalDevelopment = window.location.hostname === 'localhost' || 
+                          window.location.hostname === '127.0.0.1';
 
 // Log config for debugging (excluding sensitive data)
 console.log('[Firebase] Configuration:', {
@@ -75,6 +77,7 @@ console.log('[Firebase] Configuration:', {
   currentOrigin: window.location.origin,
   currentPath: window.location.pathname,
   isPreviewDeployment,
+  isLocalDevelopment,
   isDev,
   usingEmulator: isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true'
 });
@@ -85,14 +88,23 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firestore with optimized settings
 let db;
 try {
+  // For local development with emulators, use memory cache
+  if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+    console.log('[Firebase] Using memory cache for local development with emulators');
+    db = initializeFirestore(app, {
+      localCache: memoryLocalCache()
+    });
+  } 
   // For preview deployments, use memory cache to avoid persistence issues
-  if (isPreviewDeployment) {
+  else if (isPreviewDeployment) {
     console.log('[Firebase] Using memory cache for preview deployment');
     db = initializeFirestore(app, {
       localCache: memoryLocalCache()
     });
-  } else {
-    // For production and development, use persistent cache
+  } 
+  // For production, use persistent cache
+  else {
+    console.log('[Firebase] Using persistent cache for production');
     db = initializeFirestore(app, {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager(),
@@ -112,7 +124,7 @@ const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 // Use emulator in development if available
-if (isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   try {
     const firestoreHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || 'localhost:8080';
     const [host, portStr] = firestoreHost.split(':');
@@ -135,7 +147,14 @@ if (isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
 }
 
 // Initialize Firebase with environment-specific settings
-if (isPreviewDeployment) {
+if (isLocalDevelopment && isDev) {
+  console.log('[Firebase] Initializing for local development');
+  if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+    console.log('[Firebase] Using Firebase emulators');
+  } else {
+    console.log('[Firebase] Using production Firebase (not emulators)');
+  }
+} else if (isPreviewDeployment) {
   console.log('[Firebase] Initializing for preview deployment');
   console.warn('[Firebase] Preview deployments may have limited functionality');
 } else if (env === 'staging') {
@@ -151,6 +170,7 @@ const testConnection = async () => {
     const q = query(songsRef, limit(1));
     await getDocs(q);
     console.log('[Firebase] Connection test successful');
+    isFallbackMode = false;
     return true;
   } catch (error: any) {
     console.error('[Firebase] Connection test failed:', error);
