@@ -2,25 +2,34 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access during development
-    match /{document=**} {
-      allow read, write: if true;
+    // Helper functions
+    function isStaging() {
+      return request.auth == null && request.headers.host.matches('.*-staging[.]vercel[.]app');
     }
 
-    // TODO: Add proper security rules for production
+    function isDevelopment() {
+      return request.auth == null && request.headers.host == 'localhost:5173';
+    }
+
+    // Base rules for development and staging
+    match /{document=**} {
+      allow read, write: if isDevelopment() || isStaging();
+    }
+
+    // Production rules (more restrictive)
     match /songs/{songId} {
       allow read: if true;  // Anyone can read songs
-      allow write: if false; // No writes for now
+      allow write: if false; // No writes in production for now
     }
 
     match /config/{configId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if false; // No writes in production for now
     }
 
     match /tags/{tagId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if false; // No writes in production for now
     }
   }
 } 
