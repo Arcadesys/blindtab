@@ -160,23 +160,56 @@ const Button = styled.button<{ $variant?: 'danger' | 'primary' }>`
 
 const Tabs = styled.div`
   display: flex;
-  gap: 1rem;
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 1rem;
+  align-items: center;
 `;
 
-const Tab = styled.button<{ active: boolean }>`
+const Tab = styled.button<{ $active?: boolean }>`
   padding: 0.5rem 1rem;
+  background: none;
   border: none;
-  border-radius: 4px;
-  background: ${props => props.active ? 'var(--primary)' : 'var(--bg-secondary)'};
-  color: ${props => props.active ? 'white' : 'var(--text-primary)'};
+  border-bottom: 2px solid ${props => props.$active ? 'var(--primary)' : 'transparent'};
+  color: ${props => props.$active ? 'var(--primary)' : 'var(--text-primary)'};
+  font-weight: ${props => props.$active ? '600' : '400'};
   cursor: pointer;
   transition: all 0.2s;
+  
+  &:hover {
+    color: var(--primary);
+  }
+  
+  &:disabled {
+    color: var(--text-disabled);
+    cursor: not-allowed;
+  }
+`;
 
+const NewSongButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  
   &:hover {
     opacity: 0.9;
   }
 `;
+
+const PlusIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
 
 interface SongLibraryProps {
   onSongLoad: (songId: string) => void;
@@ -189,10 +222,11 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
   onClose,
   searchTerm = ''
 }) => {
-  const { songs, userSongs, addSongToCollection, removeSongFromCollection, playSong, refreshSongs, isLoading, error } = useSong();
+  const { songs, userSongs, addSongToCollection, removeSongFromCollection, playSong, refreshSongs, deleteSong, isLoading, error } = useSong();
   const { user } = useAuth();
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isNewSong, setIsNewSong] = useState(false);
   const [activeTab, setActiveTab] = React.useState<'all' | 'collection'>('all');
 
   const displaySongs = activeTab === 'all' ? songs : userSongs;
@@ -211,13 +245,40 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
   const handleEdit = (song: Song, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedSongId(song.id);
+    setIsNewSong(false);
     setIsEditorOpen(true);
+  };
+
+  const handleDelete = async (song: Song, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete "${song.title}" by ${song.artist}?`)) {
+      try {
+        await deleteSong(song.id);
+        announceToScreenReader(`Song ${song.title} deleted successfully`);
+      } catch (err) {
+        console.error('Error deleting song:', err);
+        if (err instanceof Error && err.message.includes('preview mode')) {
+          // Don't show an error toast for preview mode, the PreviewModeNotice will handle this
+          console.warn('Song deletion disabled in preview mode');
+        } else {
+          // Show error toast or notification here
+          announceToScreenReader(`Error deleting song: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+      }
+    }
   };
 
   const handleEditorClose = async () => {
     setIsEditorOpen(false);
+    setIsNewSong(false);
     await refreshSongs();
     announceToScreenReader('Song updated successfully');
+  };
+
+  const handleNewSong = () => {
+    setSelectedSongId(null);
+    setIsNewSong(true);
+    setIsEditorOpen(true);
   };
 
   const handleSongAction = async (song: Song) => {
@@ -276,17 +337,25 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
     <LibraryContainer>
       <Tabs>
         <Tab 
-          active={activeTab === 'all'} 
+          $active={activeTab === 'all'} 
           onClick={() => setActiveTab('all')}
+          aria-selected={activeTab === 'all'}
+          role="tab"
         >
           All Songs
         </Tab>
         <Tab 
-          active={activeTab === 'collection'} 
+          $active={activeTab === 'collection'} 
           onClick={() => setActiveTab('collection')}
+          aria-selected={activeTab === 'collection'}
+          role="tab"
+          disabled={!user}
         >
           My Collection
         </Tab>
+        <NewSongButton onClick={handleNewSong}>
+          <PlusIcon /> New Song
+        </NewSongButton>
       </Tabs>
 
       {filteredSongs.length === 0 ? (
@@ -325,6 +394,19 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
                     </svg>
                   </IconButton>
                   <IconButton 
+                    $variant="danger"
+                    onClick={(e) => handleDelete(song, e)}
+                    title="Delete song"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                  </IconButton>
+                  <IconButton 
                     $variant="primary" 
                     onClick={() => handleLoadSong(song)}
                     title="Load song"
@@ -343,7 +425,7 @@ const SongLibrary: React.FC<SongLibraryProps> = ({
             isOpen={isEditorOpen}
             onClose={handleEditorClose}
             songId={selectedSongId}
-            isNewSong={false}
+            isNewSong={isNewSong}
           />
         </>
       )}

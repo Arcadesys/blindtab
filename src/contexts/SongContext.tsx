@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, COLLECTIONS, isFallbackMode, isPreviewDeployment } from '../utils/firebase';
 import { useAuth } from './AuthContext';
 import type { Song } from '../types/firebase';
@@ -24,6 +24,7 @@ interface SongContextType {
   refreshSongs: () => Promise<void>;
   createNewSong: (songData: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
   updateSong: (songId: string, songData: Partial<Omit<Song, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
+  deleteSong: (songId: string) => Promise<void>;
 }
 
 const SongContext = createContext<SongContextType | null>(null);
@@ -186,6 +187,42 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const deleteSong = async (songId: string) => {
+    if (isPreviewMode) {
+      console.warn('[SongContext] Write operations are disabled in preview mode');
+      throw new Error('Write operations are disabled in preview mode');
+    }
+    
+    try {
+      // Check if the song is the current song
+      if (currentSong && currentSong.id === songId) {
+        setCurrentSong(null);
+      }
+      
+      // Delete the song from Firestore
+      const songRef = doc(db, COLLECTIONS.SONGS, songId);
+      await deleteDoc(songRef);
+      
+      // If the user has this song in their collection, remove it
+      if (user && userSongs.some(song => song.id === songId)) {
+        try {
+          await removeSongFromUserCollection(user.uid, songId);
+        } catch (err) {
+          console.error('Error removing song from user collection:', err);
+          // Continue with deletion even if removing from collection fails
+        }
+      }
+      
+      // Refresh the song list
+      await refreshSongs();
+      
+      console.log(`[SongContext] Song ${songId} deleted successfully`);
+    } catch (err) {
+      console.error('Error deleting song:', err);
+      throw err instanceof Error ? err : new Error('Failed to delete song');
+    }
+  };
+
   return (
     <SongContext.Provider
       value={{
@@ -200,7 +237,8 @@ export function SongProvider({ children }: { children: React.ReactNode }) {
         playSong,
         refreshSongs,
         createNewSong,
-        updateSong
+        updateSong,
+        deleteSong
       }}
     >
       {children}
