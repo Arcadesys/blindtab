@@ -30,6 +30,8 @@ const ModalContent = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  z-index: 1001;
 `;
 
 const TabContainer = styled.div`

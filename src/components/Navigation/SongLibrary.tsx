@@ -11,6 +11,8 @@ const LibraryContainer = styled.div`
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  position: relative;
+  z-index: auto;
 `;
 
 const SongList = styled.div`

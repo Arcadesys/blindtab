@@ -179,31 +179,31 @@ const AppContent: React.FC = () => {
           totalLines={songLyrics.length || 0}
           onSliderChange={setCurrentLineIndex}
         />
-        
-        <AccessibilityModal 
-          isOpen={accessibilityModalOpen}
-          onClose={() => setAccessibilityModalOpen(false)}
-        />
-        
-        <SongListModal 
-          isOpen={songListModalOpen}
-          onClose={() => setSongListModalOpen(false)}
-          onSongSelect={handleSongSelect}
-        />
-        
-        <SongLibraryModal
-          isOpen={songLibraryModalOpen}
-          onClose={() => setSongLibraryModalOpen(false)}
-          onSongLoad={handleSongSelect}
-        />
-        
-        <TourGuide 
-          steps={tourSteps}
-          isOpen={isTourOpen}
-          onClose={closeTour}
-          onComplete={completeTour}
-        />
       </AppContainer>
+      
+      <AccessibilityModal 
+        isOpen={accessibilityModalOpen}
+        onClose={() => setAccessibilityModalOpen(false)}
+      />
+      
+      <SongListModal 
+        isOpen={songListModalOpen}
+        onClose={() => setSongListModalOpen(false)}
+        onSongSelect={handleSongSelect}
+      />
+      
+      <SongLibraryModal
+        isOpen={songLibraryModalOpen}
+        onClose={() => setSongLibraryModalOpen(false)}
+        onSongLoad={handleSongSelect}
+      />
+      
+      <TourGuide 
+        steps={tourSteps}
+        isOpen={isTourOpen}
+        onClose={closeTour}
+        onComplete={completeTour}
+      />
     </>
   );
 };

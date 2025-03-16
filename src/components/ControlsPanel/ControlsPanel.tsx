@@ -11,6 +11,8 @@ const ControlsContainer = styled.div`
   padding: 0.5rem 1rem;
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
+  position: relative;
+  z-index: 10;
 `;
 
 const ControlGroup = styled.div`
