@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator, collection, getDocs, query, limit } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, collection, getDocs, query, limit, enableIndexedDbPersistence } from 'firebase/firestore';
 import { env, isDev } from './env';
 
 // Collection references
@@ -60,8 +60,40 @@ try {
     }
   });
 
+  // Validate current domain against authDomain
+  const currentDomain = window.location.hostname;
+  console.log(`[Firebase] Current domain: ${currentDomain}`);
+  if (!isDev && !currentDomain.includes('localhost')) {
+    // Check if current domain matches auth domain pattern
+    const authDomainParts = firebaseConfig.authDomain.split('.');
+    const currentDomainParts = currentDomain.split('.');
+    
+    if (currentDomainParts.length < 2) {
+      console.warn('[Firebase] Current domain seems invalid:', currentDomain);
+    }
+    
+    // Log domain validation attempt
+    console.log('[Firebase] Domain validation:', {
+      current: currentDomain,
+      authorized: firebaseConfig.authDomain,
+      isPreview: currentDomain.includes('vercel.app')
+    });
+  }
+
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
+
+  // Enable offline persistence for better performance
+  if (!isDev) {
+    enableIndexedDbPersistence(db)
+      .catch((err) => {
+        if (err.code === 'failed-precondition') {
+          console.warn('[Firebase] Multiple tabs open, persistence can only be enabled in one tab at a time.');
+        } else if (err.code === 'unimplemented') {
+          console.warn('[Firebase] The current browser doesn\'t support persistence.');
+        }
+      });
+  }
 
   // Use emulator in development if available
   if (isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR) {
@@ -83,7 +115,14 @@ try {
   const q = query(songsRef, limit(1));
   getDocs(q)
     .then(() => console.log('[Firebase] Connection test successful'))
-    .catch(error => console.error('[Firebase] Connection test failed:', error));
+    .catch(error => {
+      console.error('[Firebase] Connection test failed:', error);
+      if (error.code === 'permission-denied') {
+        console.error('[Firebase] This might be due to unauthorized domain access. Please check Firebase Console -> Authentication -> Sign-in method -> Authorized domains');
+      } else if (error.code === 'failed-precondition') {
+        console.error('[Firebase] This might be due to incorrect project configuration or missing indexes');
+      }
+    });
 
   console.log('[Firebase] Initialization successful');
 } catch (error) {
