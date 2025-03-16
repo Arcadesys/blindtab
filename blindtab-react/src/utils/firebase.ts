@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, collection, getDocs, query, limit } from 'firebase/firestore';
 import { env, isDev } from './env';
 
 // Collection references
@@ -78,8 +78,10 @@ try {
     // Add any production-specific initialization here
   }
 
-  // Test the connection
-  db.collection(COLLECTIONS.SONGS).limit(1).get()
+  // Test the connection using the new modular API
+  const songsRef = collection(db, COLLECTIONS.SONGS);
+  const q = query(songsRef, limit(1));
+  getDocs(q)
     .then(() => console.log('[Firebase] Connection test successful'))
     .catch(error => console.error('[Firebase] Connection test failed:', error));
 
