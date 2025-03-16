@@ -107,7 +107,10 @@ try {
   else if (isPreviewDeployment) {
     console.log('[Firebase] Using memory cache for preview deployment');
     db = initializeFirestore(app, {
-      localCache: memoryLocalCache()
+      localCache: memoryLocalCache(),
+      // Add CORS settings for preview deployments
+      experimentalForceLongPolling: true, // Use long polling instead of WebSockets
+      experimentalAutoDetectLongPolling: true
     });
   } 
   // For production, use persistent cache
@@ -194,6 +197,19 @@ const testConnection = async () => {
       }
     } else if (error.code === 'failed-precondition') {
       console.error('[Firebase] This might be due to incorrect project configuration or missing indexes');
+    } else {
+      console.error('[Firebase] Error details:', {
+        code: error.code,
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
+      
+      // For network errors in preview deployments, try to switch to fallback mode
+      if (isPreviewDeployment && (error.name === 'FirebaseError' || error.message?.includes('network'))) {
+        console.warn('[Firebase] Network error in preview deployment. Switching to read-only mode.');
+        isFallbackMode = true;
+      }
     }
     
     return false;
