@@ -18,7 +18,7 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
   // Parse content into lines
   useEffect(() => {
     if (content) {
-      const parsedLines = content.split('\n').filter(line => line.trim() !== '');
+      const parsedLines = content.split('\n');
       setLines(parsedLines);
       lineRefs.current = lineRefs.current.slice(0, parsedLines.length);
     }
@@ -83,40 +83,34 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
     setCurrentLineIndex(index);
   };
 
-  // Format line with highlighted chords
-  const formatLine = (line: string, isChord: boolean) => {
-    if (!isChord) return line;
-    
-    // For chord lines, wrap each chord in a span for highlighting
-    return line.replace(/([A-G][#b]?(m|maj|min|aug|dim|sus|add|maj7|m7|7|9|11|13|6|5)?(\d)?(\/)?([\w#]+)?)/g, 
-      '<span class="text-blue-600 dark:text-blue-400 font-bold">$1</span>');
-  };
-
   return (
     <div className="flex flex-col h-full relative" onClick={() => setShowControls(!showControls)}>
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto font-mono whitespace-pre"
+        className="flex-1 overflow-y-auto"
         style={{ fontSize: `${fontSize}px`, lineHeight: '1.5' }}
       >
-        {lines.map((line, index) => {
-          const isChord = isChordLine(line);
-          return (
-            <div
-              key={index}
-              ref={el => lineRefs.current[index] = el}
-              className={`py-1 cursor-pointer transition-colors ${
-                index === currentLineIndex 
-                  ? 'bg-blue-100 dark:bg-blue-900 font-bold' 
-                  : isChord
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : ''
-              }`}
-              onClick={() => handleLineClick(index)}
-              dangerouslySetInnerHTML={{ __html: formatLine(line, isChord) }}
-            />
-          );
-        })}
+        <pre className="font-mono whitespace-pre break-normal w-full">
+          {lines.map((line, index) => {
+            const isChord = isChordLine(line);
+            return (
+              <div
+                key={index}
+                ref={el => lineRefs.current[index] = el}
+                className={`py-1 cursor-pointer transition-colors ${
+                  index === currentLineIndex 
+                    ? 'bg-blue-100 dark:bg-blue-900 font-bold' 
+                    : isChord
+                      ? 'text-blue-600 dark:text-blue-400 font-bold'
+                      : ''
+                }`}
+                onClick={() => handleLineClick(index)}
+              >
+                {line}
+              </div>
+            );
+          })}
+        </pre>
       </div>
       
       {/* Floating mini controls that appear on interaction */}
