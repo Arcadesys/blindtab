@@ -16,6 +16,13 @@ import {
 import { getAuth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth';
 import { env, isDev } from './env';
 
+// Declare global window interface extension for the fixFirebaseConnection function
+declare global {
+  interface Window {
+    fixFirebaseConnection?: () => void;
+  }
+}
+
 // Collection references
 export const COLLECTIONS = {
   SONGS: 'songs',
@@ -127,20 +134,68 @@ try {
   console.error('[Firebase] Error applying additional settings:', error);
 }
 
-// For development, connect to emulator if needed
-if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
-  console.log('[Firebase] Connecting to Firestore emulator');
-  connectFirestoreEmulator(db, 'localhost', 8080);
-}
-
 // Initialize Auth
 const auth = getAuth(app);
 
-// Connect to Auth emulator if needed
+// Connect to emulators in development mode if enabled
 if (isLocalDevelopment && isDev && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
-  console.log('[Firebase] Connecting to Auth emulator');
-  connectAuthEmulator(auth, 'http://localhost:9099');
+  console.log('[Firebase] Connecting to Firestore emulator');
+  
+  try {
+    // Connect to Auth emulator
+    connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+    
+    // Connect to Firestore emulator
+    connectFirestoreEmulator(db, 'localhost', 8080);
+    
+    console.log('[Firebase] Successfully connected to emulators');
+  } catch (error) {
+    console.error('[Firebase] Error connecting to emulators:', error);
+    
+    // Retry connection with a delay
+    setTimeout(() => {
+      try {
+        connectFirestoreEmulator(db, 'localhost', 8080);
+        console.log('[Firebase] Retry connection to emulator successful');
+      } catch (retryError) {
+        console.error('[Firebase] Retry connection to emulator failed:', retryError);
+      }
+    }, 1000);
+  }
 }
+
+// Enable offline persistence for better user experience
+if (!isLocalDevelopment || import.meta.env.VITE_USE_FIREBASE_EMULATOR !== 'true') {
+  enableIndexedDbPersistence(db)
+    .then(() => {
+      console.log('[Firebase] Offline persistence enabled');
+    })
+    .catch((error) => {
+      console.warn('[Firebase] Offline persistence could not be enabled:', error.code);
+    });
+}
+
+// Handle WebChannel transport errors
+window.addEventListener('load', () => {
+  // Check if the fixFirebaseConnection function is available
+  if (typeof window.fixFirebaseConnection === 'function') {
+    console.log('[Firebase] Applying WebChannel connection fix');
+    window.fixFirebaseConnection();
+  } else {
+    console.log('[Firebase] WebChannel fix not available, will apply when loaded');
+    
+    // Wait for the fix script to load
+    const checkFixAvailable = setInterval(() => {
+      if (typeof window.fixFirebaseConnection === 'function') {
+        window.fixFirebaseConnection();
+        clearInterval(checkFixAvailable);
+      }
+    }, 500);
+    
+    // Stop checking after 10 seconds
+    setTimeout(() => clearInterval(checkFixAvailable), 10000);
+  }
+});
 
 // Create a Google Auth provider
 const googleProvider = new GoogleAuthProvider();

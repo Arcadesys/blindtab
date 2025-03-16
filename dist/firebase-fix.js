@@ -40,236 +40,203 @@
     checkFirebase();
   }
   
-  // Fix Firebase connection issues
+  // Track retry attempts to avoid infinite loops
+  let retryCount = 0;
+  const MAX_RETRIES = 3;
+  let hasAppliedFix = false;
+  let isUsingProxy = false;
+  let isEmulator = false;
+
+  // Check if we're in an emulator environment
+  function checkEmulator() {
+    const host = window.location.hostname;
+    const port = window.location.port;
+    
+    // Check if we're running on localhost with emulator ports
+    return (host === 'localhost' || host === '127.0.0.1') && 
+           (port === '5002' || port === '5000' || port === '3000' || port === '5173');
+  }
+  
+  // Main fix function
   function fixFirebaseConnection() {
-    try {
-      // Check if we're in emulator mode
-      const isLocalhost = window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1';
-      const isEmulator = isLocalhost && 
-                        (window.location.port === '5002' || 
-                         window.location.port === '5000' ||
-                         window.location.port === '5001');
-      
-      console.log('Environment:', {
-        hostname: window.location.hostname,
-        port: window.location.port,
-        isLocalhost,
-        isEmulator
-      });
-      
-      // Check if user has dev access
-      function checkDevAccess() {
-        // Always allow in local development
-        if (isLocalhost) {
-          return true;
-        }
+    if (hasAppliedFix) return;
+    
+    console.log('[Firebase Fix] Applying WebChannel connection fixes');
+    
+    // Check if we're in emulator mode
+    isEmulator = checkEmulator();
+    if (isEmulator) {
+      console.log('[Firebase Fix] Emulator environment detected');
+    }
+    
+    // Store original fetch
+    const originalFetch = window.fetch;
+    
+    // Override fetch to handle CORS and add necessary headers
+    window.fetch = function(input, init) {
+      // Only intercept Firebase API calls
+      if (typeof input === 'string' && 
+          (input.includes('firestore.googleapis.com') || 
+           input.includes('www.googleapis.com/identitytoolkit'))) {
         
-        // Check if user is logged in and has authorized email
-        if (window.firebase && window.firebase.auth) {
-          const currentUser = window.firebase.auth().currentUser;
-          if (currentUser && currentUser.email) {
-            return AUTHORIZED_DEV_EMAILS.includes(currentUser.email);
-          }
-        }
+        console.log('[Firebase Fix] Intercepted Firebase request:', input);
         
-        return false;
-      }
-      
-      // Apply aggressive WebChannel fix
-      // This patches the WebChannel transport to avoid 400 Bad Request errors
-      function applyWebChannelFix() {
-        console.log('🔧 Applying aggressive WebChannel transport fix');
+        // Clone the init object to avoid modifying the original
+        const newInit = init ? { ...init } : {};
         
-        // Fix for WebChannel 400 Bad Request error
-        if (typeof XMLHttpRequest !== 'undefined') {
-          // Store the original open method
-          const originalOpen = XMLHttpRequest.prototype.open;
-          
-          // Override the open method to fix WebChannel issues
-          XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
-            // Check if this is a WebChannel request
-            if (typeof url === 'string' && 
-                (url.includes('google.firestore.v1.Firestore') || 
-                 url.includes('firestore.googleapis.com'))) {
-              console.log('🔧 Intercepting WebChannel request:', url);
-              
-              // Add a cache-busting parameter to avoid 400 Bad Request errors
-              const separator = url.includes('?') ? '&' : '?';
-              const cacheBuster = `_cb=${Date.now()}`;
-              url = `${url}${separator}${cacheBuster}`;
-              
-              console.log('🔧 Modified WebChannel URL:', url);
-            }
-            
-            // Call the original open method with the potentially modified URL
-            return originalOpen.call(this, method, url, async, user, password);
+        // Ensure headers object exists
+        newInit.headers = newInit.headers || {};
+        
+        // Add necessary headers for CORS
+        if (typeof newInit.headers.append === 'function') {
+          newInit.headers.append('Accept', 'application/json');
+          newInit.headers.append('Content-Type', 'application/json');
+        } else {
+          newInit.headers = {
+            ...newInit.headers,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           };
-          
-          console.log('✅ Applied XMLHttpRequest patch for WebChannel');
         }
         
-        // Try to patch the WebChannel directly if it's available
-        setTimeout(() => {
-          try {
-            // Look for the WebChannel in the window object
-            if (window.goog && window.goog.net && window.goog.net.WebChannel) {
-              console.log('🔧 Found WebChannel, applying direct patch');
+        // Handle WebChannel transport errors with retry logic
+        return originalFetch(input, newInit)
+          .then(response => {
+            if (!response.ok && (response.status === 400 || response.status === 0)) {
+              console.warn('[Firebase Fix] Request failed, may retry:', response.status);
               
-              // Store original WebChannel factory
-              const originalCreateWebChannelTransport = window.goog.net.createWebChannelTransport;
-              
-              // Override the WebChannel factory
-              window.goog.net.createWebChannelTransport = function() {
-                const transport = originalCreateWebChannelTransport();
+              // Only retry a limited number of times
+              if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                console.log(`[Firebase Fix] Retrying request (${retryCount}/${MAX_RETRIES})`);
                 
-                // Store the original createXhrIo method
-                const originalCreateXhrIo = transport.createXhrIo;
-                
-                // Override the createXhrIo method
-                transport.createXhrIo = function(url) {
-                  // Add a cache-busting parameter to the URL
-                  if (url && typeof url === 'string') {
-                    const separator = url.includes('?') ? '&' : '?';
-                    url = `${url}${separator}_wcb=${Date.now()}`;
-                    console.log('🔧 Modified WebChannel transport URL:', url);
-                  }
-                  
-                  // Call the original method with the modified URL
-                  return originalCreateXhrIo.call(this, url);
-                };
-                
-                console.log('✅ Applied WebChannel transport patch');
-                return transport;
-              };
+                // Add a small delay before retry
+                return new Promise(resolve => {
+                  setTimeout(() => {
+                    resolve(originalFetch(input, newInit));
+                  }, 500 * retryCount); // Increasing backoff
+                });
+              }
             }
-          } catch (error) {
-            console.error('❌ Error applying WebChannel patch:', error);
-          }
-        }, 1000); // Wait for WebChannel to be available
+            
+            // Reset retry count on successful requests
+            retryCount = 0;
+            return response;
+          })
+          .catch(error => {
+            console.error('[Firebase Fix] Fetch error:', error);
+            
+            // Only retry network errors a limited number of times
+            if (retryCount < MAX_RETRIES && error.name === 'TypeError') {
+              retryCount++;
+              console.log(`[Firebase Fix] Retrying after network error (${retryCount}/${MAX_RETRIES})`);
+              
+              return new Promise(resolve => {
+                setTimeout(() => {
+                  resolve(originalFetch(input, newInit));
+                }, 1000 * retryCount); // Longer backoff for network errors
+              });
+            }
+            
+            throw error;
+          });
       }
       
-      // Apply the WebChannel fix immediately
-      applyWebChannelFix();
+      // Pass through non-Firebase requests
+      return originalFetch(input, init);
+    };
+    
+    // Fix Firestore settings
+    const fixFirestoreSettings = () => {
+      if (!window.firebase || !window.firebase.firestore) {
+        console.log('[Firebase Fix] Firebase or Firestore not available yet, waiting...');
+        setTimeout(fixFirestoreSettings, 100);
+        return;
+      }
       
-      // Fix WebChannel connection issues
-      if (window._firebase_app) {
-        console.log('🔧 Attempting to fix WebChannel connection issues...');
+      try {
+        const db = firebase.firestore();
         
-        // Try to access Firestore
-        const app = window._firebase_app;
-        
-        // Check if Firebase Firestore is available
-        if (typeof firebase !== 'undefined' && firebase.firestore) {
-          // Create a new Firestore instance with better settings
-          const newDb = firebase.firestore(app);
+        // First, set the host property
+        if (isEmulator) {
+          // For emulator, use localhost
+          db.settings({
+            host: 'localhost:8080',
+            ssl: false
+          });
           
-          if (isEmulator) {
-            // Special settings for emulator
-            console.log('🔧 Detected emulator environment, applying emulator settings');
-            newDb.settings({
-              host: 'localhost:8080',
-              ssl: false,
-              experimentalForceLongPolling: true,
-              ignoreUndefinedProperties: true
-            });
+          console.log('[Firebase Fix] Applied emulator settings');
+        } else {
+          // For production, set host first
+          db.settings({
+            host: 'firestore.googleapis.com'
+          });
+          
+          // Then apply other settings
+          db.settings({
+            experimentalForceLongPolling: true,
+            merge: true,
+            ignoreUndefinedProperties: true,
+            ssl: true
+          });
+          
+          console.log('[Firebase Fix] Applied production settings');
+        }
+        
+        // Test the connection
+        testFirestoreConnection(db);
+        
+        hasAppliedFix = true;
+      } catch (error) {
+        console.error('[Firebase Fix] Error applying settings:', error);
+      }
+    };
+    
+    // Test Firestore connection
+    const testFirestoreConnection = (db) => {
+      console.log('[Firebase Fix] Testing Firestore connection...');
+      
+      // Try to access a test collection
+      db.collection('firebase_test')
+        .limit(1)
+        .get()
+        .then(() => {
+          console.log('[Firebase] Firestore connection test passed');
+          console.log('[Firebase] Firestore is ready to use');
+        })
+        .catch(error => {
+          console.error('[Firebase Fix] Connection test failed:', error);
+          
+          // If we're still having issues, try one more approach
+          if (!hasAppliedFix && !isEmulator) {
+            console.log('[Firebase Fix] Trying alternative connection method...');
             
-            // Connect to emulator
-            newDb.useEmulator('localhost', 8080);
-          } else {
-            // Apply settings to fix WebChannel issues - do this in two steps to avoid the SSL error
-            // First set the host
-            newDb.settings({
-              host: 'firestore.googleapis.com'
-            });
-            
-            // Then set the other options
-            newDb.settings({
-              experimentalForceLongPolling: true,
-              merge: true,
-              ignoreUndefinedProperties: true,
+            // Reset settings and try with long polling explicitly enabled
+            db.settings({
+              host: 'firestore.googleapis.com',
               ssl: true,
+              experimentalForceLongPolling: true,
+              experimentalAutoDetectLongPolling: true,
               cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
             });
+            
+            // Test again
+            db.collection('firebase_test')
+              .limit(1)
+              .get()
+              .then(() => {
+                console.log('[Firebase] Alternative method successful');
+                hasAppliedFix = true;
+              })
+              .catch(finalError => {
+                console.error('[Firebase Fix] All connection attempts failed:', finalError);
+              });
           }
-          
-          console.log('✅ Applied WebChannel connection fixes');
-          
-          // Replace the existing Firestore instance
-          window._fixed_firestore = newDb;
-          
-          // Test the connection
-          newDb.collection('firebase_test').limit(1).get()
-            .then(() => {
-              console.log('✅ Firestore connection test successful with fixed settings');
-              
-              // Check if user has dev access
-              const hasDevAccess = checkDevAccess();
-              console.log('User has dev access:', hasDevAccess);
-              
-              // Store dev access status in session storage
-              sessionStorage.setItem('has_dev_access', hasDevAccess ? 'true' : 'false');
-            })
-            .catch(error => {
-              console.error('❌ Firestore connection test failed:', error);
-              
-              // If we get a 400 Bad Request error, try a more aggressive fix
-              if (error.code === 'unavailable' || 
-                  (error.message && (
-                    error.message.includes('400') || 
-                    error.message.includes('Bad Request')))) {
-                console.log('🔧 Detected 400 Bad Request error, trying alternative approach');
-                
-                // Create a new Firestore instance with alternative settings
-                const fixedDb = firebase.firestore(app);
-                
-                // Apply alternative settings - use memory cache instead of persistence
-                fixedDb.settings({
-                  host: 'firestore.googleapis.com',
-                  ssl: true,
-                  experimentalForceLongPolling: true,
-                  ignoreUndefinedProperties: true,
-                  cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-                });
-                
-                // Replace the existing Firestore instance
-                window._fixed_firestore = fixedDb;
-                
-                // Test the connection again
-                fixedDb.collection('firebase_test').limit(1).get()
-                  .then(() => {
-                    console.log('✅ Firestore connection test successful with alternative fix');
-                  })
-                  .catch(secondError => {
-                    console.error('❌ Alternative fix also failed:', secondError);
-                    
-                    // Last resort: try with minimal settings
-                    console.log('🔧 Trying minimal settings as last resort');
-                    const lastResortDb = firebase.firestore(app);
-                    lastResortDb.settings({
-                      host: 'firestore.googleapis.com',
-                      ssl: true
-                    });
-                    
-                    window._fixed_firestore = lastResortDb;
-                    
-                    lastResortDb.collection('firebase_test').limit(1).get()
-                      .then(() => {
-                        console.log('✅ Minimal settings fix successful');
-                      })
-                      .catch(finalError => {
-                        console.error('❌ All fixes failed:', finalError);
-                      });
-                  });
-              }
-            });
-        }
-      }
-      
-      console.log('✅ Firebase connection fixes applied');
-    } catch (error) {
-      console.error('❌ Error applying Firebase fixes:', error);
-    }
+        });
+    };
+    
+    // Start the fix process
+    fixFirestoreSettings();
   }
   
   // Apply fixes when Firebase is available
