@@ -9,6 +9,9 @@ export async function GET() {
       include: {
         tags: true,
       },
+      orderBy: {
+        updatedAt: 'desc',
+      },
     });
     
     return NextResponse.json(songs);
@@ -23,41 +26,46 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse request body
-    const { title, artist, content, key, tempo, timeSignature, isPublic, tags } = await request.json();
+    const data = await request.json();
     
     // Validate required fields
-    if (!title || !artist || !content) {
+    if (!data.title || !data.artist || !data.content) {
       return NextResponse.json(
-        { message: 'Title, artist, and content are required' },
+        { error: 'Title, artist, and content are required' },
         { status: 400 }
       );
     }
-    
-    // Create song with tags
+
+    // Handle tags
+    let tags = undefined;
+    if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
+      tags = {
+        connect: data.tags.map((tagId: string) => ({ id: tagId })),
+      };
+    }
+
+    // Create the song
     const song = await prisma.song.create({
       data: {
-        title,
-        artist,
-        content,
-        key,
-        tempo,
-        timeSignature,
-        isPublic: true, // All songs are public now
-        tags: {
-          connectOrCreate: tags.map((tag: string) => ({
-            where: { name: tag },
-            create: { name: tag },
-          })),
-        },
+        title: data.title,
+        artist: data.artist,
+        content: data.content,
+        key: data.key || null,
+        tempo: data.tempo ? parseInt(data.tempo) : null,
+        timeSignature: data.timeSignature || null,
+        isPublic: true,
+        tags: tags,
+      },
+      include: {
+        tags: true,
       },
     });
-    
+
     return NextResponse.json(song, { status: 201 });
   } catch (error) {
     console.error('Error creating song:', error);
     return NextResponse.json(
-      { message: 'Something went wrong' },
+      { error: 'Failed to create song' },
       { status: 500 }
     );
   }

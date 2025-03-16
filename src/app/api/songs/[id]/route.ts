@@ -1,17 +1,24 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const id = params.id;
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Song ID is required' },
+        { status: 400 }
+      );
+    }
+
     const song = await prisma.song.findUnique({
-      where: {
-        id: params.id,
-      },
+      where: { id },
       include: {
         tags: true,
       },
@@ -35,51 +42,55 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const body = await request.json();
+    const id = params.id;
+    const data = await request.json();
     
-    const { title, artist, content, key, tempo, timeSignature, tags } = body;
-    
-    // First, disconnect all existing tags
-    await prisma.song.update({
-      where: {
-        id: params.id,
-      },
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Song ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate required fields
+    if (!data.title || !data.artist || !data.content) {
+      return NextResponse.json(
+        { error: 'Title, artist, and content are required' },
+        { status: 400 }
+      );
+    }
+
+    // Handle tags
+    let tags = undefined;
+    if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
+      tags = {
+        connect: data.tags.map((tagId: string) => ({ id: tagId })),
+      };
+    }
+
+    // Update the song
+    const updatedSong = await prisma.song.update({
+      where: { id },
       data: {
-        tags: {
-          set: [],
-        },
-      },
-    });
-    
-    // Then update the song with new data and connect new tags
-    const song = await prisma.song.update({
-      where: {
-        id: params.id,
-      },
-      data: {
-        title,
-        artist,
-        content,
-        key,
-        tempo,
-        timeSignature,
-        tags: {
-          connectOrCreate: tags?.map((tag: string) => ({
-            where: { name: tag },
-            create: { name: tag },
-          })) || [],
-        },
+        title: data.title,
+        artist: data.artist,
+        content: data.content,
+        key: data.key || null,
+        tempo: data.tempo ? parseInt(data.tempo) : null,
+        timeSignature: data.timeSignature || null,
+        isPublic: true,
+        tags: tags,
       },
       include: {
         tags: true,
       },
     });
-    
-    return NextResponse.json(song);
+
+    return NextResponse.json(updatedSong);
   } catch (error) {
     console.error('Error updating song:', error);
     return NextResponse.json(
@@ -90,17 +101,37 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.song.delete({
-      where: {
-        id: params.id,
-      },
-    });
+    const id = params.id;
     
-    return new NextResponse(null, { status: 204 });
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Song ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if song exists
+    const song = await prisma.song.findUnique({
+      where: { id },
+    });
+
+    if (!song) {
+      return NextResponse.json(
+        { error: 'Song not found' },
+        { status: 404 }
+      );
+    }
+
+    // Delete the song
+    await prisma.song.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ message: 'Song deleted successfully' });
   } catch (error) {
     console.error('Error deleting song:', error);
     return NextResponse.json(
