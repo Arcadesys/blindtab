@@ -13,14 +13,14 @@
   const AUTHORIZED_DEV_EMAILS = ['austen.crowder@gmail.com'];
   
   // Wait for Firebase to be available
-  function waitForFirebase(callback, maxAttempts = 20) {
+  function waitForFirebase(callback, maxAttempts = 30) {
     let attempts = 0;
     
     const checkFirebase = () => {
       attempts++;
       
-      // Check if Firebase is available
-      if (window.firebase || window._firebase_app) {
+      // Check if Firebase is available - look for our marker or the Firebase SDK
+      if (window._firebaseInitialized || window.firebase || window._firebase_app) {
         console.log('✅ Firebase detected, applying fixes...');
         callback();
         return;
@@ -82,7 +82,7 @@
           (input.includes('firestore.googleapis.com') || 
            input.includes('www.googleapis.com/identitytoolkit'))) {
         
-        console.log('[Firebase Fix] Intercepted Firebase request:', input);
+        console.log('[Firebase Fix] Intercepted Firebase request:', input.substring(0, 100) + '...');
         
         // Clone the init object to avoid modifying the original
         const newInit = init ? { ...init } : {};
@@ -151,9 +151,17 @@
     
     // Fix Firestore settings
     const fixFirestoreSettings = () => {
+      // Check if we're using the modular SDK (v9+)
+      if (window._firebaseInitialized) {
+        console.log('[Firebase Fix] Using Firebase v9+ modular SDK, skipping legacy settings');
+        hasAppliedFix = true;
+        return;
+      }
+      
+      // Check for legacy Firebase SDK
       if (!window.firebase || !window.firebase.firestore) {
         console.log('[Firebase Fix] Firebase or Firestore not available yet, waiting...');
-        setTimeout(fixFirestoreSettings, 100);
+        setTimeout(fixFirestoreSettings, 500);
         return;
       }
       
