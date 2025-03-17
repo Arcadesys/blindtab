@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 const prisma = new PrismaClient();
 
 // Helper function to check if user is authenticated
-function isAuthenticated(): boolean {
+async function isAuthenticated(): Promise<boolean> {
   const cookieStore = cookies();
   const authToken = cookieStore.get('auth_token');
   return !!authToken;
@@ -14,7 +14,7 @@ function isAuthenticated(): boolean {
 export async function GET() {
   try {
     // Check if user is authenticated
-    const isAdmin = isAuthenticated();
+    const isAdmin = await isAuthenticated();
     
     // If not authenticated, only return public songs
     const songs = await prisma.song.findMany({
@@ -40,7 +40,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // Check if user is authenticated
-    if (!isAuthenticated()) {
+    if (!await isAuthenticated()) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
