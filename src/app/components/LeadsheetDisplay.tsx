@@ -96,7 +96,7 @@ export default function LeadsheetDisplay({
   
   // Auto-scroll to the current group
   useEffect(() => {
-    if (autoScroll && lineGroups.length > 0 && currentGroupIndex < lineGroups.length) {
+    if (lineGroups.length > 0 && currentGroupIndex < lineGroups.length) {
       const currentGroup = lineGroups[currentGroupIndex];
       const chordLineEl = lineRefs.current[currentGroup.chordLine];
       
@@ -104,7 +104,7 @@ export default function LeadsheetDisplay({
         chordLineEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }, [autoScroll, currentGroupIndex, lineGroups]);
+  }, [currentGroupIndex, lineGroups]);
 
   // Add keyboard navigation
   useEffect(() => {
