@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
+  const { isAuthenticated, logout, loading } = useAuth();
   const [fontSize, setFontSize] = useState(16);
   const [accessibilityMenuOpen, setAccessibilityMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -27,6 +29,10 @@ export default function Navbar() {
   const decreaseFontSize = () => {
     setFontSize(prev => Math.max(prev - 2, 12));
     document.documentElement.style.fontSize = `${fontSize}px`;
+  };
+
+  const handleLogout = async () => {
+    await logout();
   };
 
   // Determine the current theme safely
@@ -124,9 +130,28 @@ export default function Navbar() {
             <div className="w-10 h-10"></div> // Placeholder with same dimensions to avoid layout shift
           )}
           
-          <Link href="/songs/create" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-            Create Song
-          </Link>
+          {/* Auth buttons */}
+          {!loading && (
+            <>
+              {isAuthenticated ? (
+                <>
+                  <Link href="/songs/create" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                    Create Song
+                  </Link>
+                  <button 
+                    onClick={handleLogout}
+                    className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-4 py-2 rounded"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <Link href="/login" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                  Login
+                </Link>
+              )}
+            </>
+          )}
         </div>
       </div>
     </nav>

@@ -15,6 +15,7 @@ export default function CreateSongPage() {
     tempo: '',
     timeSignature: '',
     tags: [] as string[],
+    isPublic: false,
   });
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,11 +41,20 @@ export default function CreateSongPage() {
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    const { name, value, type } = e.target as HTMLInputElement;
+    
+    // Handle checkbox separately
+    if (type === 'checkbox') {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: (e.target as HTMLInputElement).checked,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleTagChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -87,6 +97,7 @@ export default function CreateSongPage() {
         tempo: '',
         timeSignature: '',
         tags: [],
+        isPublic: false,
       });
 
       // Redirect to the new song page after a short delay
@@ -232,6 +243,20 @@ export default function CreateSongPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Hold Ctrl/Cmd to select multiple tags
               </p>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isPublic"
+                name="isPublic"
+                checked={formData.isPublic}
+                onChange={handleChange}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isPublic" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                Make this song public
+              </label>
             </div>
           </div>
 

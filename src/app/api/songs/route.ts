@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { cookies } from 'next/headers';
 
 const prisma = new PrismaClient();
 
+// Helper function to check if user is authenticated
+function isAuthenticated(): boolean {
+  const cookieStore = cookies();
+  const authToken = cookieStore.get('auth_token');
+  return !!authToken;
+}
+
 export async function GET() {
   try {
+    // Check if user is authenticated
+    const isAdmin = isAuthenticated();
+    
+    // If not authenticated, only return public songs
     const songs = await prisma.song.findMany({
+      where: isAdmin ? undefined : { isPublic: true },
       include: {
         tags: true,
       },
@@ -26,6 +39,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     const data = await request.json();
     
     // Validate required fields
@@ -53,7 +74,7 @@ export async function POST(request: NextRequest) {
         key: data.key || null,
         tempo: data.tempo ? parseInt(data.tempo) : null,
         timeSignature: data.timeSignature || null,
-        isPublic: true,
+        isPublic: data.isPublic ?? false, // Default to private
         tags: tags,
       },
       include: {
