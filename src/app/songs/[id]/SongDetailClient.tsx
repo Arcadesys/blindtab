@@ -72,8 +72,8 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
 
   return (
     <div className="relative min-h-screen pb-20 md:pb-0">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 shadow-md">
+      {/* Header - removed sticky positioning */}
+      <div className="bg-white dark:bg-gray-900 shadow-md">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>

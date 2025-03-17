@@ -10,6 +10,7 @@ interface LeadsheetDisplayProps {
   setFontSize?: (size: number) => void;
   autoScroll?: boolean;
   displayMode?: DisplayMode;
+  onMenuVisibilityChange?: (visible: boolean) => void;
 }
 
 interface LineGroup {
@@ -22,7 +23,8 @@ export default function LeadsheetDisplay({
   fontSize,
   setFontSize,
   autoScroll = false,
-  displayMode = 'default'
+  displayMode = 'default',
+  onMenuVisibilityChange
 }: LeadsheetDisplayProps) {
   const [lines, setLines] = useState<string[]>([]);
   const [lineTypes, setLineTypes] = useState<('chord' | 'lyric' | 'other')[]>([]);
@@ -66,16 +68,26 @@ export default function LeadsheetDisplay({
     }
   }, [showControls]);
   
-  // Auto-hide top menu after a delay
+  // Auto-hide top menu after a delay and notify parent
   useEffect(() => {
     if (showTopMenu) {
       const timer = setTimeout(() => {
         setShowTopMenu(false);
+        if (onMenuVisibilityChange) {
+          onMenuVisibilityChange(false);
+        }
       }, 3000);
       
       return () => clearTimeout(timer);
     }
-  }, [showTopMenu]);
+  }, [showTopMenu, onMenuVisibilityChange]);
+  
+  // Notify parent when menu visibility changes
+  useEffect(() => {
+    if (onMenuVisibilityChange) {
+      onMenuVisibilityChange(showTopMenu);
+    }
+  }, [showTopMenu, onMenuVisibilityChange]);
 
   // Parse content into lines and identify chord lines
   useEffect(() => {
@@ -283,8 +295,6 @@ export default function LeadsheetDisplay({
       // Handle tap navigation based on screen position
       const screenWidth = window.innerWidth;
       const tapX = touchEndX;
-      const tapY = touchEndY;
-      const isTopArea = tapY < 150; // Approximate top area where menu is
       
       if (tapX < screenWidth * 0.3) {
         // Tap on left side - go to previous and hide top menu
@@ -295,14 +305,8 @@ export default function LeadsheetDisplay({
         goToNextGroup();
         setShowTopMenu(false);
       } else {
-        // Tap in middle
-        if (isTopArea) {
-          // Toggle top menu if tapping in top area
-          setShowTopMenu(!showTopMenu);
-        } else {
-          // Toggle controls if tapping in middle area
-          setShowControls(!showControls);
-        }
+        // Tap in middle - toggle controls
+        setShowControls(!showControls);
       }
     } else if (Math.abs(deltaY) > Math.abs(deltaX)) {
       // Vertical swipe
@@ -312,12 +316,6 @@ export default function LeadsheetDisplay({
       } else if (deltaY < -50) {
         // Swipe up - go to next
         goToNextGroup();
-      }
-    } else if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      // Horizontal swipe
-      if (Math.abs(deltaX) > 50) {
-        // Hide top menu on any significant horizontal swipe
-        setShowTopMenu(false);
       }
     }
   };
@@ -392,15 +390,6 @@ export default function LeadsheetDisplay({
           lineHeight: '1.5'
         }}
       >
-        {/* Top menu area that scrolls with content */}
-        <div 
-          className={`w-full mb-4 transition-opacity duration-300 ${showTopMenu ? 'opacity-100' : 'opacity-0'}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* This is just a placeholder - the actual menu is rendered by parent */}
-          <div className="h-12"></div>
-        </div>
-        
         <pre 
           ref={contentRef}
           className="whitespace-pre-wrap break-words w-full"
