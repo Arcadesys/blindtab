@@ -68,7 +68,13 @@ export async function PUT(
     let tags = undefined;
     if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
       tags = {
-        connect: data.tags.map((tagId: string) => ({ id: tagId })),
+        set: [], // First disconnect all existing tags
+        connect: data.tags.map((tagId: string) => ({ id: tagId })), // Then connect the selected ones
+      };
+    } else {
+      // If no tags are selected, remove all tags
+      tags = {
+        set: [],
       };
     }
 
@@ -82,7 +88,7 @@ export async function PUT(
         key: data.key || null,
         tempo: data.tempo ? parseInt(data.tempo) : null,
         timeSignature: data.timeSignature || null,
-        isPublic: true,
+        isPublic: data.isPublic ?? true, // Default to public if not specified
         tags: tags,
       },
       include: {

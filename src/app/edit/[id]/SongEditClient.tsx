@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Song } from '@/types/song';
+import { Tag } from '@prisma/client';
 
 interface SongEditClientProps {
   song: Song;
@@ -17,9 +18,35 @@ export default function SongEditClient({ song }: SongEditClientProps) {
   const [key, setKey] = useState(song.key || '');
   const [tempo, setTempo] = useState(song.tempo?.toString() || '');
   const [timeSignature, setTimeSignature] = useState(song.timeSignature || '');
+  const [selectedTags, setSelectedTags] = useState<string[]>(song.tags.map(tag => tag.id));
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [isPublic, setIsPublic] = useState(song.isPublic);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Fetch available tags
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await fetch('/api/tags');
+        if (!response.ok) {
+          throw new Error('Failed to fetch tags');
+        }
+        const data = await response.json();
+        setAvailableTags(data);
+      } catch (err) {
+        console.error('Error loading tags:', err);
+      }
+    };
+
+    fetchTags();
+  }, []);
+
+  const handleTagChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = Array.from(e.target.selectedOptions).map(option => option.value);
+    setSelectedTags(selected);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +66,8 @@ export default function SongEditClient({ song }: SongEditClientProps) {
           key,
           tempo,
           timeSignature,
+          tags: selectedTags,
+          isPublic,
         }),
       });
 
@@ -50,7 +79,7 @@ export default function SongEditClient({ song }: SongEditClientProps) {
       router.push(`/songs/${song.id}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -174,6 +203,42 @@ export default function SongEditClient({ song }: SongEditClientProps) {
               className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
               placeholder="e.g. 4/4"
             />
+          </div>
+
+          <div>
+            <label htmlFor="tags" className="block text-sm font-medium mb-1">
+              Tags
+            </label>
+            <select
+              id="tags"
+              name="tags"
+              multiple
+              value={selectedTags}
+              onChange={handleTagChange}
+              className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 h-24"
+            >
+              {availableTags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Hold Ctrl/Cmd to select multiple tags
+            </p>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isPublic"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="isPublic" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+              Make this song public
+            </label>
           </div>
         </div>
 
