@@ -215,7 +215,7 @@ export default function SongEditClient({ song }: SongEditClientProps) {
               multiple
               value={selectedTags}
               onChange={handleTagChange}
-              className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 h-24"
+              className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-black dark:text-white h-24"
             >
               {availableTags.map((tag) => (
                 <option key={tag.id} value={tag.id}>

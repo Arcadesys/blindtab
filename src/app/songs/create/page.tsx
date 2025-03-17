@@ -232,7 +232,7 @@ export default function CreateSongPage() {
                 multiple
                 value={formData.tags}
                 onChange={handleTagChange}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 h-24"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 text-black dark:text-white h-24"
               >
                 {availableTags.map((tag) => (
                   <option key={tag.id} value={tag.id}>

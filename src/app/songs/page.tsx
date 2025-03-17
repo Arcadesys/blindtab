@@ -132,7 +132,7 @@ export default function SongsPage() {
                 id="tag-filter"
                 value={selectedTag || ''}
                 onChange={(e) => setSelectedTag(e.target.value || null)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 text-black dark:text-white"
               >
                 <option value="">All Tags</option>
                 {tags.map((tag) => (
