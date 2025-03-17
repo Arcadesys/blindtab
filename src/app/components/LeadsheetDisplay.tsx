@@ -1,360 +1,343 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+
+export type DisplayMode = 'default' | 'high-contrast' | 'yellow-black' | 'black-white';
 
 interface LeadsheetDisplayProps {
   content: string;
-  autoScroll: boolean;
   fontSize: number;
   setFontSize?: (size: number) => void;
-  displayMode?: 'default' | 'high-contrast' | 'yellow-black' | 'black-white';
+  autoScroll?: boolean;
+  displayMode?: DisplayMode;
 }
 
-export function LeadsheetDisplay({ 
+interface LineGroup {
+  chordLine: number;
+  lyricLine: number;
+}
+
+export default function LeadsheetDisplay({ 
   content, 
-  autoScroll, 
   fontSize,
   setFontSize,
+  autoScroll = false,
   displayMode = 'default'
 }: LeadsheetDisplayProps) {
   const [lines, setLines] = useState<string[]>([]);
-  const [currentLineIndex, setCurrentLineIndex] = useState(0);
-  const [showControls, setShowControls] = useState(false);
   const [lineTypes, setLineTypes] = useState<('chord' | 'lyric' | 'other')[]>([]);
-  const [lineGroups, setLineGroups] = useState<number[]>([]);
-  const [showFontSizeSlider, setShowFontSizeSlider] = useState(false);
+  const [lineGroups, setLineGroups] = useState<LineGroup[]>([]);
+  const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
+  const [showControls, setShowControls] = useState(false);
   const [localFontSize, setLocalFontSize] = useState(fontSize);
-  const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [touchStartY, setTouchStartY] = useState(0);
+  const [touchStartX, setTouchStartX] = useState(0);
+  const [showTapHint, setShowTapHint] = useState(true);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLPreElement>(null);
-  const [touchStartY, setTouchStartY] = useState<number | null>(null);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [showTapHint, setShowTapHint] = useState(true);
-
+  const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  
   // Update local font size when prop changes
   useEffect(() => {
     setLocalFontSize(fontSize);
   }, [fontSize]);
-
+  
   // Hide tap hint after 5 seconds
   useEffect(() => {
     if (showTapHint) {
       const timer = setTimeout(() => {
         setShowTapHint(false);
       }, 5000);
+      
       return () => clearTimeout(timer);
     }
   }, [showTapHint]);
 
-  // Auto-scale text to fit container
+  // Parse content into lines and identify chord lines
   useEffect(() => {
-    const autoScaleText = () => {
-      if (!containerRef.current || !contentRef.current) return;
-      
-      // Get container width
-      const containerWidth = containerRef.current.clientWidth - 32; // Subtract padding
-      
-      // Find the longest line
-      let maxLineLength = 0;
-      let longestLine = '';
-      
-      lines.forEach(line => {
-        if (line.length > maxLineLength) {
-          maxLineLength = line.length;
-          longestLine = line;
-        }
-      });
-      
-      if (maxLineLength === 0) return;
-      
-      // Create a temporary span to measure text width
-      const tempSpan = document.createElement('span');
-      tempSpan.style.fontSize = '1px'; // Start with 1px
-      tempSpan.style.fontFamily = 'var(--font-mono)';
-      tempSpan.style.visibility = 'hidden';
-      tempSpan.style.position = 'absolute';
-      tempSpan.style.whiteSpace = 'pre';
-      tempSpan.innerText = longestLine;
-      document.body.appendChild(tempSpan);
-      
-      // Calculate optimal font size
-      const charWidthAt1px = tempSpan.offsetWidth / maxLineLength;
-      const optimalFontSize = Math.floor(containerWidth / (charWidthAt1px * maxLineLength));
-      
-      // Limit font size between 12 and 36
-      const newFontSize = Math.max(12, Math.min(36, optimalFontSize));
-      
-      // Update font size if it's different
-      if (newFontSize !== localFontSize) {
-        setLocalFontSize(newFontSize);
-        if (setFontSize) {
-          setFontSize(newFontSize);
-        }
-      }
-      
-      // Clean up
-      document.body.removeChild(tempSpan);
-    };
+    if (!content) return;
     
-    // Run auto-scale on mount and when container size changes
-    autoScaleText();
+    const contentLines = content.split('\n');
+    setLines(contentLines);
     
-    // Set up resize observer
-    const resizeObserver = new ResizeObserver(() => {
-      autoScaleText();
+    // Identify line types (chord, lyric, or other)
+    const types = contentLines.map(line => {
+      if (isChordLine(line)) return 'chord';
+      if (line.trim() && !line.startsWith('#') && !line.startsWith('[')) return 'lyric';
+      return 'other';
     });
+    setLineTypes(types);
     
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-    
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [lines, containerRef, contentRef, setFontSize]);
-
-  // Parse content into lines and identify chord/lyric pairs
-  useEffect(() => {
-    if (content) {
-      const parsedLines = content.split('\n');
-      setLines(parsedLines);
-      lineRefs.current = lineRefs.current.slice(0, parsedLines.length);
-      
-      // Identify line types (chord, lyric, other)
-      const types: ('chord' | 'lyric' | 'other')[] = [];
-      parsedLines.forEach(line => {
-        if (isChordLine(line)) {
-          types.push('chord');
-        } else if (line.trim() === '') {
-          types.push('other');
-        } else {
-          types.push('lyric');
+    // Group chord lines with their corresponding lyric lines
+    const groups: LineGroup[] = [];
+    for (let i = 0; i < types.length; i++) {
+      if (types[i] === 'chord') {
+        // Find the next lyric line
+        let lyricLineIndex = -1;
+        for (let j = i + 1; j < types.length; j++) {
+          if (types[j] === 'lyric') {
+            lyricLineIndex = j;
+            break;
+          }
         }
-      });
-      setLineTypes(types);
-      
-      // Group lines together (chord + lyric pairs)
-      const groups: number[] = [];
-      let currentGroup = 0;
-      
-      for (let i = 0; i < types.length; i++) {
-        if (i > 0 && types[i-1] === 'chord' && types[i] === 'lyric') {
-          // This lyric line belongs to the previous chord line's group
-          groups.push(currentGroup);
-        } else if (types[i] === 'chord') {
-          // Start a new group for each chord line
-          currentGroup++;
-          groups.push(currentGroup);
-        } else {
-          // Other lines get their own group
-          currentGroup++;
-          groups.push(currentGroup);
+        
+        if (lyricLineIndex !== -1) {
+          groups.push({
+            chordLine: i,
+            lyricLine: lyricLineIndex
+          });
         }
       }
-      
-      setLineGroups(groups);
     }
+    setLineGroups(groups);
+    
   }, [content]);
+  
+  // Auto-scroll to the current group
+  useEffect(() => {
+    if (autoScroll && lineGroups.length > 0 && currentGroupIndex < lineGroups.length) {
+      const currentGroup = lineGroups[currentGroupIndex];
+      const chordLineEl = lineRefs.current[currentGroup.chordLine];
+      
+      if (chordLineEl) {
+        chordLineEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [autoScroll, currentGroupIndex, lineGroups]);
 
-  // Handle keyboard navigation
+  // Add keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown' || e.key === 'j' || e.key === ' ') {
+      // Navigation shortcuts
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'j') {
         e.preventDefault();
-        navigateToNextGroup();
-      } else if (e.key === 'ArrowUp' || e.key === 'k') {
+        goToNextGroup();
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'k') {
         e.preventDefault();
-        navigateToPreviousGroup();
+        goToPreviousGroup();
       } else if (e.key === 'Home') {
         e.preventDefault();
-        setCurrentLineIndex(0);
+        goToFirstGroup();
       } else if (e.key === 'End') {
         e.preventDefault();
-        setCurrentLineIndex(lines.length - 1);
-      } else if (e.key === 'c') {
+        goToLastGroup();
+      }
+      
+      // Font size shortcuts
+      else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        adjustFontSize(2);
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        adjustFontSize(-2);
+      } else if (e.key === '0') {
+        e.preventDefault();
+        autoScaleFontSize();
+      }
+      
+      // Toggle controls
+      else if (e.key === 'f') {
         e.preventDefault();
         setShowControls(!showControls);
-      } else if (e.key === 'f') {
-        e.preventDefault();
-        setShowFontSizeSlider(!showFontSizeSlider);
       }
     };
-
+    
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lines.length, showControls, lineGroups, showFontSizeSlider]);
-
-  // Auto-scroll to current line
-  useEffect(() => {
-    if (lineRefs.current[currentLineIndex]) {
-      lineRefs.current[currentLineIndex]?.scrollIntoView({
-        behavior: autoScroll ? 'smooth' : 'auto',
-        block: 'center',
-      });
-    }
-  }, [currentLineIndex, autoScroll]);
-
-  // Check if a line contains chords
+  }, [currentGroupIndex, lineGroups, showControls]);
+  
+  // Helper function to check if a line is a chord line
   const isChordLine = (line: string) => {
-    // Regex to detect chord patterns
-    // This matches common chord patterns like D, A, Bm, G/B, etc.
-    const chordPattern = /^[A-G][#b]?(m|maj|min|aug|dim|sus|add|maj7|m7|7|9|11|13|6|5)?(\d)?(\/)?([\w#]+)?(\s+|$)/;
+    // A chord line typically contains chord patterns like A, Am, C#m7, etc.
+    // and has spaces between chords
+    if (!line.trim()) return false;
     
-    // Check if the line has multiple chord-like patterns with spaces between them
-    const words = line.trim().split(/\s+/);
-    let chordCount = 0;
+    // Ignore lines that are likely headers or comments
+    if (line.startsWith('#') || line.startsWith('[')) return false;
     
-    for (const word of words) {
-      if (chordPattern.test(word)) {
-        chordCount++;
-      }
-    }
+    // Check for chord patterns
+    const chordPattern = /\b([A-G][b#]?)(m|maj|min|aug|dim|sus|add)?[0-9]?(\/?[A-G][b#]?)?\b/;
+    const words = line.split(/\s+/);
     
-    // If most words in the line match chord patterns, it's likely a chord line
-    return chordCount > 0 && chordCount / words.length > 0.5;
+    // A chord line usually has multiple chord-like words with spaces between them
+    // and is relatively short
+    return words.length > 0 && 
+           words.some(word => chordPattern.test(word)) &&
+           words.length <= 16 && // Arbitrary limit to avoid matching lyric lines
+           words.join('').length < 40; // Another heuristic to avoid long lyric lines
   };
-
-  const handleLineClick = (index: number) => {
-    setCurrentLineIndex(index);
-  };
-
-  // Navigate to the next group of lines
-  const navigateToNextGroup = () => {
-    if (currentLineIndex >= lines.length - 1) return;
-    
-    const currentGroup = lineGroups[currentLineIndex];
-    let nextIndex = currentLineIndex + 1;
-    
-    // Find the first line of the next group
-    while (nextIndex < lines.length && lineGroups[nextIndex] === currentGroup) {
-      nextIndex++;
+  
+  // Navigation functions
+  const goToNextGroup = useCallback(() => {
+    if (lineGroups.length > 0 && currentGroupIndex < lineGroups.length - 1) {
+      setCurrentGroupIndex(currentGroupIndex + 1);
     }
-    
-    if (nextIndex < lines.length) {
-      setCurrentLineIndex(nextIndex);
+  }, [currentGroupIndex, lineGroups]);
+  
+  const goToPreviousGroup = useCallback(() => {
+    if (lineGroups.length > 0 && currentGroupIndex > 0) {
+      setCurrentGroupIndex(currentGroupIndex - 1);
     }
-  };
-
-  // Navigate to the previous group of lines
-  const navigateToPreviousGroup = () => {
-    if (currentLineIndex <= 0) return;
-    
-    const currentGroup = lineGroups[currentLineIndex];
-    let prevIndex = currentLineIndex - 1;
-    
-    // Find the first line of the previous group
-    while (prevIndex > 0 && lineGroups[prevIndex] === currentGroup) {
-      prevIndex--;
+  }, [currentGroupIndex, lineGroups]);
+  
+  const goToFirstGroup = useCallback(() => {
+    if (lineGroups.length > 0) {
+      setCurrentGroupIndex(0);
     }
-    
-    // If we're now in the middle of a group, find its first line
-    if (prevIndex > 0) {
-      const prevGroup = lineGroups[prevIndex];
-      while (prevIndex > 0 && lineGroups[prevIndex - 1] === prevGroup) {
-        prevIndex--;
-      }
+  }, [lineGroups]);
+  
+  const goToLastGroup = useCallback(() => {
+    if (lineGroups.length > 0) {
+      setCurrentGroupIndex(lineGroups.length - 1);
     }
-    
-    setCurrentLineIndex(prevIndex);
-  };
-
-  // Handle touch events for mobile swipe navigation
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStartY(e.touches[0].clientY);
-    setTouchStartX(e.touches[0].clientX);
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartY === null || touchStartX === null) return;
-    
-    const touchEndY = e.changedTouches[0].clientY;
-    const touchEndX = e.changedTouches[0].clientX;
-    const deltaY = touchEndY - touchStartY;
-    const deltaX = touchEndX - touchStartX;
-    
-    // If it's a tap (minimal movement), handle tap navigation
-    if (Math.abs(deltaY) < 10 && Math.abs(deltaX) < 10) {
-      // Get the tap position
-      const tapX = e.changedTouches[0].clientX;
-      const containerWidth = containerRef.current?.clientWidth || window.innerWidth;
-      
-      // If tap is on the right side of the screen, go to next group
-      if (tapX > containerWidth / 2) {
-        navigateToNextGroup();
-      } 
-      // If tap is on the left side of the screen, go to previous group
-      else {
-        navigateToPreviousGroup();
-      }
-    }
-    // If it's a significant vertical swipe, handle swipe navigation
-    else if (Math.abs(deltaY) > 50 && Math.abs(deltaY) > Math.abs(deltaX)) {
-      if (deltaY > 0) {
-        // Swipe down - go to previous group
-        navigateToPreviousGroup();
-      } else {
-        // Swipe up - go to next group
-        navigateToNextGroup();
-      }
-    }
-    
-    setTouchStartY(null);
-    setTouchStartX(null);
-  };
-
-  // Handle font size change
-  const handleFontSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSize = parseInt(e.target.value);
+  }, [lineGroups]);
+  
+  // Font size adjustment
+  const adjustFontSize = useCallback((delta: number) => {
+    const newSize = Math.max(12, Math.min(48, localFontSize + delta));
     setLocalFontSize(newSize);
     if (setFontSize) {
       setFontSize(newSize);
     }
+  }, [localFontSize, setFontSize]);
+  
+  // Auto-scale font size to fit content
+  const autoScaleFontSize = useCallback(() => {
+    if (!containerRef.current || !contentRef.current || lines.length === 0) return;
+    
+    // Find the longest line
+    const longestLine = lines.reduce((longest, line) => 
+      line.length > longest.length ? line : longest, '');
+    
+    if (!longestLine) return;
+    
+    // Get container width (minus padding)
+    const containerWidth = containerRef.current.clientWidth - 32;
+    
+    // Create a temporary span to measure text width
+    const tempSpan = document.createElement('span');
+    tempSpan.style.fontSize = '1px'; // Start with 1px
+    tempSpan.style.fontFamily = 'var(--font-mono)';
+    tempSpan.style.visibility = 'hidden';
+    tempSpan.style.position = 'absolute';
+    tempSpan.style.whiteSpace = 'pre';
+    tempSpan.innerText = longestLine;
+    document.body.appendChild(tempSpan);
+    
+    // Calculate optimal font size
+    const textWidth = tempSpan.offsetWidth;
+    const optimalFontSize = Math.floor(containerWidth / textWidth);
+    
+    // Clean up
+    document.body.removeChild(tempSpan);
+    
+    // Set font size (with limits)
+    const newSize = Math.max(12, Math.min(32, optimalFontSize));
+    setLocalFontSize(newSize);
+    if (setFontSize) {
+      setFontSize(newSize);
+    }
+  }, [lines, setFontSize]);
+  
+  // Touch event handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartY(e.touches[0].clientY);
+    setTouchStartX(e.touches[0].clientX);
   };
-
-  // Get display mode styles
-  const getDisplayModeStyles = (isCurrentLine: boolean, isChord: boolean) => {
-    switch (displayMode) {
-      case 'high-contrast':
-        return isCurrentLine 
-          ? 'bg-blue-600 text-white font-bold' 
-          : isChord 
-            ? 'text-yellow-500 dark:text-yellow-400 font-bold'
-            : 'text-white dark:text-white';
-      case 'yellow-black':
-        return isCurrentLine 
-          ? 'bg-yellow-400 text-black font-bold' 
-          : isChord 
-            ? 'text-yellow-500 font-bold'
-            : 'text-white';
-      case 'black-white':
-        return isCurrentLine 
-          ? 'bg-white text-black font-bold' 
-          : isChord 
-            ? 'text-white font-bold'
-            : 'text-gray-300';
-      default:
-        return isCurrentLine 
-          ? 'bg-blue-100 dark:bg-blue-900 font-bold' 
-          : isChord
-            ? 'text-blue-600 dark:text-blue-400 font-bold'
-            : '';
+  
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndY = e.changedTouches[0].clientY;
+    const touchEndX = e.changedTouches[0].clientX;
+    
+    const deltaY = touchEndY - touchStartY;
+    const deltaX = touchEndX - touchStartX;
+    
+    // Determine if it's a tap or a swipe
+    const isTap = Math.abs(deltaY) < 10 && Math.abs(deltaX) < 10;
+    
+    if (isTap) {
+      // Handle tap navigation based on screen position
+      const screenWidth = window.innerWidth;
+      const tapX = touchEndX;
+      
+      if (tapX < screenWidth * 0.3) {
+        // Tap on left side - go to previous
+        goToPreviousGroup();
+      } else if (tapX > screenWidth * 0.7) {
+        // Tap on right side - go to next
+        goToNextGroup();
+      } else {
+        // Tap in middle - toggle controls
+        setShowControls(!showControls);
+      }
+    } else if (Math.abs(deltaY) > Math.abs(deltaX)) {
+      // Vertical swipe
+      if (deltaY > 50) {
+        // Swipe down - go to previous
+        goToPreviousGroup();
+      } else if (deltaY < -50) {
+        // Swipe up - go to next
+        goToNextGroup();
+      }
     }
   };
-
+  
   // Get background color based on display mode
   const getBackgroundColor = () => {
     switch (displayMode) {
       case 'high-contrast':
-        return 'bg-gray-900';
+        return 'bg-white text-black';
       case 'yellow-black':
-        return 'bg-black';
+        return 'bg-black text-yellow-300';
       case 'black-white':
-        return 'bg-black';
+        return 'bg-white text-black';
       default:
-        return '';
+        return 'bg-white dark:bg-gray-900 text-black dark:text-white';
     }
   };
-
+  
+  // Get text style based on display mode
+  const getTextStyle = (lineType: 'chord' | 'lyric' | 'other') => {
+    const baseStyle = 'block py-0.5';
+    
+    if (lineType === 'chord') {
+      switch (displayMode) {
+        case 'high-contrast':
+          return `${baseStyle} text-blue-700 font-bold`;
+        case 'yellow-black':
+          return `${baseStyle} text-yellow-300 font-bold`;
+        case 'black-white':
+          return `${baseStyle} text-black font-bold`;
+        default:
+          return `${baseStyle} text-blue-600 dark:text-blue-400`;
+      }
+    }
+    
+    return baseStyle;
+  };
+  
+  // Get highlight style for current group
+  const getHighlightStyle = (lineIndex: number) => {
+    if (lineGroups.length === 0 || currentGroupIndex >= lineGroups.length) return '';
+    
+    const currentGroup = lineGroups[currentGroupIndex];
+    if (lineIndex === currentGroup.chordLine || lineIndex === currentGroup.lyricLine) {
+      switch (displayMode) {
+        case 'high-contrast':
+          return 'bg-yellow-200 font-bold';
+        case 'yellow-black':
+          return 'bg-yellow-900 font-bold';
+        case 'black-white':
+          return 'bg-gray-200 font-bold';
+        default:
+          return 'bg-blue-100 dark:bg-blue-900';
+      }
+    }
+    
+    return '';
+  };
+  
   return (
     <div 
       className={`flex flex-col h-full relative ${getBackgroundColor()}`}
@@ -374,180 +357,111 @@ export function LeadsheetDisplay({
           ref={contentRef}
           className="whitespace-pre-wrap break-words w-full"
         >
-          {lines.map((line, index) => {
-            const isChord = lineTypes[index] === 'chord';
-            const currentGroup = lineGroups[currentLineIndex];
-            const isCurrentLine = lineGroups[index] === currentGroup;
-            
-            return (
-              <div
-                key={index}
-                ref={el => lineRefs.current[index] = el}
-                className={`py-1 cursor-pointer transition-colors ${getDisplayModeStyles(isCurrentLine, isChord)}`}
-                onClick={() => handleLineClick(index)}
-              >
-                {line}
-              </div>
-            );
-          })}
+          {lines.map((line, index) => (
+            <span
+              key={index}
+              ref={(el) => { lineRefs.current[index] = el; }}
+              className={`${getTextStyle(lineTypes[index])} ${getHighlightStyle(index)}`}
+            >
+              {line}
+              {index < lines.length - 1 ? '\n' : ''}
+            </span>
+          ))}
         </pre>
       </div>
       
-      {/* Floating mini controls that appear on interaction */}
+      {/* Font size controls */}
       {showControls && (
-        <div className="absolute bottom-4 right-4 bg-white dark:bg-gray-800 rounded-full shadow-lg p-2 flex items-center space-x-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              navigateToPreviousGroup();
-            }}
-            className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
-            aria-label="Previous line"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </button>
-          
-          <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-            {currentLineIndex + 1}/{lines.length}
-          </span>
-          
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              navigateToNextGroup();
-            }}
-            className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
-            aria-label="Next line"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            </svg>
-          </button>
-          
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowFontSizeSlider(!showFontSizeSlider);
-            }}
-            className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
-            aria-label="Font size"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-            </svg>
-          </button>
-        </div>
-      )}
-      
-      {/* Font size slider */}
-      {showFontSizeSlider && (
-        <div className="absolute bottom-20 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 w-48">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-medium">Font Size: {localFontSize}px</span>
+        <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center bg-white dark:bg-gray-800 rounded-lg shadow-lg mx-4 p-4 z-10">
+          <div className="flex items-center justify-between w-full mb-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setShowFontSizeSlider(false);
+                adjustFontSize(-2);
               }}
-              className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+              className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full"
+              aria-label="Decrease font size"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+              </svg>
+            </button>
+            
+            <span className="text-sm font-medium">{localFontSize}px</span>
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                adjustFontSize(2);
+              }}
+              className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full"
+              aria-label="Increase font size"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
             </button>
           </div>
+          
           <input
             type="range"
             min="12"
-            max="36"
+            max="48"
             value={localFontSize}
-            onChange={handleFontSizeChange}
-            className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            onChange={(e) => {
+              const newSize = parseInt(e.target.value);
+              setLocalFontSize(newSize);
+              if (setFontSize) {
+                setFontSize(newSize);
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 mb-2"
           />
-          <div className="flex justify-between text-xs mt-1">
-            <span>12px</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // Auto-scale text
-                if (containerRef.current && contentRef.current) {
-                  const containerWidth = containerRef.current.clientWidth - 32;
-                  const maxLineLength = Math.max(...lines.map(line => line.length));
-                  
-                  if (maxLineLength > 0) {
-                    const tempSpan = document.createElement('span');
-                    tempSpan.style.fontSize = '1px';
-                    tempSpan.style.fontFamily = 'var(--font-mono)';
-                    tempSpan.style.visibility = 'hidden';
-                    tempSpan.style.position = 'absolute';
-                    tempSpan.style.whiteSpace = 'pre';
-                    tempSpan.innerText = 'X'.repeat(maxLineLength);
-                    document.body.appendChild(tempSpan);
-                    
-                    const charWidthAt1px = tempSpan.offsetWidth / maxLineLength;
-                    const optimalFontSize = Math.floor(containerWidth / (charWidthAt1px * maxLineLength));
-                    const newFontSize = Math.max(12, Math.min(36, optimalFontSize));
-                    
-                    setLocalFontSize(newFontSize);
-                    if (setFontSize) {
-                      setFontSize(newFontSize);
-                    }
-                    
-                    document.body.removeChild(tempSpan);
-                  }
-                }
-              }}
-              className="text-blue-600 dark:text-blue-400 font-medium"
-            >
-              Auto
-            </button>
-            <span>36px</span>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              autoScaleFontSize();
+            }}
+            className="w-full p-2 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 rounded-lg text-sm font-medium"
+          >
+            Auto-scale Text
+          </button>
+          
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <p>Keyboard shortcuts:</p>
+            <p>+/- to adjust size, 0 to auto-scale</p>
+            <p>↑/↓ or PageUp/PageDown to navigate</p>
           </div>
         </div>
       )}
       
-      {/* Tap navigation hints - only shown initially */}
+      {/* Tap navigation hints */}
       {showTapHint && (
         <>
-          <div className="md:hidden absolute top-1/2 left-4 transform -translate-y-1/2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Tap for previous
+          <div className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg text-sm">
+            Tap for<br />previous
           </div>
-          <div className="md:hidden absolute top-1/2 right-4 transform -translate-y-1/2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none flex items-center">
-            Tap for next
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
+          <div className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg text-sm">
+            Tap for<br />next
           </div>
         </>
       )}
       
-      {/* Mobile navigation hint - only shown initially */}
-      {showTapHint && (
-        <div className="md:hidden absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none">
-          Swipe up/down to navigate
-        </div>
-      )}
-      
-      {/* Left side tap area */}
+      {/* Invisible tap areas for navigation */}
       <div 
-        className="absolute left-0 top-0 w-1/2 h-full opacity-0"
+        className="absolute top-0 left-0 w-1/3 h-full z-0"
         onClick={(e) => {
           e.stopPropagation();
-          navigateToPreviousGroup();
+          goToPreviousGroup();
         }}
       />
-      
-      {/* Right side tap area */}
       <div 
-        className="absolute right-0 top-0 w-1/2 h-full opacity-0"
+        className="absolute top-0 right-0 w-1/3 h-full z-0"
         onClick={(e) => {
           e.stopPropagation();
-          navigateToNextGroup();
+          goToNextGroup();
         }}
       />
     </div>
