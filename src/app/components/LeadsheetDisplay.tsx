@@ -38,10 +38,58 @@ export default function LeadsheetDisplay({
   const contentRef = useRef<HTMLPreElement>(null);
   const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
   
+  // Auto-scale font size to fit content
+  const autoScaleFontSize = useCallback(() => {
+    if (!containerRef.current || !contentRef.current || lines.length === 0) return;
+    
+    // Find the longest line
+    const longestLine = lines.reduce((longest, line) => 
+      line.length > longest.length ? line : longest, '');
+    
+    if (!longestLine) return;
+    
+    // Get container width (minus minimal padding)
+    const containerWidth = containerRef.current.clientWidth - 8; // 4px padding on each side
+    
+    // Create a temporary span to measure text width
+    const tempSpan = document.createElement('span');
+    tempSpan.style.fontSize = '1px'; // Start with 1px
+    tempSpan.style.fontFamily = 'var(--font-mono)';
+    tempSpan.style.visibility = 'hidden';
+    tempSpan.style.position = 'absolute';
+    tempSpan.style.whiteSpace = 'pre';
+    tempSpan.innerText = longestLine;
+    document.body.appendChild(tempSpan);
+    
+    // Calculate optimal font size
+    const textWidth = tempSpan.offsetWidth;
+    const optimalFontSize = Math.floor(containerWidth / textWidth);
+    
+    // Clean up
+    document.body.removeChild(tempSpan);
+    
+    // Set font size (with limits)
+    const newSize = Math.max(12, Math.min(48, optimalFontSize));
+    setLocalFontSize(newSize);
+    if (setFontSize) {
+      setFontSize(newSize);
+    }
+  }, [lines, setFontSize]);
+  
   // Update local font size when prop changes
   useEffect(() => {
     setLocalFontSize(fontSize);
   }, [fontSize]);
+  
+  // Run auto-scale after component mounts
+  useEffect(() => {
+    // Use a small delay to ensure the DOM is fully rendered
+    const timer = setTimeout(() => {
+      autoScaleFontSize();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [autoScaleFontSize]);
   
   // Hide tap hint after 5 seconds
   useEffect(() => {
@@ -92,7 +140,15 @@ export default function LeadsheetDisplay({
     }
     setLineGroups(groups);
     
-  }, [content]);
+    // Auto-scale font size after content is processed
+    // Use setTimeout to ensure the DOM has been updated
+    setTimeout(() => {
+      if (containerRef.current) {
+        autoScaleFontSize();
+      }
+    }, 0);
+    
+  }, [content, autoScaleFontSize]);
   
   // Auto-scroll to the current group
   useEffect(() => {
@@ -105,6 +161,18 @@ export default function LeadsheetDisplay({
       }
     }
   }, [autoScroll, currentGroupIndex, lineGroups]);
+
+  // Add window resize listener to auto-scale font size
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        autoScaleFontSize();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [autoScaleFontSize]);
 
   // Add keyboard navigation
   useEffect(() => {
@@ -201,44 +269,6 @@ export default function LeadsheetDisplay({
       setFontSize(newSize);
     }
   }, [localFontSize, setFontSize]);
-  
-  // Auto-scale font size to fit content
-  const autoScaleFontSize = useCallback(() => {
-    if (!containerRef.current || !contentRef.current || lines.length === 0) return;
-    
-    // Find the longest line
-    const longestLine = lines.reduce((longest, line) => 
-      line.length > longest.length ? line : longest, '');
-    
-    if (!longestLine) return;
-    
-    // Get container width (minus padding)
-    const containerWidth = containerRef.current.clientWidth - 32;
-    
-    // Create a temporary span to measure text width
-    const tempSpan = document.createElement('span');
-    tempSpan.style.fontSize = '1px'; // Start with 1px
-    tempSpan.style.fontFamily = 'var(--font-mono)';
-    tempSpan.style.visibility = 'hidden';
-    tempSpan.style.position = 'absolute';
-    tempSpan.style.whiteSpace = 'pre';
-    tempSpan.innerText = longestLine;
-    document.body.appendChild(tempSpan);
-    
-    // Calculate optimal font size
-    const textWidth = tempSpan.offsetWidth;
-    const optimalFontSize = Math.floor(containerWidth / textWidth);
-    
-    // Clean up
-    document.body.removeChild(tempSpan);
-    
-    // Set font size (with limits)
-    const newSize = Math.max(12, Math.min(32, optimalFontSize));
-    setLocalFontSize(newSize);
-    if (setFontSize) {
-      setFontSize(newSize);
-    }
-  }, [lines, setFontSize]);
   
   // Touch event handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -347,7 +377,7 @@ export default function LeadsheetDisplay({
     >
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto px-2 md:px-4 font-mono"
+        className="flex-1 overflow-y-auto px-1 font-mono"
         style={{ 
           fontSize: `${localFontSize}px`, 
           lineHeight: '1.5'
