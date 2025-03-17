@@ -78,7 +78,7 @@ export default async function Home() {
             <h3 className="text-xl font-semibold mb-2">Metronome</h3>
             <p>
               Practice with a built-in metronome. Adjust the tempo to match 
-              the song's BPM or your preferred practice speed.
+              the song&apos;s BPM or your preferred practice speed.
             </p>
           </div>
         </div>

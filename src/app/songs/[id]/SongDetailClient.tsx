@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Song } from '@/types/song';
 import LeadsheetDisplay, { DisplayMode } from '@/app/components/LeadsheetDisplay';
@@ -24,7 +23,6 @@ interface SongDetailClientProps {
 }
 
 export default function SongDetailClient({ song }: SongDetailClientProps) {
-  const router = useRouter();
   const [fontSize, setFontSize] = useState(28);
   const [autoScroll, setAutoScroll] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);

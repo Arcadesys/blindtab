@@ -35,7 +35,7 @@ export default function LeadsheetDisplay({
   const [touchStartY, setTouchStartY] = useState(0);
   const [touchStartX, setTouchStartX] = useState(0);
   const [showTapHint, setShowTapHint] = useState(true);
-  const [isNavigating, setIsNavigating] = useState(false);
+  const [isNavigating] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLPreElement>(null);
@@ -92,9 +92,12 @@ export default function LeadsheetDisplay({
 
   // Clean up navigation timeout on unmount
   useEffect(() => {
+    // Store the ref in a variable to avoid the warning
+    const currentTimeoutRef = navigationTimeoutRef.current;
+    
     return () => {
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
+      if (currentTimeoutRef) {
+        clearTimeout(currentTimeoutRef);
       }
     };
   }, []);

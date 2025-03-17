@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface ControlsPanelProps {
   autoScroll: boolean;
@@ -14,8 +14,6 @@ interface ControlsPanelProps {
 export default function ControlsPanel({
   autoScroll,
   setAutoScroll,
-  displayMode,
-  setDisplayMode,
   onClose,
   tempo: initialTempo
 }: ControlsPanelProps) {
@@ -30,7 +28,8 @@ export default function ControlsPanel({
   useEffect(() => {
     // Initialize audio context
     if (typeof window !== 'undefined') {
-      setAudioContext(new (window.AudioContext || (window as any).webkitAudioContext)());
+      setAudioContext(new (window.AudioContext || (window as Window & typeof globalThis & { webkitAudioContext?: AudioContext })
+      .webkitAudioContext)());
     }
     
     // Cleanup on unmount
@@ -42,28 +41,9 @@ export default function ControlsPanel({
         audioContext.close();
       }
     };
-  }, []);
+  }, [metronomeInterval, audioContext]);
 
-  useEffect(() => {
-    // Handle keyboard shortcuts
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === ' ' && !e.repeat && e.ctrlKey) {
-        e.preventDefault();
-        togglePlay();
-      } else if (e.key === 'm' && !e.repeat) {
-        e.preventDefault();
-        toggleMetronome();
-      } else if (e.key === 'a' && !e.repeat) {
-        e.preventDefault();
-        handleAutoScrollToggle();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, metronomeEnabled, tempo]);
-
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     const newPlayingState = !isPlaying;
     setIsPlaying(newPlayingState);
     
@@ -73,20 +53,9 @@ export default function ControlsPanel({
         setAutoScroll(true);
       }
     }
-  };
+  }, [isPlaying, autoScroll, setAutoScroll]);
 
-  const toggleMetronome = () => {
-    const newMetronomeState = !metronomeEnabled;
-    setMetronomeEnabled(newMetronomeState);
-    
-    if (newMetronomeState) {
-      startMetronome();
-    } else {
-      stopMetronome();
-    }
-  };
-
-  const startMetronome = () => {
+  const startMetronome = useCallback(() => {
     if (!audioContext) return;
     
     // Calculate interval in milliseconds from tempo (BPM)
@@ -113,18 +82,45 @@ export default function ControlsPanel({
     }, interval);
     
     setMetronomeInterval(newInterval);
-  };
+  }, [audioContext, metronomeInterval, tempo]);
 
-  const stopMetronome = () => {
+  const stopMetronome = useCallback(() => {
     if (metronomeInterval) {
       clearInterval(metronomeInterval);
       setMetronomeInterval(null);
     }
-  };
+  }, [metronomeInterval]);
 
-  const handleAutoScrollToggle = () => {
+  const toggleMetronome = useCallback(() => {
+    const newMetronomeState = !metronomeEnabled;
+    setMetronomeEnabled(newMetronomeState);
+    
+    if (newMetronomeState) {
+      startMetronome();
+    } else {
+      stopMetronome();
+    }
+  }, [metronomeEnabled, startMetronome, stopMetronome]);
+
+  const handleAutoScrollToggle = useCallback(() => {
     setAutoScroll(!autoScroll);
-  };
+  }, [autoScroll, setAutoScroll]);
+
+  useEffect(() => {
+    // Handle keyboard shortcuts
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === ' ' && !e.repeat && e.ctrlKey) {
+        togglePlay();
+      } else if (e.key === 'm' && !e.repeat && e.ctrlKey) {
+        toggleMetronome();
+      } else if (e.key === 'a' && !e.repeat && e.ctrlKey) {
+        handleAutoScrollToggle();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [togglePlay, toggleMetronome, handleAutoScrollToggle]);
 
   const handleTempoChange = (newTempo: number) => {
     setTempo(newTempo);
@@ -134,10 +130,6 @@ export default function ControlsPanel({
       stopMetronome();
       startMetronome();
     }
-  };
-
-  const handleDisplayModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setDisplayMode(e.target.value);
   };
 
   return (
