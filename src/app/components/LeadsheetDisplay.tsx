@@ -6,21 +6,153 @@ interface LeadsheetDisplayProps {
   content: string;
   autoScroll: boolean;
   fontSize: number;
+  setFontSize?: (size: number) => void;
+  displayMode?: 'default' | 'high-contrast' | 'yellow-black' | 'black-white';
 }
 
-export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDisplayProps) {
+export function LeadsheetDisplay({ 
+  content, 
+  autoScroll, 
+  fontSize,
+  setFontSize,
+  displayMode = 'default'
+}: LeadsheetDisplayProps) {
   const [lines, setLines] = useState<string[]>([]);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [showControls, setShowControls] = useState(false);
+  const [lineTypes, setLineTypes] = useState<('chord' | 'lyric' | 'other')[]>([]);
+  const [lineGroups, setLineGroups] = useState<number[]>([]);
+  const [showFontSizeSlider, setShowFontSizeSlider] = useState(false);
+  const [localFontSize, setLocalFontSize] = useState(fontSize);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLPreElement>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [showTapHint, setShowTapHint] = useState(true);
 
-  // Parse content into lines
+  // Update local font size when prop changes
+  useEffect(() => {
+    setLocalFontSize(fontSize);
+  }, [fontSize]);
+
+  // Hide tap hint after 5 seconds
+  useEffect(() => {
+    if (showTapHint) {
+      const timer = setTimeout(() => {
+        setShowTapHint(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showTapHint]);
+
+  // Auto-scale text to fit container
+  useEffect(() => {
+    const autoScaleText = () => {
+      if (!containerRef.current || !contentRef.current) return;
+      
+      // Get container width
+      const containerWidth = containerRef.current.clientWidth - 32; // Subtract padding
+      
+      // Find the longest line
+      let maxLineLength = 0;
+      let longestLine = '';
+      
+      lines.forEach(line => {
+        if (line.length > maxLineLength) {
+          maxLineLength = line.length;
+          longestLine = line;
+        }
+      });
+      
+      if (maxLineLength === 0) return;
+      
+      // Create a temporary span to measure text width
+      const tempSpan = document.createElement('span');
+      tempSpan.style.fontSize = '1px'; // Start with 1px
+      tempSpan.style.fontFamily = 'var(--font-mono)';
+      tempSpan.style.visibility = 'hidden';
+      tempSpan.style.position = 'absolute';
+      tempSpan.style.whiteSpace = 'pre';
+      tempSpan.innerText = longestLine;
+      document.body.appendChild(tempSpan);
+      
+      // Calculate optimal font size
+      const charWidthAt1px = tempSpan.offsetWidth / maxLineLength;
+      const optimalFontSize = Math.floor(containerWidth / (charWidthAt1px * maxLineLength));
+      
+      // Limit font size between 12 and 36
+      const newFontSize = Math.max(12, Math.min(36, optimalFontSize));
+      
+      // Update font size if it's different
+      if (newFontSize !== localFontSize) {
+        setLocalFontSize(newFontSize);
+        if (setFontSize) {
+          setFontSize(newFontSize);
+        }
+      }
+      
+      // Clean up
+      document.body.removeChild(tempSpan);
+    };
+    
+    // Run auto-scale on mount and when container size changes
+    autoScaleText();
+    
+    // Set up resize observer
+    const resizeObserver = new ResizeObserver(() => {
+      autoScaleText();
+    });
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [lines, containerRef, contentRef, setFontSize]);
+
+  // Parse content into lines and identify chord/lyric pairs
   useEffect(() => {
     if (content) {
       const parsedLines = content.split('\n');
       setLines(parsedLines);
       lineRefs.current = lineRefs.current.slice(0, parsedLines.length);
+      
+      // Identify line types (chord, lyric, other)
+      const types: ('chord' | 'lyric' | 'other')[] = [];
+      parsedLines.forEach(line => {
+        if (isChordLine(line)) {
+          types.push('chord');
+        } else if (line.trim() === '') {
+          types.push('other');
+        } else {
+          types.push('lyric');
+        }
+      });
+      setLineTypes(types);
+      
+      // Group lines together (chord + lyric pairs)
+      const groups: number[] = [];
+      let currentGroup = 0;
+      
+      for (let i = 0; i < types.length; i++) {
+        if (i > 0 && types[i-1] === 'chord' && types[i] === 'lyric') {
+          // This lyric line belongs to the previous chord line's group
+          groups.push(currentGroup);
+        } else if (types[i] === 'chord') {
+          // Start a new group for each chord line
+          currentGroup++;
+          groups.push(currentGroup);
+        } else {
+          // Other lines get their own group
+          currentGroup++;
+          groups.push(currentGroup);
+        }
+      }
+      
+      setLineGroups(groups);
     }
   }, [content]);
 
@@ -29,10 +161,10 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown' || e.key === 'j' || e.key === ' ') {
         e.preventDefault();
-        setCurrentLineIndex(prev => Math.min(prev + 1, lines.length - 1));
+        navigateToNextGroup();
       } else if (e.key === 'ArrowUp' || e.key === 'k') {
         e.preventDefault();
-        setCurrentLineIndex(prev => Math.max(prev - 1, 0));
+        navigateToPreviousGroup();
       } else if (e.key === 'Home') {
         e.preventDefault();
         setCurrentLineIndex(0);
@@ -42,12 +174,15 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
       } else if (e.key === 'c') {
         e.preventDefault();
         setShowControls(!showControls);
+      } else if (e.key === 'f') {
+        e.preventDefault();
+        setShowFontSizeSlider(!showFontSizeSlider);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lines.length, showControls]);
+  }, [lines.length, showControls, lineGroups, showFontSizeSlider]);
 
   // Auto-scroll to current line
   useEffect(() => {
@@ -83,27 +218,172 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
     setCurrentLineIndex(index);
   };
 
+  // Navigate to the next group of lines
+  const navigateToNextGroup = () => {
+    if (currentLineIndex >= lines.length - 1) return;
+    
+    const currentGroup = lineGroups[currentLineIndex];
+    let nextIndex = currentLineIndex + 1;
+    
+    // Find the first line of the next group
+    while (nextIndex < lines.length && lineGroups[nextIndex] === currentGroup) {
+      nextIndex++;
+    }
+    
+    if (nextIndex < lines.length) {
+      setCurrentLineIndex(nextIndex);
+    }
+  };
+
+  // Navigate to the previous group of lines
+  const navigateToPreviousGroup = () => {
+    if (currentLineIndex <= 0) return;
+    
+    const currentGroup = lineGroups[currentLineIndex];
+    let prevIndex = currentLineIndex - 1;
+    
+    // Find the first line of the previous group
+    while (prevIndex > 0 && lineGroups[prevIndex] === currentGroup) {
+      prevIndex--;
+    }
+    
+    // If we're now in the middle of a group, find its first line
+    if (prevIndex > 0) {
+      const prevGroup = lineGroups[prevIndex];
+      while (prevIndex > 0 && lineGroups[prevIndex - 1] === prevGroup) {
+        prevIndex--;
+      }
+    }
+    
+    setCurrentLineIndex(prevIndex);
+  };
+
+  // Handle touch events for mobile swipe navigation
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartY(e.touches[0].clientY);
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY === null || touchStartX === null) return;
+    
+    const touchEndY = e.changedTouches[0].clientY;
+    const touchEndX = e.changedTouches[0].clientX;
+    const deltaY = touchEndY - touchStartY;
+    const deltaX = touchEndX - touchStartX;
+    
+    // If it's a tap (minimal movement), handle tap navigation
+    if (Math.abs(deltaY) < 10 && Math.abs(deltaX) < 10) {
+      // Get the tap position
+      const tapX = e.changedTouches[0].clientX;
+      const containerWidth = containerRef.current?.clientWidth || window.innerWidth;
+      
+      // If tap is on the right side of the screen, go to next group
+      if (tapX > containerWidth / 2) {
+        navigateToNextGroup();
+      } 
+      // If tap is on the left side of the screen, go to previous group
+      else {
+        navigateToPreviousGroup();
+      }
+    }
+    // If it's a significant vertical swipe, handle swipe navigation
+    else if (Math.abs(deltaY) > 50 && Math.abs(deltaY) > Math.abs(deltaX)) {
+      if (deltaY > 0) {
+        // Swipe down - go to previous group
+        navigateToPreviousGroup();
+      } else {
+        // Swipe up - go to next group
+        navigateToNextGroup();
+      }
+    }
+    
+    setTouchStartY(null);
+    setTouchStartX(null);
+  };
+
+  // Handle font size change
+  const handleFontSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSize = parseInt(e.target.value);
+    setLocalFontSize(newSize);
+    if (setFontSize) {
+      setFontSize(newSize);
+    }
+  };
+
+  // Get display mode styles
+  const getDisplayModeStyles = (isCurrentLine: boolean, isChord: boolean) => {
+    switch (displayMode) {
+      case 'high-contrast':
+        return isCurrentLine 
+          ? 'bg-blue-600 text-white font-bold' 
+          : isChord 
+            ? 'text-yellow-500 dark:text-yellow-400 font-bold'
+            : 'text-white dark:text-white';
+      case 'yellow-black':
+        return isCurrentLine 
+          ? 'bg-yellow-400 text-black font-bold' 
+          : isChord 
+            ? 'text-yellow-500 font-bold'
+            : 'text-white';
+      case 'black-white':
+        return isCurrentLine 
+          ? 'bg-white text-black font-bold' 
+          : isChord 
+            ? 'text-white font-bold'
+            : 'text-gray-300';
+      default:
+        return isCurrentLine 
+          ? 'bg-blue-100 dark:bg-blue-900 font-bold' 
+          : isChord
+            ? 'text-blue-600 dark:text-blue-400 font-bold'
+            : '';
+    }
+  };
+
+  // Get background color based on display mode
+  const getBackgroundColor = () => {
+    switch (displayMode) {
+      case 'high-contrast':
+        return 'bg-gray-900';
+      case 'yellow-black':
+        return 'bg-black';
+      case 'black-white':
+        return 'bg-black';
+      default:
+        return '';
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full relative" onClick={() => setShowControls(!showControls)}>
+    <div 
+      className={`flex flex-col h-full relative ${getBackgroundColor()}`}
+      onClick={() => setShowControls(!showControls)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto"
-        style={{ fontSize: `${fontSize}px`, lineHeight: '1.5' }}
+        className="flex-1 overflow-y-auto px-2 md:px-4 font-mono"
+        style={{ 
+          fontSize: `${localFontSize}px`, 
+          lineHeight: '1.5'
+        }}
       >
-        <pre className="font-mono whitespace-pre break-normal w-full">
+        <pre 
+          ref={contentRef}
+          className="whitespace-pre-wrap break-words w-full"
+        >
           {lines.map((line, index) => {
-            const isChord = isChordLine(line);
+            const isChord = lineTypes[index] === 'chord';
+            const currentGroup = lineGroups[currentLineIndex];
+            const isCurrentLine = lineGroups[index] === currentGroup;
+            
             return (
               <div
                 key={index}
                 ref={el => lineRefs.current[index] = el}
-                className={`py-1 cursor-pointer transition-colors ${
-                  index === currentLineIndex 
-                    ? 'bg-blue-100 dark:bg-blue-900 font-bold' 
-                    : isChord
-                      ? 'text-blue-600 dark:text-blue-400 font-bold'
-                      : ''
-                }`}
+                className={`py-1 cursor-pointer transition-colors ${getDisplayModeStyles(isCurrentLine, isChord)}`}
                 onClick={() => handleLineClick(index)}
               >
                 {line}
@@ -119,7 +399,7 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setCurrentLineIndex(prev => Math.max(prev - 1, 0));
+              navigateToPreviousGroup();
             }}
             className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
             aria-label="Previous line"
@@ -136,7 +416,7 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setCurrentLineIndex(prev => Math.min(prev + 1, lines.length - 1));
+              navigateToNextGroup();
             }}
             className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
             aria-label="Next line"
@@ -145,8 +425,131 @@ export function LeadsheetDisplay({ content, autoScroll, fontSize }: LeadsheetDis
               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
           </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowFontSizeSlider(!showFontSizeSlider);
+            }}
+            className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
+            aria-label="Font size"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+          </button>
         </div>
       )}
+      
+      {/* Font size slider */}
+      {showFontSizeSlider && (
+        <div className="absolute bottom-20 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 w-48">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-medium">Font Size: {localFontSize}px</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowFontSizeSlider(false);
+              }}
+              className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <input
+            type="range"
+            min="12"
+            max="36"
+            value={localFontSize}
+            onChange={handleFontSizeChange}
+            className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+          />
+          <div className="flex justify-between text-xs mt-1">
+            <span>12px</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Auto-scale text
+                if (containerRef.current && contentRef.current) {
+                  const containerWidth = containerRef.current.clientWidth - 32;
+                  const maxLineLength = Math.max(...lines.map(line => line.length));
+                  
+                  if (maxLineLength > 0) {
+                    const tempSpan = document.createElement('span');
+                    tempSpan.style.fontSize = '1px';
+                    tempSpan.style.fontFamily = 'var(--font-mono)';
+                    tempSpan.style.visibility = 'hidden';
+                    tempSpan.style.position = 'absolute';
+                    tempSpan.style.whiteSpace = 'pre';
+                    tempSpan.innerText = 'X'.repeat(maxLineLength);
+                    document.body.appendChild(tempSpan);
+                    
+                    const charWidthAt1px = tempSpan.offsetWidth / maxLineLength;
+                    const optimalFontSize = Math.floor(containerWidth / (charWidthAt1px * maxLineLength));
+                    const newFontSize = Math.max(12, Math.min(36, optimalFontSize));
+                    
+                    setLocalFontSize(newFontSize);
+                    if (setFontSize) {
+                      setFontSize(newFontSize);
+                    }
+                    
+                    document.body.removeChild(tempSpan);
+                  }
+                }
+              }}
+              className="text-blue-600 dark:text-blue-400 font-medium"
+            >
+              Auto
+            </button>
+            <span>36px</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Tap navigation hints - only shown initially */}
+      {showTapHint && (
+        <>
+          <div className="md:hidden absolute top-1/2 left-4 transform -translate-y-1/2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Tap for previous
+          </div>
+          <div className="md:hidden absolute top-1/2 right-4 transform -translate-y-1/2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none flex items-center">
+            Tap for next
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </div>
+        </>
+      )}
+      
+      {/* Mobile navigation hint - only shown initially */}
+      {showTapHint && (
+        <div className="md:hidden absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 text-xs opacity-70 pointer-events-none">
+          Swipe up/down to navigate
+        </div>
+      )}
+      
+      {/* Left side tap area */}
+      <div 
+        className="absolute left-0 top-0 w-1/2 h-full opacity-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          navigateToPreviousGroup();
+        }}
+      />
+      
+      {/* Right side tap area */}
+      <div 
+        className="absolute right-0 top-0 w-1/2 h-full opacity-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          navigateToNextGroup();
+        }}
+      />
     </div>
   );
 } 
