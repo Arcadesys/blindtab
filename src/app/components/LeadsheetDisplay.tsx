@@ -65,7 +65,7 @@ export default function LeadsheetDisplay({
       return () => clearTimeout(timer);
     }
   }, [showControls]);
-
+  
   // Auto-hide top menu after a delay
   useEffect(() => {
     if (showTopMenu) {
@@ -384,15 +384,6 @@ export default function LeadsheetDisplay({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Top menu area - will be controlled by parent component */}
-      <div 
-        className={`w-full transition-opacity duration-300 ${showTopMenu ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* This is just a placeholder - the actual menu is rendered by parent */}
-      </div>
-      
       <div 
         ref={containerRef}
         className="flex-1 overflow-y-auto px-2 md:px-4 font-mono"
@@ -401,6 +392,15 @@ export default function LeadsheetDisplay({
           lineHeight: '1.5'
         }}
       >
+        {/* Top menu area that scrolls with content */}
+        <div 
+          className={`w-full mb-4 transition-opacity duration-300 ${showTopMenu ? 'opacity-100' : 'opacity-0'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* This is just a placeholder - the actual menu is rendered by parent */}
+          <div className="h-12"></div>
+        </div>
+        
         <pre 
           ref={contentRef}
           className="whitespace-pre-wrap break-words w-full"
