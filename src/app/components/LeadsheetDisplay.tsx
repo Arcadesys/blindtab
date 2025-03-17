@@ -109,11 +109,11 @@ export default function LeadsheetDisplay({
   // Add keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Navigation shortcuts - focused on page turning
-      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+      // Navigation shortcuts
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'j') {
         e.preventDefault();
         goToNextGroup();
-      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'k') {
         e.preventDefault();
         goToPreviousGroup();
       } else if (e.key === 'Home') {
@@ -145,7 +145,7 @@ export default function LeadsheetDisplay({
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentGroupIndex, lineGroups]);
+  }, [currentGroupIndex, lineGroups, showControls]);
   
   // Helper function to check if a line is a chord line
   const isChordLine = (line: string) => {
@@ -347,7 +347,7 @@ export default function LeadsheetDisplay({
     >
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto px-2 md:px-4 font-mono"
+        className="flex-1 overflow-y-auto px-1 font-mono"
         style={{ 
           fontSize: `${localFontSize}px`, 
           lineHeight: '1.5'

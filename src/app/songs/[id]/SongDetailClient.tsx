@@ -31,25 +31,44 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
         return;
       }
       
-      // Essential shortcuts for page turning
-      if (e.key === 'PageDown' || e.key === 'ArrowDown') {
+      // Fullscreen toggle
+      if (e.key === 'f' && e.ctrlKey) {
         e.preventDefault();
-        setAutoScroll(false); // Stop auto-scroll when manually navigating
-      } else if (e.key === 'PageUp' || e.key === 'ArrowUp') {
+        setFullscreen(!fullscreen);
+      } 
+      // Info toggle
+      else if (e.key === 'i' && !e.repeat) {
         e.preventDefault();
-        setAutoScroll(false); // Stop auto-scroll when manually navigating
-      } else if (e.key === 'Escape') {
+        setShowInfo(!showInfo);
+      } 
+      // Controls panel toggle
+      else if (e.key === 'c' && !e.repeat) {
         e.preventDefault();
-        // Close any open panels
+        setShowControlsPanel(!showControlsPanel);
+      } 
+      // Display options toggle
+      else if (e.key === 'd' && !e.repeat) {
+        e.preventDefault();
+        setShowDisplayOptions(!showDisplayOptions);
+      }
+      // Auto-scroll toggle
+      else if (e.key === 'a' && !e.repeat) {
+        e.preventDefault();
+        setAutoScroll(!autoScroll);
+      }
+      // Escape key to close panels
+      else if (e.key === 'Escape') {
+        e.preventDefault();
         if (showControlsPanel) setShowControlsPanel(false);
         else if (showDisplayOptions) setShowDisplayOptions(false);
         else if (showInfo) setShowInfo(false);
+        else if (fullscreen) setFullscreen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showControlsPanel, showDisplayOptions, showInfo]);
+  }, [fullscreen, showInfo, showControlsPanel, showDisplayOptions, autoScroll]);
 
   return (
     <div className="relative min-h-screen pb-20 md:pb-0">
