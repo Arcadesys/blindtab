@@ -36,10 +36,12 @@ export default function LeadsheetDisplay({
   const [touchStartY, setTouchStartY] = useState(0);
   const [touchStartX, setTouchStartX] = useState(0);
   const [showTapHint, setShowTapHint] = useState(true);
+  const [isNavigating, setIsNavigating] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLPreElement>(null);
   const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Update local font size when prop changes
   useEffect(() => {
@@ -88,6 +90,15 @@ export default function LeadsheetDisplay({
       onMenuVisibilityChange(showTopMenu);
     }
   }, [showTopMenu, onMenuVisibilityChange]);
+
+  // Clean up navigation timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Parse content into lines and identify chord lines
   useEffect(() => {
@@ -203,30 +214,72 @@ export default function LeadsheetDisplay({
            words.join('').length < 40; // Another heuristic to avoid long lyric lines
   };
   
-  // Navigation functions
+  // Navigation functions with debounce
   const goToNextGroup = useCallback(() => {
+    if (isNavigating) return;
     if (lineGroups.length > 0 && currentGroupIndex < lineGroups.length - 1) {
+      setIsNavigating(true);
       setCurrentGroupIndex(currentGroupIndex + 1);
+      
+      // Prevent rapid navigation by setting a timeout
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      
+      navigationTimeoutRef.current = setTimeout(() => {
+        setIsNavigating(false);
+      }, 300); // 300ms debounce
     }
-  }, [currentGroupIndex, lineGroups]);
+  }, [currentGroupIndex, lineGroups, isNavigating]);
   
   const goToPreviousGroup = useCallback(() => {
+    if (isNavigating) return;
     if (lineGroups.length > 0 && currentGroupIndex > 0) {
+      setIsNavigating(true);
       setCurrentGroupIndex(currentGroupIndex - 1);
+      
+      // Prevent rapid navigation by setting a timeout
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      
+      navigationTimeoutRef.current = setTimeout(() => {
+        setIsNavigating(false);
+      }, 300); // 300ms debounce
     }
-  }, [currentGroupIndex, lineGroups]);
+  }, [currentGroupIndex, lineGroups, isNavigating]);
   
   const goToFirstGroup = useCallback(() => {
+    if (isNavigating) return;
     if (lineGroups.length > 0) {
+      setIsNavigating(true);
       setCurrentGroupIndex(0);
+      
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      
+      navigationTimeoutRef.current = setTimeout(() => {
+        setIsNavigating(false);
+      }, 300);
     }
-  }, [lineGroups]);
+  }, [lineGroups, isNavigating]);
   
   const goToLastGroup = useCallback(() => {
+    if (isNavigating) return;
     if (lineGroups.length > 0) {
+      setIsNavigating(true);
       setCurrentGroupIndex(lineGroups.length - 1);
+      
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      
+      navigationTimeoutRef.current = setTimeout(() => {
+        setIsNavigating(false);
+      }, 300);
     }
-  }, [lineGroups]);
+  }, [lineGroups, isNavigating]);
   
   // Font size adjustment
   const adjustFontSize = useCallback((delta: number) => {
@@ -281,14 +334,29 @@ export default function LeadsheetDisplay({
     setTouchStartX(e.touches[0].clientX);
   };
   
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // If we detect significant movement, we're likely scrolling, not tapping
+    const touchY = e.touches[0].clientY;
+    const touchX = e.touches[0].clientX;
+    const deltaY = Math.abs(touchY - touchStartY);
+    const deltaX = Math.abs(touchX - touchStartX);
+    
+    // If there's significant movement, we're not tapping
+    if (deltaY > 20 || deltaX > 20) {
+      // This is a scroll, not a tap
+    }
+  };
+  
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (isNavigating) return;
+    
     const touchEndY = e.changedTouches[0].clientY;
     const touchEndX = e.changedTouches[0].clientX;
     
     const deltaY = touchEndY - touchStartY;
     const deltaX = touchEndX - touchStartX;
     
-    // Determine if it's a tap or a swipe
+    // Determine if it's a tap or a swipe - more strict criteria for iPad
     const isTap = Math.abs(deltaY) < 10 && Math.abs(deltaX) < 10;
     
     if (isTap) {
@@ -308,8 +376,8 @@ export default function LeadsheetDisplay({
         // Tap in middle - toggle controls
         setShowControls(!showControls);
       }
-    } else if (Math.abs(deltaY) > Math.abs(deltaX)) {
-      // Vertical swipe
+    } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
+      // Vertical swipe - must be more than 50px to count
       if (deltaY > 50) {
         // Swipe down - go to previous
         goToPreviousGroup();
@@ -380,6 +448,7 @@ export default function LeadsheetDisplay({
       className={`flex flex-col h-full relative ${getBackgroundColor()}`}
       onClick={() => setShowControls(!showControls)}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       <div 
@@ -498,14 +567,18 @@ export default function LeadsheetDisplay({
         className="absolute top-0 left-0 w-1/3 h-full z-0"
         onClick={(e) => {
           e.stopPropagation();
-          goToPreviousGroup();
+          if (!isNavigating) {
+            goToPreviousGroup();
+          }
         }}
       />
       <div 
         className="absolute top-0 right-0 w-1/3 h-full z-0"
         onClick={(e) => {
           e.stopPropagation();
-          goToNextGroup();
+          if (!isNavigating) {
+            goToNextGroup();
+          }
         }}
       />
     </div>
