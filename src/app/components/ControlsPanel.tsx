@@ -3,19 +3,19 @@
 import { useState, useEffect } from 'react';
 
 interface ControlsPanelProps {
-  fontSize: number;
-  setFontSize: (size: number) => void;
   autoScroll: boolean;
-  setAutoScroll: (enabled: boolean) => void;
+  setAutoScroll: (autoScroll: boolean) => void;
+  displayMode: string;
+  setDisplayMode: (displayMode: string) => void;
   onClose: () => void;
   tempo: number;
 }
 
 export default function ControlsPanel({
-  fontSize,
-  setFontSize,
   autoScroll,
   setAutoScroll,
+  displayMode,
+  setDisplayMode,
   onClose,
   tempo: initialTempo
 }: ControlsPanelProps) {
@@ -134,6 +134,10 @@ export default function ControlsPanel({
       stopMetronome();
       startMetronome();
     }
+  };
+
+  const handleDisplayModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setDisplayMode(e.target.value);
   };
 
   return (

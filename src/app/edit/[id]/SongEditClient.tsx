@@ -207,9 +207,11 @@ export default function SongEditClient({ song }: SongEditClientProps) {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6">
             <h3 className="text-xl font-semibold mb-4">Delete Song</h3>
-            <p className="mb-6">
-              Are you sure you want to delete "{song.title}"? This action cannot be undone.
-            </p>
+            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+              <p>Are you sure you want to delete this song?</p>
+              <p>This action cannot be undone.</p>
+              <p>All data associated with &quot;{song.title}&quot; by &quot;{song.artist}&quot; will be permanently removed.</p>
+            </div>
             <div className="flex justify-end space-x-3">
               <button
                 type="button"

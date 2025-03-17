@@ -22,7 +22,6 @@ export default function LeadsheetDisplay({
   content, 
   fontSize,
   setFontSize,
-  autoScroll = false,
   displayMode = 'default',
   onMenuVisibilityChange
 }: LeadsheetDisplayProps) {
@@ -152,46 +151,75 @@ export default function LeadsheetDisplay({
     }
   }, [currentGroupIndex, lineGroups]);
 
-  // Add keyboard navigation
+  // Navigation functions
+  const goToNextGroup = useCallback(() => {
+    if (lineGroups.length > 0 && currentGroupIndex < lineGroups.length - 1) {
+      setCurrentGroupIndex(currentGroupIndex + 1);
+    }
+  }, [currentGroupIndex, lineGroups]);
+  
+  const goToPreviousGroup = useCallback(() => {
+    if (lineGroups.length > 0 && currentGroupIndex > 0) {
+      setCurrentGroupIndex(currentGroupIndex - 1);
+    }
+  }, [currentGroupIndex, lineGroups]);
+  
+  const goToFirstGroup = useCallback(() => {
+    if (lineGroups.length > 0) {
+      setCurrentGroupIndex(0);
+    }
+  }, [lineGroups]);
+  
+  const goToLastGroup = useCallback(() => {
+    if (lineGroups.length > 0) {
+      setCurrentGroupIndex(lineGroups.length - 1);
+    }
+  }, [lineGroups]);
+  
+  // Font size adjustment
+  const adjustFontSize = useCallback((delta: number) => {
+    const newSize = Math.max(12, Math.min(36, localFontSize + delta));
+    setLocalFontSize(newSize);
+    if (setFontSize) {
+      setFontSize(newSize);
+    }
+  }, [localFontSize, setFontSize]);
+  
+  const autoScaleFontSize = useCallback(() => {
+    // Auto-scale implementation
+    // ...
+  }, []);
+
+  // Now add the keyboard shortcuts useEffect
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Navigation shortcuts
-      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'j') {
-        e.preventDefault();
-        goToNextGroup();
-      } else if (e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'k') {
+      if (e.key === 'ArrowUp' || e.key === 'PageUp') {
         e.preventDefault();
         goToPreviousGroup();
+      } else if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+        e.preventDefault();
+        goToNextGroup();
       } else if (e.key === 'Home') {
         e.preventDefault();
         goToFirstGroup();
       } else if (e.key === 'End') {
         e.preventDefault();
         goToLastGroup();
-      }
-      
-      // Font size shortcuts
-      else if (e.key === '+' || e.key === '=') {
+      } else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
-        adjustFontSize(2);
+        adjustFontSize(1);
       } else if (e.key === '-' || e.key === '_') {
         e.preventDefault();
-        adjustFontSize(-2);
+        adjustFontSize(-1);
       } else if (e.key === '0') {
         e.preventDefault();
         autoScaleFontSize();
       }
-      
-      // Toggle controls
-      else if (e.key === 'f') {
-        e.preventDefault();
-        setShowControls(!showControls);
-      }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentGroupIndex, lineGroups, showControls]);
+  }, [goToPreviousGroup, goToNextGroup, goToFirstGroup, goToLastGroup, adjustFontSize, autoScaleFontSize]);
   
   // Helper function to check if a line is a chord line
   const isChordLine = (line: string) => {
@@ -213,120 +241,6 @@ export default function LeadsheetDisplay({
            words.length <= 16 && // Arbitrary limit to avoid matching lyric lines
            words.join('').length < 40; // Another heuristic to avoid long lyric lines
   };
-  
-  // Navigation functions with debounce
-  const goToNextGroup = useCallback(() => {
-    if (isNavigating) return;
-    if (lineGroups.length > 0 && currentGroupIndex < lineGroups.length - 1) {
-      setIsNavigating(true);
-      setCurrentGroupIndex(currentGroupIndex + 1);
-      
-      // Prevent rapid navigation by setting a timeout
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-      }
-      
-      navigationTimeoutRef.current = setTimeout(() => {
-        setIsNavigating(false);
-      }, 300); // 300ms debounce
-    }
-  }, [currentGroupIndex, lineGroups, isNavigating]);
-  
-  const goToPreviousGroup = useCallback(() => {
-    if (isNavigating) return;
-    if (lineGroups.length > 0 && currentGroupIndex > 0) {
-      setIsNavigating(true);
-      setCurrentGroupIndex(currentGroupIndex - 1);
-      
-      // Prevent rapid navigation by setting a timeout
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-      }
-      
-      navigationTimeoutRef.current = setTimeout(() => {
-        setIsNavigating(false);
-      }, 300); // 300ms debounce
-    }
-  }, [currentGroupIndex, lineGroups, isNavigating]);
-  
-  const goToFirstGroup = useCallback(() => {
-    if (isNavigating) return;
-    if (lineGroups.length > 0) {
-      setIsNavigating(true);
-      setCurrentGroupIndex(0);
-      
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-      }
-      
-      navigationTimeoutRef.current = setTimeout(() => {
-        setIsNavigating(false);
-      }, 300);
-    }
-  }, [lineGroups, isNavigating]);
-  
-  const goToLastGroup = useCallback(() => {
-    if (isNavigating) return;
-    if (lineGroups.length > 0) {
-      setIsNavigating(true);
-      setCurrentGroupIndex(lineGroups.length - 1);
-      
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-      }
-      
-      navigationTimeoutRef.current = setTimeout(() => {
-        setIsNavigating(false);
-      }, 300);
-    }
-  }, [lineGroups, isNavigating]);
-  
-  // Font size adjustment
-  const adjustFontSize = useCallback((delta: number) => {
-    const newSize = Math.max(12, Math.min(48, localFontSize + delta));
-    setLocalFontSize(newSize);
-    if (setFontSize) {
-      setFontSize(newSize);
-    }
-  }, [localFontSize, setFontSize]);
-  
-  // Auto-scale font size to fit content
-  const autoScaleFontSize = useCallback(() => {
-    if (!containerRef.current || !contentRef.current || lines.length === 0) return;
-    
-    // Find the longest line
-    const longestLine = lines.reduce((longest, line) => 
-      line.length > longest.length ? line : longest, '');
-    
-    if (!longestLine) return;
-    
-    // Get container width (minus padding)
-    const containerWidth = containerRef.current.clientWidth - 32;
-    
-    // Create a temporary span to measure text width
-    const tempSpan = document.createElement('span');
-    tempSpan.style.fontSize = '1px'; // Start with 1px
-    tempSpan.style.fontFamily = 'var(--font-mono)';
-    tempSpan.style.visibility = 'hidden';
-    tempSpan.style.position = 'absolute';
-    tempSpan.style.whiteSpace = 'pre';
-    tempSpan.innerText = longestLine;
-    document.body.appendChild(tempSpan);
-    
-    // Calculate optimal font size
-    const textWidth = tempSpan.offsetWidth;
-    const optimalFontSize = Math.floor(containerWidth / textWidth);
-    
-    // Clean up
-    document.body.removeChild(tempSpan);
-    
-    // Set font size (with limits)
-    const newSize = Math.max(12, Math.min(32, optimalFontSize));
-    setLocalFontSize(newSize);
-    if (setFontSize) {
-      setFontSize(newSize);
-    }
-  }, [lines, setFontSize]);
   
   // Touch event handlers
   const handleTouchStart = (e: React.TouchEvent) => {

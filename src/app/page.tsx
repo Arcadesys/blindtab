@@ -20,9 +20,8 @@ export default async function Home() {
       {/* Hero Section */}
       <section className="text-center mb-16">
         <h1 className="text-5xl font-bold mb-6">Welcome to BlindTab</h1>
-        <p className="text-xl max-w-3xl mx-auto mb-8">
-          A simple, accessible leadsheet viewer for musicians. Practice with auto-scrolling, 
-          metronome support, and customizable display options.
+        <p className="text-lg mb-8">
+          BlindTab helps musicians practice and perform with digital leadsheets. No more squinting at tiny chord charts or flipping through binders of paper!
         </p>
         <div className="flex justify-center gap-4">
           <Link 

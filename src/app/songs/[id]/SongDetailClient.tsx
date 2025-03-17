@@ -6,7 +6,18 @@ import Link from 'next/link';
 import { Song } from '@/types/song';
 import LeadsheetDisplay, { DisplayMode } from '@/app/components/LeadsheetDisplay';
 import ControlsPanel from '@/app/components/ControlsPanel';
-import { Tag } from '@prisma/client';
+
+type DisplayMode = 'default' | 'high-contrast' | 'yellow-black' | 'black-white';
+
+interface Song {
+  id: string;
+  title: string;
+  artist: string;
+  content: string;
+  key: string | null;
+  tempo: number | null;
+  timeSignature: string | null;
+}
 
 interface SongDetailClientProps {
   song: Song;
@@ -14,14 +25,13 @@ interface SongDetailClientProps {
 
 export default function SongDetailClient({ song }: SongDetailClientProps) {
   const router = useRouter();
-  const [fontSize, setFontSize] = useState(24);
+  const [fontSize, setFontSize] = useState(28);
   const [autoScroll, setAutoScroll] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showControlsPanel, setShowControlsPanel] = useState(false);
-  const [showDisplayOptions, setShowDisplayOptions] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('default');
+  const [showDisplayOptions, setShowDisplayOptions] = useState(false);
+  const [showControlsPanel, setShowControlsPanel] = useState(false);
   
   // Handle keyboard shortcuts
   useEffect(() => {
