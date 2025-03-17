@@ -10,6 +10,7 @@ interface LeadsheetDisplayProps {
   setFontSize?: (size: number) => void;
   autoScroll?: boolean;
   displayMode?: DisplayMode;
+  onMenuVisibilityChange?: (visible: boolean) => void;
 }
 
 interface LineGroup {
@@ -22,13 +23,15 @@ export default function LeadsheetDisplay({
   fontSize,
   setFontSize,
   autoScroll = false,
-  displayMode = 'default'
+  displayMode = 'default',
+  onMenuVisibilityChange
 }: LeadsheetDisplayProps) {
   const [lines, setLines] = useState<string[]>([]);
   const [lineTypes, setLineTypes] = useState<('chord' | 'lyric' | 'other')[]>([]);
   const [lineGroups, setLineGroups] = useState<LineGroup[]>([]);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
   const [showControls, setShowControls] = useState(false);
+  const [showTopMenu, setShowTopMenu] = useState(true);
   const [localFontSize, setLocalFontSize] = useState(fontSize);
   const [touchStartY, setTouchStartY] = useState(0);
   const [touchStartX, setTouchStartX] = useState(0);
@@ -53,6 +56,38 @@ export default function LeadsheetDisplay({
       return () => clearTimeout(timer);
     }
   }, [showTapHint]);
+
+  // Auto-hide controls after a delay
+  useEffect(() => {
+    if (showControls) {
+      const timer = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showControls]);
+  
+  // Auto-hide top menu after a delay and notify parent
+  useEffect(() => {
+    if (showTopMenu) {
+      const timer = setTimeout(() => {
+        setShowTopMenu(false);
+        if (onMenuVisibilityChange) {
+          onMenuVisibilityChange(false);
+        }
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showTopMenu, onMenuVisibilityChange]);
+  
+  // Notify parent when menu visibility changes
+  useEffect(() => {
+    if (onMenuVisibilityChange) {
+      onMenuVisibilityChange(showTopMenu);
+    }
+  }, [showTopMenu, onMenuVisibilityChange]);
 
   // Parse content into lines and identify chord lines
   useEffect(() => {
@@ -262,11 +297,13 @@ export default function LeadsheetDisplay({
       const tapX = touchEndX;
       
       if (tapX < screenWidth * 0.3) {
-        // Tap on left side - go to previous
+        // Tap on left side - go to previous and hide top menu
         goToPreviousGroup();
+        setShowTopMenu(false);
       } else if (tapX > screenWidth * 0.7) {
-        // Tap on right side - go to next
+        // Tap on right side - go to next and hide top menu
         goToNextGroup();
+        setShowTopMenu(false);
       } else {
         // Tap in middle - toggle controls
         setShowControls(!showControls);
@@ -372,7 +409,12 @@ export default function LeadsheetDisplay({
       
       {/* Font size controls */}
       {showControls && (
-        <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center bg-white dark:bg-gray-800 rounded-lg shadow-lg mx-4 p-4 z-10">
+        <div 
+          className="absolute bottom-4 left-0 right-0 flex flex-col items-center bg-white dark:bg-gray-800 rounded-lg shadow-lg mx-4 p-4 z-10"
+          onClick={(e) => e.stopPropagation()} // Prevent clicks from closing the menu
+          aria-label="Font size controls"
+          role="dialog"
+        >
           <div className="flex items-center justify-between w-full mb-2">
             <button
               onClick={(e) => {
@@ -382,12 +424,12 @@ export default function LeadsheetDisplay({
               className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full"
               aria-label="Decrease font size"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
             </button>
             
-            <span className="text-sm font-medium">{localFontSize}px</span>
+            <span className="text-sm font-medium" id="font-size-value" aria-live="polite">{localFontSize}px</span>
             
             <button
               onClick={(e) => {
@@ -397,7 +439,7 @@ export default function LeadsheetDisplay({
               className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full"
               aria-label="Increase font size"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
             </button>
@@ -417,6 +459,7 @@ export default function LeadsheetDisplay({
             }}
             onClick={(e) => e.stopPropagation()}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 mb-2"
+            aria-labelledby="font-size-value"
           />
           
           <button
@@ -425,11 +468,12 @@ export default function LeadsheetDisplay({
               autoScaleFontSize();
             }}
             className="w-full p-2 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 rounded-lg text-sm font-medium"
+            aria-label="Auto-scale text to fit screen"
           >
             Auto-scale Text
           </button>
           
-          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400" aria-label="Keyboard shortcuts">
             <p>Keyboard shortcuts:</p>
             <p>+/- to adjust size, 0 to auto-scale</p>
             <p>↑/↓ or PageUp/PageDown to navigate</p>
