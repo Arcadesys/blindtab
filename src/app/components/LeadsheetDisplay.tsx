@@ -453,7 +453,7 @@ export default function LeadsheetDisplay({
     >
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto px-2 md:px-4 font-mono"
+        className="flex-1 overflow-y-auto px-0 font-mono"
         style={{ 
           fontSize: `${localFontSize}px`, 
           lineHeight: '1.5'

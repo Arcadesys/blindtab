@@ -74,7 +74,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
     <div className="relative min-h-screen pb-20 md:pb-0">
       {/* Header - removed sticky positioning */}
       <div className="bg-white dark:bg-gray-900 shadow-md">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-0 py-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold truncate">{song.title}</h1>
@@ -124,7 +124,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
       </div>
       
       {/* Main content */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-0 py-6">
         <LeadsheetDisplay 
           content={song.content} 
           fontSize={fontSize}
@@ -137,7 +137,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
       {/* Display options panel */}
       {showDisplayOptions && (
         <div className="fixed inset-x-0 bottom-0 bg-white dark:bg-gray-900 shadow-lg border-t border-gray-200 dark:border-gray-700 p-4 z-20">
-          <div className="container mx-auto">
+          <div className="container mx-auto px-0">
             <div className="flex flex-col space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Display Options</h3>

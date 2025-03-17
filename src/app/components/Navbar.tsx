@@ -39,7 +39,7 @@ export default function Navbar() {
   const currentTheme = mounted ? theme : 'dark'; // Default to dark to avoid flicker
 
   return (
-    <nav className="bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700">
+    <nav className="bg-white dark:bg-gray-800 py-4 px-0 border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <Link href="/" className="text-2xl font-bold">BlindTab</Link>
         
