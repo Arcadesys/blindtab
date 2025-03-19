@@ -54,6 +54,9 @@ export default function SongEditClient({ song }: SongEditClientProps) {
     setError('');
 
     try {
+      // Convert inline chords to traditional format
+      const convertedContent = convertInlineChordsToTraditional(content);
+
       const response = await fetch(`/api/songs/${song.id}`, {
         method: 'PUT',
         headers: {
@@ -62,9 +65,9 @@ export default function SongEditClient({ song }: SongEditClientProps) {
         body: JSON.stringify({
           title,
           artist,
-          content,
+          content: convertedContent,
           key,
-          tempo,
+          tempo: tempo ? parseInt(tempo) : null,
           timeSignature,
           tags: selectedTags,
           isPublic,
@@ -72,17 +75,83 @@ export default function SongEditClient({ song }: SongEditClientProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update song');
+        throw new Error('Failed to update song');
       }
 
       router.push(`/songs/${song.id}`);
-      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      console.error('Error updating song:', err);
+      setError('Failed to update song. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Function to convert inline chords to traditional format
+  const convertInlineChordsToTraditional = (content: string): string => {
+    const lines = content.split('\n');
+    const result: string[] = [];
+    
+    // Helper function to check if a line is a chord line
+    const isChordLine = (line: string): boolean => {
+      if (!line.trim() || line.startsWith('#')) return false;
+      // Check if the line contains only chords and whitespace
+      const chordPattern = /^[\s]*(\[[A-G][^\]]*\][\s]*)+$/;
+      return chordPattern.test(line);
+    };
+
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      
+      // Skip empty lines, headers, and existing chord lines
+      if (!line.trim() || line.startsWith('#') || isChordLine(line)) {
+        result.push(line);
+        i++;
+        continue;
+      }
+
+      if (line.includes('[') && line.includes(']')) {
+        // Extract chords and their positions
+        const chords: { chord: string; position: number }[] = [];
+        let textOnly = line;
+        let offset = 0;
+        
+        // Find all chords and their positions
+        const matches = line.matchAll(/\[([^\]]+)\]/g);
+        for (const match of matches) {
+          if (match.index !== undefined) {
+            chords.push({
+              chord: match[1],
+              position: match.index - offset
+            });
+            // Remove the chord from the text and update offset
+            textOnly = textOnly.replace(match[0], '');
+            offset += match[0].length;
+          }
+        }
+        
+        // Create the chord line with proper spacing
+        let chordLine = '';
+        let lastPosition = 0;
+        
+        chords.forEach(({ chord, position }) => {
+          // Add spaces to reach the correct position
+          const spacesNeeded = Math.max(0, position - lastPosition);
+          chordLine += ' '.repeat(spacesNeeded) + chord;
+          lastPosition = position + chord.length;
+        });
+        
+        // Add the chord line and the text line
+        result.push(chordLine);
+        result.push(textOnly);
+      } else {
+        result.push(line);
+      }
+      i++;
+    }
+    
+    return result.join('\n');
   };
 
   const handleDelete = async () => {
@@ -251,9 +320,29 @@ export default function SongEditClient({ song }: SongEditClientProps) {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={20}
+            placeholder={`# Song Title
+
+# Format 1: Traditional (chords on their own line)
+G       C       D
+It's not easy being green
+
+# Format 2: Square brackets
+It's not [G] easy being [C] green
+
+# Format 3: Inline chords
+It's not [G] easy being green [C]`}
             className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 font-mono"
             required
           />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Supported formats:
+            <br />
+            1. Traditional: Chords on their own line (e.g., G C D)
+            <br />
+            2. Square brackets: [G] [C] [D]
+            <br />
+            3. Inline: It's not [G] easy being green [C]
+          </p>
         </div>
 
         <div className="flex justify-end">

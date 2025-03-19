@@ -231,7 +231,7 @@ export default function LeadsheetDisplay({
     if (!line.trim()) return false;
     
     // Ignore lines that are likely headers or comments
-    if (line.startsWith('#') || line.startsWith('[')) return false;
+    if (line.startsWith('#')) return false;
     
     // Check for chord patterns
     const chordPattern = /\b([A-G][b#]?)(m|maj|min|aug|dim|sus|add)?[0-9]?(\/?[A-G][b#]?)?\b/;
@@ -243,6 +243,50 @@ export default function LeadsheetDisplay({
            words.some(word => chordPattern.test(word)) &&
            words.length <= 16 && // Arbitrary limit to avoid matching lyric lines
            words.join('').length < 40; // Another heuristic to avoid long lyric lines
+  };
+  
+  // Helper function to parse inline chords
+  const parseInlineChords = (line: string) => {
+    // Split the line into parts, preserving the original text
+    const parts = line.split(/(\[[^\]]+\])/g);
+    
+    return parts.map((part, index) => {
+      // Check if this part is a chord (starts with [ and ends with ])
+      if (part.startsWith('[') && part.endsWith(']')) {
+        // Remove the brackets and return the chord
+        return {
+          type: 'chord',
+          content: part.slice(1, -1),
+          key: index,
+          position: index // Keep track of position for alignment
+        };
+      } else {
+        // This is regular text
+        return {
+          type: 'text',
+          content: part,
+          key: index,
+          position: index
+        };
+      }
+    });
+  };
+  
+  // Helper function to calculate chord positions
+  const calculateChordPositions = (parts: Array<{ type: string; content: string; key: number; position: number }>) => {
+    let currentPosition = 0;
+    const chordPositions: { [key: number]: number } = {};
+    
+    parts.forEach(part => {
+      if (part.type === 'chord') {
+        // Position the chord above the text, accounting for the text width
+        chordPositions[part.key] = currentPosition;
+      }
+      // Add the length of the content to the current position
+      currentPosition += part.content.length;
+    });
+    
+    return chordPositions;
   };
   
   // Touch event handlers
@@ -384,7 +428,7 @@ export default function LeadsheetDisplay({
             <span
               key={index}
               ref={(el) => { lineRefs.current[index] = el; }}
-              className={`${getTextStyle(lineTypes[index])} ${getHighlightStyle(index)}`}
+              className={`${getTextStyle(lineTypes[index])} ${getHighlightStyle(index)} block py-1`}
             >
               {line}
               {index < lines.length - 1 ? '\n' : ''}

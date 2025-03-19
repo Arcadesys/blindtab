@@ -69,47 +69,101 @@ export default function CreateSongPage() {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
-    setSuccessMessage(null);
 
     try {
+      // Convert inline chords to traditional format
+      const convertedContent = convertInlineChordsToTraditional(formData.content);
+
       const response = await fetch('/api/songs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          content: convertedContent,
+        }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create song');
+        throw new Error('Failed to create song');
       }
 
       const data = await response.json();
-      setSuccessMessage('Song created successfully!');
-      
-      // Reset form
-      setFormData({
-        title: '',
-        artist: '',
-        content: '',
-        key: '',
-        tempo: '',
-        timeSignature: '',
-        tags: [],
-        isPublic: false,
-      });
-
-      // Redirect to the new song page after a short delay
-      setTimeout(() => {
-        router.push(`/songs/${data.id}`);
-      }, 1500);
+      router.push(`/songs/${data.id}`);
     } catch (err) {
       console.error('Error creating song:', err);
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      setError('Failed to create song. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Function to convert inline chords to traditional format
+  const convertInlineChordsToTraditional = (content: string): string => {
+    const lines = content.split('\n');
+    const result: string[] = [];
+    
+    // Helper function to check if a line is a chord line
+    const isChordLine = (line: string): boolean => {
+      if (!line.trim() || line.startsWith('#')) return false;
+      // Check if the line contains only chords and whitespace
+      const chordPattern = /^[\s]*(\[[A-G][^\]]*\][\s]*)+$/;
+      return chordPattern.test(line);
+    };
+
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      
+      // Skip empty lines, headers, and existing chord lines
+      if (!line.trim() || line.startsWith('#') || isChordLine(line)) {
+        result.push(line);
+        i++;
+        continue;
+      }
+
+      if (line.includes('[') && line.includes(']')) {
+        // Extract chords and their positions
+        const chords: { chord: string; position: number }[] = [];
+        let textOnly = line;
+        let offset = 0;
+        
+        // Find all chords and their positions
+        const matches = line.matchAll(/\[([^\]]+)\]/g);
+        for (const match of matches) {
+          if (match.index !== undefined) {
+            chords.push({
+              chord: match[1],
+              position: match.index - offset
+            });
+            // Remove the chord from the text and update offset
+            textOnly = textOnly.replace(match[0], '');
+            offset += match[0].length;
+          }
+        }
+        
+        // Create the chord line with proper spacing
+        let chordLine = '';
+        let lastPosition = 0;
+        
+        chords.forEach(({ chord, position }) => {
+          // Add spaces to reach the correct position
+          const spacesNeeded = Math.max(0, position - lastPosition);
+          chordLine += ' '.repeat(spacesNeeded) + chord;
+          lastPosition = position + chord.length;
+        });
+        
+        // Add the chord line and the text line
+        result.push(chordLine);
+        result.push(textOnly);
+      } else {
+        result.push(line);
+      }
+      i++;
+    }
+    
+    return result.join('\n');
   };
 
   return (
@@ -272,11 +326,27 @@ export default function CreateSongPage() {
               onChange={handleChange}
               required
               rows={15}
-              placeholder="Enter your leadsheet content here..."
+              placeholder={`# Song Title
+
+# Format 1: Traditional (chords on their own line)
+G       C       D
+It's not easy being green
+
+# Format 2: Square brackets
+It's not [G] easy being [C] green
+
+# Format 3: Inline chords
+It's not [G] easy being green [C]`}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 font-mono"
             ></textarea>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Format: Put chords in square brackets, e.g., [G] [C] [D]
+              Supported formats:
+              <br />
+              1. Traditional: Chords on their own line (e.g., G C D)
+              <br />
+              2. Square brackets: [G] [C] [D]
+              <br />
+              3. Inline: It's not [G] easy being green [C]
             </p>
           </div>
 
