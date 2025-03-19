@@ -36,6 +36,7 @@ export default function LeadsheetDisplay({
   const [touchStartX, setTouchStartX] = useState(0);
   const [showTapHint, setShowTapHint] = useState(true);
   const [isNavigating] = useState(false);
+  const [multiStepMode, setMultiStepMode] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLPreElement>(null);
@@ -155,15 +156,17 @@ export default function LeadsheetDisplay({
   }, [currentGroupIndex, lineGroups]);
 
   // Navigation functions
-  const goToNextGroup = useCallback(() => {
+  const goToNextGroup = useCallback((steps: number = 1) => {
     if (lineGroups.length > 0 && currentGroupIndex < lineGroups.length - 1) {
-      setCurrentGroupIndex(currentGroupIndex + 1);
+      const newIndex = Math.min(currentGroupIndex + steps, lineGroups.length - 1);
+      setCurrentGroupIndex(newIndex);
     }
   }, [currentGroupIndex, lineGroups]);
   
-  const goToPreviousGroup = useCallback(() => {
+  const goToPreviousGroup = useCallback((steps: number = 1) => {
     if (lineGroups.length > 0 && currentGroupIndex > 0) {
-      setCurrentGroupIndex(currentGroupIndex - 1);
+      const newIndex = Math.max(currentGroupIndex - steps, 0);
+      setCurrentGroupIndex(newIndex);
     }
   }, [currentGroupIndex, lineGroups]);
   
@@ -198,10 +201,18 @@ export default function LeadsheetDisplay({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowUp' || e.key === 'PageUp') {
         e.preventDefault();
-        goToPreviousGroup();
+        if (multiStepMode) {
+          goToPreviousGroup(2);
+        } else {
+          goToPreviousGroup();
+        }
       } else if (e.key === 'ArrowDown' || e.key === 'PageDown') {
         e.preventDefault();
-        goToNextGroup();
+        if (multiStepMode) {
+          goToNextGroup(2);
+        } else {
+          goToNextGroup();
+        }
       } else if (e.key === 'Home') {
         e.preventDefault();
         goToFirstGroup();
@@ -217,12 +228,15 @@ export default function LeadsheetDisplay({
       } else if (e.key === '0') {
         e.preventDefault();
         autoScaleFontSize();
+      } else if (e.key === 'm') {
+        e.preventDefault();
+        setMultiStepMode(!multiStepMode);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToPreviousGroup, goToNextGroup, goToFirstGroup, goToLastGroup, adjustFontSize, autoScaleFontSize]);
+  }, [goToPreviousGroup, goToNextGroup, goToFirstGroup, goToLastGroup, adjustFontSize, autoScaleFontSize, multiStepMode]);
   
   // Helper function to check if a line is a chord line
   const isChordLine = (line: string) => {
@@ -507,6 +521,7 @@ export default function LeadsheetDisplay({
             <p>Keyboard shortcuts:</p>
             <p>+/- to adjust size, 0 to auto-scale</p>
             <p>↑/↓ or PageUp/PageDown to navigate</p>
+            <p>M to toggle multi-step mode {multiStepMode ? '(on)' : '(off)'}</p>
           </div>
         </div>
       )}
