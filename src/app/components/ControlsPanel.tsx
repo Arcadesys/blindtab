@@ -9,13 +9,17 @@ interface ControlsPanelProps {
   setDisplayMode: (displayMode: string) => void;
   onClose: () => void;
   tempo: number;
+  stepSize?: number;
+  setStepSize?: (size: number) => void;
 }
 
 export default function ControlsPanel({
   autoScroll,
   setAutoScroll,
   onClose,
-  tempo: initialTempo
+  tempo: initialTempo,
+  stepSize = 1,
+  setStepSize
 }: ControlsPanelProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [metronomeEnabled, setMetronomeEnabled] = useState(false);
@@ -228,6 +232,20 @@ export default function ControlsPanel({
             <span>40</span>
             <span>240</span>
           </div>
+        </div>
+
+        {/* Step Size Controls */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Lines per step</h3>
+          <select
+            value={stepSize}
+            onChange={(e) => setStepSize?.(parseInt(e.target.value))}
+            className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+          >
+            <option value="1">1 line</option>
+            <option value="2">2 lines</option>
+            <option value="3">3 lines</option>
+          </select>
         </div>
       </div>
       

@@ -30,6 +30,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
   const [displayMode, setDisplayMode] = useState<DisplayMode>('default');
   const [showDisplayOptions, setShowDisplayOptions] = useState(false);
   const [showControlsPanel, setShowControlsPanel] = useState(false);
+  const [stepSize, setStepSize] = useState(1);
   
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -139,6 +140,8 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
           setFontSize={setFontSize}
           autoScroll={autoScroll}
           displayMode={displayMode}
+          stepSize={stepSize}
+          setStepSize={setStepSize}
         />
       </div>
       
@@ -226,6 +229,8 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
                 setAutoScroll={setAutoScroll}
                 onClose={() => setShowControlsPanel(false)}
                 tempo={song.tempo || 100}
+                stepSize={stepSize}
+                setStepSize={setStepSize}
               />
             </div>
           </div>

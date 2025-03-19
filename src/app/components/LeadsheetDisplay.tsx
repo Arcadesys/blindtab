@@ -11,6 +11,8 @@ interface LeadsheetDisplayProps {
   autoScroll?: boolean;
   displayMode?: DisplayMode;
   onMenuVisibilityChange?: (visible: boolean) => void;
+  stepSize?: number;
+  setStepSize?: (size: number) => void;
 }
 
 interface LineGroup {
@@ -23,7 +25,9 @@ export default function LeadsheetDisplay({
   fontSize,
   setFontSize,
   displayMode = 'default',
-  onMenuVisibilityChange
+  onMenuVisibilityChange,
+  stepSize = 1,
+  setStepSize
 }: LeadsheetDisplayProps) {
   const [lines, setLines] = useState<string[]>([]);
   const [lineTypes, setLineTypes] = useState<('chord' | 'lyric' | 'other')[]>([]);
@@ -36,7 +40,6 @@ export default function LeadsheetDisplay({
   const [touchStartX, setTouchStartX] = useState(0);
   const [showTapHint, setShowTapHint] = useState(true);
   const [isNavigating] = useState(false);
-  const [multiStepMode, setMultiStepMode] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLPreElement>(null);
@@ -201,18 +204,10 @@ export default function LeadsheetDisplay({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowUp' || e.key === 'PageUp') {
         e.preventDefault();
-        if (multiStepMode) {
-          goToPreviousGroup(2);
-        } else {
-          goToPreviousGroup();
-        }
+        goToPreviousGroup(stepSize);
       } else if (e.key === 'ArrowDown' || e.key === 'PageDown') {
         e.preventDefault();
-        if (multiStepMode) {
-          goToNextGroup(2);
-        } else {
-          goToNextGroup();
-        }
+        goToNextGroup(stepSize);
       } else if (e.key === 'Home') {
         e.preventDefault();
         goToFirstGroup();
@@ -228,15 +223,12 @@ export default function LeadsheetDisplay({
       } else if (e.key === '0') {
         e.preventDefault();
         autoScaleFontSize();
-      } else if (e.key === 'm') {
-        e.preventDefault();
-        setMultiStepMode(!multiStepMode);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToPreviousGroup, goToNextGroup, goToFirstGroup, goToLastGroup, adjustFontSize, autoScaleFontSize, multiStepMode]);
+  }, [goToPreviousGroup, goToNextGroup, goToFirstGroup, goToLastGroup, adjustFontSize, autoScaleFontSize, stepSize]);
   
   // Helper function to check if a line is a chord line
   const isChordLine = (line: string) => {
@@ -341,11 +333,11 @@ export default function LeadsheetDisplay({
       
       if (tapX < screenWidth * 0.3) {
         // Tap on left side - go to previous and hide top menu
-        goToPreviousGroup();
+        goToPreviousGroup(stepSize);
         setShowTopMenu(false);
       } else if (tapX > screenWidth * 0.7) {
         // Tap on right side - go to next and hide top menu
-        goToNextGroup();
+        goToNextGroup(stepSize);
         setShowTopMenu(false);
       } else {
         // Tap in middle - toggle controls
@@ -355,10 +347,10 @@ export default function LeadsheetDisplay({
       // Vertical swipe - must be more than 50px to count
       if (deltaY > 50) {
         // Swipe down - go to previous
-        goToPreviousGroup();
+        goToPreviousGroup(stepSize);
       } else if (deltaY < -50) {
         // Swipe up - go to next
-        goToNextGroup();
+        goToNextGroup(stepSize);
       }
     }
   };
@@ -521,7 +513,23 @@ export default function LeadsheetDisplay({
             <p>Keyboard shortcuts:</p>
             <p>+/- to adjust size, 0 to auto-scale</p>
             <p>↑/↓ or PageUp/PageDown to navigate</p>
-            <p>M to toggle multi-step mode {multiStepMode ? '(on)' : '(off)'}</p>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <label htmlFor="step-size" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Lines per step
+            </label>
+            <select
+              id="step-size"
+              value={stepSize}
+              onChange={(e) => setStepSize?.(Number(e.target.value))}
+              className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <option value="1">1 line</option>
+              <option value="2">2 lines</option>
+              <option value="3">3 lines</option>
+            </select>
           </div>
         </div>
       )}
@@ -544,7 +552,7 @@ export default function LeadsheetDisplay({
         onClick={(e) => {
           e.stopPropagation();
           if (!isNavigating) {
-            goToPreviousGroup();
+            goToPreviousGroup(stepSize);
           }
         }}
       />
@@ -553,7 +561,7 @@ export default function LeadsheetDisplay({
         onClick={(e) => {
           e.stopPropagation();
           if (!isNavigating) {
-            goToNextGroup();
+            goToNextGroup(stepSize);
           }
         }}
       />
