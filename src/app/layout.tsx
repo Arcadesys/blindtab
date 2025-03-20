@@ -14,6 +14,9 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'BlindTab',
   description: 'A simple app for musicians to view and manage song leadsheets',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

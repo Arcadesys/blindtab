@@ -41,7 +41,12 @@ export default function Navbar() {
   return (
     <nav className="bg-white dark:bg-gray-800 py-4 px-0 border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
-        <Link href="/" className="text-2xl font-bold">BlindTab</Link>
+        <Link href="/" className="text-2xl font-bold px-4 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+          </svg>
+          BlindTab
+        </Link>
         
         <div className="flex gap-4 items-center">
           <Link href="/songs" className="text-lg hover:underline">Songs</Link>

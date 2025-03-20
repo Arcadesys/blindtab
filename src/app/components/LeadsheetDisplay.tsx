@@ -420,15 +420,19 @@ export default function LeadsheetDisplay({
     >
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto px-0 font-mono"
-        style={{ 
-          fontSize: `${localFontSize}px`, 
-          lineHeight: '1.5'
-        }}
+        className="relative w-full h-full overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
-        <pre 
+        <pre
           ref={contentRef}
-          className="whitespace-pre-wrap break-words w-full"
+          className="w-full h-full overflow-y-auto px-[2%]"
+          style={{
+            fontSize: `${localFontSize}px`,
+            backgroundColor: getBackgroundColor(),
+            color: displayMode === 'yellow-black' ? '#FFD700' : displayMode === 'black-white' ? '#000000' : undefined,
+          }}
         >
           {lines.map((line, index) => (
             <span
