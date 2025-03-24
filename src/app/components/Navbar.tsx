@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useAuth } from '../context/AuthContext';
@@ -10,11 +10,28 @@ export default function Navbar() {
   const { isAuthenticated, logout, loading } = useAuth();
   const [fontSize, setFontSize] = useState(16);
   const [accessibilityMenuOpen, setAccessibilityMenuOpen] = useState(false);
+  const [tagsMenuOpen, setTagsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  
+  const tagsMenuRef = useRef<HTMLDivElement>(null);
 
   // Only render theme-dependent UI after mounting on the client
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagsMenuRef.current && !tagsMenuRef.current.contains(event.target as Node)) {
+        setTagsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const toggleTheme = () => {
@@ -36,7 +53,7 @@ export default function Navbar() {
   };
 
   // Determine the current theme safely
-  const currentTheme = mounted ? theme : 'dark'; // Default to dark to avoid flicker
+  const currentTheme = mounted ? theme : 'dark';
 
   return (
     <nav className="bg-white dark:bg-gray-800 py-4 px-0 border-b border-gray-200 dark:border-gray-700">
@@ -50,7 +67,46 @@ export default function Navbar() {
         
         <div className="flex gap-4 items-center">
           <Link href="/songs" className="text-lg hover:underline">Songs</Link>
-          <Link href="/tags" className="text-lg hover:underline">Tags</Link>
+          
+          {/* Tags Dropdown */}
+          <div className="relative" ref={tagsMenuRef}>
+            <button
+              onClick={() => setTagsMenuOpen(!tagsMenuOpen)}
+              className="text-lg hover:underline flex items-center gap-1"
+              aria-expanded={tagsMenuOpen}
+              aria-haspopup="true"
+            >
+              Tags
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className={`h-4 w-4 transition-transform ${tagsMenuOpen ? 'rotate-180' : ''}`} 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {tagsMenuOpen && (
+              <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 z-10 border border-gray-200 dark:border-gray-700">
+                <Link 
+                  href="/tags" 
+                  className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  onClick={() => setTagsMenuOpen(false)}
+                >
+                  Browse Tags
+                </Link>
+                <Link 
+                  href="/tags/manage" 
+                  className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  onClick={() => setTagsMenuOpen(false)}
+                >
+                  Manage Tags
+                </Link>
+              </div>
+            )}
+          </div>
           
           {/* Accessibility Menu */}
           <div className="relative">

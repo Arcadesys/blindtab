@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { PrismaClient } from '@prisma/client';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import TagBadge from '@/app/components/TagBadge';
 
 const prisma = new PrismaClient();
 
@@ -101,16 +102,13 @@ export default async function TagPage({ params }: TagPageProps) {
             {song.tags.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {song.tags.map((songTag) => (
-                  <span 
+                  <TagBadge 
                     key={songTag.id} 
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      songTag.id === tag.id 
-                        ? 'bg-blue-200 text-blue-800' 
-                        : 'bg-gray-200 text-gray-800'
-                    }`}
-                  >
-                    {songTag.name}
-                  </span>
+                    tag={songTag} 
+                    size="small" 
+                    isActive={songTag.id === tag.id}
+                    asLink={false}
+                  />
                 ))}
               </div>
             )}

@@ -5,18 +5,9 @@ import Link from 'next/link';
 import { Song } from '@/types/song';
 import LeadsheetDisplay, { DisplayMode } from '@/app/components/LeadsheetDisplay';
 import ControlsPanel from '@/app/components/ControlsPanel';
+import TagBadge from '@/app/components/TagBadge';
 
 type DisplayMode = 'default' | 'high-contrast' | 'yellow-black' | 'black-white';
-
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  content: string;
-  key: string | null;
-  tempo: number | null;
-  timeSignature: string | null;
-}
 
 interface SongDetailClientProps {
   song: Song;
@@ -88,6 +79,36 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
             <div>
               <h1 className="text-2xl font-bold truncate">{song.title}</h1>
               <p className="text-gray-600 dark:text-gray-400">{song.artist}</p>
+              
+              {/* Song Metadata */}
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                {song.key && (
+                  <span className="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                    Key: {song.key}
+                  </span>
+                )}
+                
+                {song.tempo && (
+                  <span className="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                    {song.tempo} BPM
+                  </span>
+                )}
+                
+                {song.timeSignature && (
+                  <span className="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                    {song.timeSignature}
+                  </span>
+                )}
+              </div>
+              
+              {/* Tags */}
+              {song.tags && song.tags.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {song.tags.map(tag => (
+                    <TagBadge key={tag.id} tag={tag} size="small" />
+                  ))}
+                </div>
+              )}
             </div>
             
             <div className="flex flex-wrap gap-2">
