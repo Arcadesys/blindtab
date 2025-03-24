@@ -1,9 +1,19 @@
 @import "tailwindcss";
 
+@layer base {
+  @font-face {
+    font-family: 'Inconsolata';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600;700&display=swap');
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --font-mono: var(--font-jetbrains-mono), 'Fira Code', 'Roboto Mono', 'Courier New', monospace;
+  --font-mono: var(--font-ibm-plex-mono), var(--font-inconsolata), var(--font-jetbrains-mono), 'IBM Plex Mono', 'Inconsolata', 'Fira Code', 'Roboto Mono', 'Courier New', monospace;
 }
 
 @theme inline {
@@ -24,6 +34,10 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+.leadsheet-font {
+  font-family: 'Source Code Pro', var(--font-source-code-pro), monospace !important;
 }
 
 @layer utilities {
