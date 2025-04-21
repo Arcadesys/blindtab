@@ -55,19 +55,16 @@ export default function TranspositionControls({
     if (!originalKey) return;
     
     // Keep semitones within -11 to +11 range
-    const normalizedSemitones = ((newSemitones % 12) + 12) % 12;
+    const normalizedSemitones = newSemitones;
     setSemitones(normalizedSemitones);
     
     // Calculate new target key based on semitones
     const sourceIndex = NOTES.indexOf(originalKey as ChordNote);
     if (sourceIndex !== -1) {
       const noteArray = preferFlats ? FLAT_NOTES : NOTES;
-      const targetIndex = (sourceIndex + normalizedSemitones) % 12;
+      const targetIndex = (sourceIndex + normalizedSemitones + 12) % 12;
       const newTargetKey = noteArray[targetIndex] as ChordNote;
       setTargetKey(newTargetKey);
-      
-      // We don't need to call onChange here since the useEffect will handle it
-      // when targetKey changes
     }
   };
   
