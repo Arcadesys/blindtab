@@ -331,7 +331,7 @@ It's not [G] easy being [C] green
 
 # Format 3: Inline chords
 It's not [G] easy being green [C]`}
-            className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 font-mono"
+            className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 edit-screen"
             required
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

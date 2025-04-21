@@ -13,7 +13,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --font-mono: var(--font-ibm-plex-mono), var(--font-inconsolata), var(--font-jetbrains-mono), 'IBM Plex Mono', 'Inconsolata', 'Fira Code', 'Roboto Mono', 'Courier New', monospace;
+  --font-mono: var(--font-source-code-pro), 'Source Code Pro', var(--font-ibm-plex-mono), var(--font-inconsolata), var(--font-jetbrains-mono), 'IBM Plex Mono', 'Inconsolata', 'Fira Code', 'Roboto Mono', 'Courier New', monospace;
 }
 
 @theme inline {
@@ -38,6 +38,13 @@ body {
 
 .leadsheet-font {
   font-family: 'Source Code Pro', var(--font-source-code-pro), monospace !important;
+}
+
+.edit-screen {
+  font-family: 'Source Code Pro', var(--font-source-code-pro), monospace !important;
+  font-size: 1.125rem;
+  line-height: 1.75;
+  letter-spacing: -0.01em;
 }
 
 @layer utilities {
