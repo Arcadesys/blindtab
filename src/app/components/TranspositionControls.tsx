@@ -50,6 +50,27 @@ export default function TranspositionControls({
     }
   }, [targetKey, originalKey, displayMode, preferFlats, onChange]);
   
+  // Handle conversion between sharps and flats
+  useEffect(() => {
+    if (!originalKey) return;
+    
+    // Find the current note in the original array
+    const sourceIndex = NOTES.indexOf(originalKey as ChordNote);
+    if (sourceIndex !== -1) {
+      // Calculate the target index based on semitones
+      const targetIndex = (sourceIndex + semitones + 12) % 12;
+      
+      // Get the new target key from the appropriate array
+      const noteArray = preferFlats ? FLAT_NOTES : NOTES;
+      const newTargetKey = noteArray[targetIndex] as ChordNote;
+      
+      // Only update if the key is different
+      if (newTargetKey !== targetKey) {
+        setTargetKey(newTargetKey);
+      }
+    }
+  }, [preferFlats, originalKey, semitones]);
+  
   // This is triggered when semitones are directly changed (e.g., via +/- buttons)
   const handleSemitonesChange = (newSemitones: number) => {
     if (!originalKey) return;
