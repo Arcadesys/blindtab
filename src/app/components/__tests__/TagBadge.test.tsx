@@ -1,7 +1,8 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import TagBadge from '../TagBadge';
-import { Tag } from '@prisma/client';
+import { render } from '../../__test-utils__/test-utils';
+import { mockTag } from '../../__test-utils__/mocks/tagMocks';
 
 // Mock next/link
 jest.mock('next/link', () => {
@@ -11,13 +12,6 @@ jest.mock('next/link', () => {
 });
 
 describe('TagBadge', () => {
-  const mockTag: Tag = {
-    id: '1',
-    name: 'Test Tag',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
   it('renders tag name correctly', () => {
     render(<TagBadge tag={mockTag} />);
     expect(screen.getByText('Test Tag')).toBeInTheDocument();
