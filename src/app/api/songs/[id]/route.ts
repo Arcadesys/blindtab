@@ -1,7 +1,17 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { cookies } from 'next/headers';
 
 const prisma = new PrismaClient();
+
+// Helper function to check if user is authenticated
+async function isAuthenticated(): Promise<boolean> {
+  // cookies() now returns a Promise<ReadonlyRequestCookies>
+  const cookieStore = await cookies();
+  const authToken = cookieStore.get('auth_token');
+  return !!authToken;
+}
 
 export async function GET(
   request: NextRequest,
@@ -46,9 +56,17 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check if user is authenticated
+    if (!await isAuthenticated()) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const id = params.id;
     const data = await request.json();
-    
+
     if (!id) {
       return NextResponse.json(
         { error: 'Song ID is required' },
@@ -111,8 +129,16 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check if user is authenticated
+    if (!await isAuthenticated()) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const id = params.id;
-    
+
     if (!id) {
       return NextResponse.json(
         { error: 'Song ID is required' },
@@ -145,4 +171,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}
