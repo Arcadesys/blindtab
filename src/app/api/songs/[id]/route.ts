@@ -1,17 +1,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { cookies } from 'next/headers';
+
+import { isAuthenticated } from '@/utils/cookieUtils';
 
 const prisma = new PrismaClient();
 
-// Helper function to check if user is authenticated
-async function isAuthenticated(): Promise<boolean> {
-  // cookies() now returns a Promise<ReadonlyRequestCookies>
-  const cookieStore = await cookies();
-  const authToken = cookieStore.get('auth_token');
-  return !!authToken;
-}
+
 
 export async function GET(
   request: NextRequest,

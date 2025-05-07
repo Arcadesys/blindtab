@@ -230,7 +230,11 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
                 </button>
                 
                 {/* Only show Edit button if authenticated and not loading */}
-                {isAuthenticated && !loading && (
+                {loading ? (
+                  <div className="px-3 py-2 rounded-lg bg-[#1d293d] text-gray-500 flex items-center animate-pulse" style={{ minWidth: 80 }}>
+                    <svg className="h-5 w-5 mr-1" /> Loading...
+                  </div>
+                ) : isAuthenticated ? (
                   <Link
                     href={`/edit/${song.id}`}
                     className="px-3 py-2 bg-[#1d293d] text-gray-300 rounded-lg flex items-center"
@@ -240,7 +244,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
                     </svg>
                     Edit
                   </Link>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
