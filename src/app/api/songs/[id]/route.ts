@@ -56,14 +56,6 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check if user is authenticated
-    if (!await isAuthenticated()) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const id = params.id;
     const data = await request.json();
 
@@ -129,14 +121,6 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check if user is authenticated
-    if (!await isAuthenticated()) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const id = params.id;
 
     if (!id) {
