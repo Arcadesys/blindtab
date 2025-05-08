@@ -1,3 +1,53 @@
+/* High Contrast (yellow on black) theme */
+.high-contrast, .high-contrast body {
+  --background: #000000 !important;
+  --foreground: #ffe600 !important;
+  background: #000 !important;
+  color: #ffe600 !important;
+}
+
+.high-contrast a, .high-contrast a:visited {
+  color: #ffe600 !important;
+  text-decoration: underline;
+}
+
+.high-contrast .bg-white,
+.high-contrast .bg-gray-50,
+.high-contrast .bg-gray-100,
+.high-contrast .bg-gray-200,
+.high-contrast .bg-gray-800,
+.high-contrast .bg-gray-900,
+.high-contrast .dark\:bg-gray-800,
+.high-contrast .dark\:bg-gray-900 {
+  background: #000 !important;
+  color: #ffe600 !important;
+}
+
+.high-contrast .text-black,
+.high-contrast .text-gray-900,
+.high-contrast .text-gray-800,
+.high-contrast .dark\:text-gray-100,
+.high-contrast .dark\:text-gray-200 {
+  color: #ffe600 !important;
+}
+
+.high-contrast .border,
+.high-contrast .border-gray-200,
+.high-contrast .border-gray-300,
+.high-contrast .border-gray-700,
+.high-contrast .dark\:border-gray-700 {
+  border-color: #ffe600 !important;
+}
+
+.high-contrast .rounded,
+.high-contrast .rounded-lg,
+.high-contrast .rounded-full {
+  border-radius: 0.5rem !important;
+}
+
+.high-contrast .leadsheet-font {
+  color: #ffe600 !important;
+}
 @import "tailwindcss";
 
 @layer base {

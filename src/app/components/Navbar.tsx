@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -12,13 +13,37 @@ export default function Navbar() {
   const [accessibilityMenuOpen, setAccessibilityMenuOpen] = useState(false);
   const [tagsMenuOpen, setTagsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  
   const tagsMenuRef = useRef<HTMLDivElement>(null);
 
-  // Only render theme-dependent UI after mounting on the client
+  // Extensible theme list
+  const availableThemes = [
+    { key: 'light', label: 'Light' },
+    { key: 'dark', label: 'Dark' },
+    { key: 'high-contrast', label: 'High Contrast' },
+  ];
+
+  // Set theme and handle high-contrast class
+  const setAccessibleTheme = (themeKey: string) => {
+    setTheme(themeKey);
+    if (typeof window !== 'undefined') {
+      if (themeKey === 'high-contrast') {
+        document.documentElement.classList.add('high-contrast');
+      } else {
+        document.documentElement.classList.remove('high-contrast');
+      }
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // On mount, ensure high-contrast class is set if needed
+    if (theme === 'high-contrast') {
+      document.documentElement.classList.add('high-contrast');
+    } else {
+      document.documentElement.classList.remove('high-contrast');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme]);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -27,16 +52,11 @@ export default function Navbar() {
         setTagsMenuOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
 
   const increaseFontSize = () => {
     setFontSize(prev => Math.min(prev + 2, 32));
@@ -56,6 +76,7 @@ export default function Navbar() {
   const currentTheme = mounted ? theme : 'dark';
 
   return (
+
     <nav className="bg-white dark:bg-gray-800 py-4 px-0 border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <Link href="/" className="text-2xl font-bold px-4 flex items-center gap-2">
@@ -128,15 +149,25 @@ export default function Navbar() {
                 {mounted && (
                   <div className="mb-4">
                     <label className="block text-sm font-medium mb-1">Theme</label>
-                    <button
-                      onClick={toggleTheme}
-                      className="w-full p-2 bg-gray-100 dark:bg-gray-700 rounded flex justify-between items-center"
-                    >
-                      <span>{currentTheme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
-                      <span className="text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 px-2 py-1 rounded">
-                        Press D
-                      </span>
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      {availableThemes.map((t) => (
+                        <button
+                          key={t.key}
+                          onClick={() => setAccessibleTheme(t.key)}
+                          className={`w-full p-2 rounded flex justify-between items-center border transition-colors ${
+                            currentTheme === t.key
+                              ? 'bg-blue-100 text-blue-800 border-blue-400 font-semibold' 
+                              : 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200'
+                          }`}
+                          aria-pressed={currentTheme === t.key}
+                        >
+                          <span>{t.label}</span>
+                          {currentTheme === t.key && (
+                            <span className="ml-2">✓</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 
@@ -170,26 +201,7 @@ export default function Navbar() {
             )}
           </div>
           
-          {/* Theme Toggle Button - Only render theme-dependent content after mounting */}
-          {mounted ? (
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-              aria-label={`Switch to ${currentTheme === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              {currentTheme === 'dark' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
-            </button>
-          ) : (
-            <div className="w-10 h-10"></div> // Placeholder with same dimensions to avoid layout shift
-          )}
+          {/* Theme Toggle Button removed in favor of full theme selector above */}
           
           {/* Auth buttons */}
           {!loading && (
