@@ -186,3 +186,32 @@ body {
 .light .leadsheet-font {
   color: #171717 !important;
 }
+
+/* Light mode: subtle box shadow for boxes */
+.light .bg-white,
+.light .bg-gray-50,
+.light .bg-gray-100,
+.light .bg-gray-200,
+.light .bg-gray-800,
+.light .bg-gray-900,
+.light .dark\:bg-gray-800,
+.light .dark\:bg-gray-900 {
+  box-shadow: 0 1px 4px 0 rgba(0,0,0,0.06);
+}
+
+/* Light mode: visible focus outline for accessibility */
+.light :focus {
+  outline: 2px solid #2563eb !important; /* blue-600 */
+  outline-offset: 2px;
+}
+
+/* Light mode: hover effect for interactive boxes/buttons */
+.light button:hover,
+.light [role="button"]:hover,
+.light .bg-white:hover,
+.light .bg-gray-50:hover,
+.light .bg-gray-100:hover {
+  box-shadow: 0 4px 12px 0 rgba(0,0,0,0.10);
+  background: #f0f0f0 !important;
+}
+}
