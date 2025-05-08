@@ -131,3 +131,19 @@ body {
     }
   }
 }
+
+/* Dark theme */
+.dark, .dark body {
+  --background: #0a0a0a !important;
+  --foreground: #ededed !important;
+  background: #0a0a0a !important;
+  color: #ededed !important;
+}
+
+/* Light theme */
+.light, .light body {
+  --background: #ffffff !important;
+  --foreground: #171717 !important;
+  background: #ffffff !important;
+  color: #171717 !important;
+}
