@@ -147,3 +147,42 @@ body {
   background: #ffffff !important;
   color: #171717 !important;
 }
+
+/* Light mode box backgrounds and borders for readability */
+.light .bg-white,
+.light .bg-gray-50,
+.light .bg-gray-100,
+.light .bg-gray-200,
+.light .bg-gray-800,
+.light .bg-gray-900,
+.light .dark\:bg-gray-800,
+.light .dark\:bg-gray-900 {
+  background: #f7f7f7 !important;
+  color: #171717 !important;
+}
+
+.light .text-black,
+.light .text-gray-900,
+.light .text-gray-800,
+.light .dark\:text-gray-100,
+.light .dark\:text-gray-200 {
+  color: #171717 !important;
+}
+
+.light .border,
+.light .border-gray-200,
+.light .border-gray-300,
+.light .border-gray-700,
+.light .dark\:border-gray-700 {
+  border-color: #d1d5db !important; /* gray-300 */
+}
+
+.light .rounded,
+.light .rounded-lg,
+.light .rounded-full {
+  border-radius: 0.5rem !important;
+}
+
+.light .leadsheet-font {
+  color: #171717 !important;
+}
