@@ -1,7 +1,12 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
+import { isAuthenticated } from '@/utils/cookieUtils';
+
 const prisma = new PrismaClient();
+
+
 
 export async function GET(
   request: NextRequest,
@@ -48,7 +53,7 @@ export async function PUT(
   try {
     const id = params.id;
     const data = await request.json();
-    
+
     if (!id) {
       return NextResponse.json(
         { error: 'Song ID is required' },
@@ -112,7 +117,7 @@ export async function DELETE(
 ) {
   try {
     const id = params.id;
-    
+
     if (!id) {
       return NextResponse.json(
         { error: 'Song ID is required' },
@@ -145,4 +150,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}
