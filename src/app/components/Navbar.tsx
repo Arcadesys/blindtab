@@ -22,25 +22,31 @@ export default function Navbar() {
     { key: 'high-contrast', label: 'High Contrast' },
   ];
 
-  // Set theme and handle high-contrast class
+  // Consolidated theme logic utility
   const setAccessibleTheme = (themeKey: string) => {
     setTheme(themeKey);
     if (typeof window !== 'undefined') {
-      if (themeKey === 'high-contrast') {
-        document.documentElement.classList.add('high-contrast');
-      } else {
-        document.documentElement.classList.remove('high-contrast');
+      // Remove all known theme classes
+      document.documentElement.classList.remove('dark', 'high-contrast', 'light');
+      // Always add a class for the selected theme
+      if (themeKey === 'light') {
+        document.documentElement.classList.add('light');
+      } else if (themeKey) {
+        document.documentElement.classList.add(themeKey);
       }
     }
   };
 
   useEffect(() => {
     setMounted(true);
-    // On mount, ensure high-contrast class is set if needed
-    if (theme === 'high-contrast') {
-      document.documentElement.classList.add('high-contrast');
-    } else {
-      document.documentElement.classList.remove('high-contrast');
+    // On mount, ensure only the correct theme class is set
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.remove('dark', 'high-contrast', 'light');
+      if (theme === 'light') {
+        document.documentElement.classList.add('light');
+      } else if (theme) {
+        document.documentElement.classList.add(theme);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme]);

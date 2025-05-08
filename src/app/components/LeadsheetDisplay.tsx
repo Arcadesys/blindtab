@@ -12,7 +12,7 @@ import {
 } from '@/utils/chordUtils';
 
 // Display mode for the leadsheet
-export type DisplayMode = 'default' | 'high-contrast' | 'yellow-black' | 'black-white';
+// DisplayMode is now handled globally, not per leadsheet
 
 // Display mode for chords
 export type ChordDisplayMode = 'original' | 'transposed' | 'both' | 'numerals';
@@ -22,7 +22,7 @@ export interface LeadsheetDisplayProps {
   fontSize: number;
   setFontSize?: (size: number) => void;
   autoScroll?: boolean;
-  displayMode?: DisplayMode;
+  // displayMode?: DisplayMode;
   stepSize?: number;
   setStepSize?: (size: number) => void;
   originalKey: ChordNote | null;
@@ -39,7 +39,7 @@ export default function LeadsheetDisplay({
   fontSize = 28,
   setFontSize,
   autoScroll = false,
-  displayMode = 'default',
+  // displayMode,
   stepSize = 1,
   setStepSize,
   originalKey,
@@ -393,41 +393,13 @@ export default function LeadsheetDisplay({
     navigateToNextLine();
   };
 
-  // Get display styles based on the display mode
-  const getDisplayStyles = () => {
-    switch (displayMode) {
-      case 'high-contrast':
-        return {
-          container: 'bg-white text-black',
-          chord: 'font-mono font-bold bg-blue-100 py-1 px-2 rounded text-black leadsheet-font',
-          lyric: 'font-mono text-black leadsheet-font',
-          highlight: 'bg-blue-700 bg-opacity-30',
-        };
-      case 'yellow-black':
-        return {
-          container: 'bg-black text-yellow-300',
-          chord: 'font-mono font-bold text-yellow-300 py-1 leadsheet-font',
-          lyric: 'font-mono text-yellow-300 leadsheet-font',
-          highlight: 'bg-yellow-900 bg-opacity-30',
-        };
-      case 'black-white':
-        return {
-          container: 'bg-white text-black',
-          chord: 'font-mono font-bold text-black underline py-1 leadsheet-font',
-          lyric: 'font-mono text-black leadsheet-font',
-          highlight: 'bg-gray-200',
-        };
-      default:
-        return {
-          container: 'bg-[#121a29] text-white',
-          chord: 'font-mono text-blue-400 py-1 leadsheet-font',
-          lyric: 'font-mono text-white leadsheet-font',
-          highlight: 'bg-blue-900 bg-opacity-30',
-        };
-    }
+  // Display mode is now handled globally; use theme-aware styles
+  const styles = {
+    container: 'bg-white text-gray-900 dark:bg-[#121a29] dark:text-white',
+    chord: 'font-mono text-blue-600 dark:text-blue-400 py-1 leadsheet-font',
+    lyric: 'font-mono text-gray-900 dark:text-white leadsheet-font',
+    highlight: 'bg-blue-100 dark:bg-blue-900 bg-opacity-30',
   };
-
-  const styles = getDisplayStyles();
 
   return (
     <div 
