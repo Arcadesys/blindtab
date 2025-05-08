@@ -1,3 +1,11 @@
+/* High Contrast (yellow on black) theme */
+/* High Contrast (yellow on black) theme */
+.high-contrast, .high-contrast body {
+  --background: #000000 !important;
+  --foreground: #ffe600 !important; /* Verify contrast ratio */
+  background: #000 !important;
+  color: #ffe600 !important; /* Verify contrast ratio */
+}
 @import "tailwindcss";
 
 @layer base {
@@ -80,4 +88,87 @@ body {
       line-height: 2.5rem;
     }
   }
+}
+
+/* Dark theme */
+.dark, .dark body {
+  --background: #0a0a0a !important;
+  --foreground: #ededed !important;
+  background: #0a0a0a !important;
+  color: #ededed !important;
+}
+
+/* Light theme */
+.light, .light body {
+  --background: #ffffff !important;
+  --foreground: #171717 !important;
+  background: #ffffff !important;
+  color: #171717 !important;
+}
+
+/* Light mode box backgrounds and borders for readability */
+.light .bg-white,
+.light .bg-gray-50,
+.light .bg-gray-100,
+.light .bg-gray-200,
+.light .bg-gray-800,
+.light .bg-gray-900,
+.light .dark\:bg-gray-800,
+.light .dark\:bg-gray-900 {
+  background: #f7f7f7 !important;
+  color: #171717 !important;
+}
+
+.light .text-black,
+.light .text-gray-900,
+.light .text-gray-800,
+.light .dark\:text-gray-100,
+.light .dark\:text-gray-200 {
+  color: #171717 !important;
+}
+
+.light .border,
+.light .border-gray-200,
+.light .border-gray-300,
+.light .border-gray-700,
+.light .dark\:border-gray-700 {
+  border-color: #d1d5db !important; /* gray-300 */
+}
+
+.light .rounded,
+.light .rounded-lg,
+.light .rounded-full {
+  border-radius: 0.5rem !important;
+}
+
+.light .leadsheet-font {
+  color: #171717 !important;
+}
+
+/* Light mode: subtle box shadow for boxes */
+.light .bg-white,
+.light .bg-gray-50,
+.light .bg-gray-100,
+.light .bg-gray-200,
+.light .bg-gray-800,
+.light .bg-gray-900,
+.light .dark\:bg-gray-800,
+.light .dark\:bg-gray-900 {
+  box-shadow: 0 1px 4px 0 rgba(0,0,0,0.06);
+}
+
+/* Light mode: visible focus outline for accessibility */
+.light :focus {
+  outline: 2px solid #2563eb !important; /* blue-600 */
+  outline-offset: 2px;
+}
+
+/* Light mode: hover effect for interactive boxes/buttons */
+.light button:hover,
+.light [role="button"]:hover,
+.light .bg-white:hover,
+.light .bg-gray-50:hover,
+.light .bg-gray-100:hover {
+  box-shadow: 0 4px 12px 0 rgba(0,0,0,0.10);
+  background: #f0f0f0 !important;
 }

@@ -19,8 +19,8 @@ interface SongDetailClientProps {
 export default function SongDetailClient({ song }: SongDetailClientProps) {
   const { isAuthenticated, loading } = useAuth();
   const [fontSize, setFontSize] = useState(36);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('default');
-  const [showDisplayOptions, setShowDisplayOptions] = useState(false);
+  // const [displayMode, setDisplayMode] = useState<DisplayMode>('default');
+  // const [showDisplayOptions, setShowDisplayOptions] = useState(false);
   const [showControlsPanel, setShowControlsPanel] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [autoScroll, setAutoScroll] = useState(false);
@@ -75,9 +75,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
       } else if (e.key === 'c') {
         // Toggle controls panel
         setShowControlsPanel(!showControlsPanel);
-      } else if (e.key === 'd') {
-        // Toggle display options
-        setShowDisplayOptions(!showDisplayOptions);
+      // Removed display options feature
       } else if (e.key === 'a') {
         // Toggle auto-scroll
         setAutoScroll(!autoScroll);
@@ -91,7 +89,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
         // Esc returns to normal view from any mode
         setFullscreen(false);
         setShowHeader(true);
-        setShowDisplayOptions(false);
+        // setShowDisplayOptions(false); // removed display options feature
         setShowTransposition(false);
         setShowControlsPanel(false);
         setShowInfo(false);
@@ -100,7 +98,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [fullscreen, showInfo, showControlsPanel, showDisplayOptions, autoScroll, showTransposition, showHeader]);
+  }, [fullscreen, showInfo, showControlsPanel, autoScroll, showTransposition, showHeader]);
 
   // Handle transposition changes
   const handleTranspositionChange = (params: {
@@ -125,32 +123,30 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
   };
 
   return (
-    <div className={`relative min-h-screen pb-20 md:pb-0 ${fullscreen ? 'bg-[#121a29]' : 'bg-[#121a29]'}`}>
+    <div className={`relative min-h-screen pb-20 md:pb-0 ${fullscreen ? 'bg-white dark:bg-[#121a29]' : 'bg-white dark:bg-[#121a29]'}`}>
       {/* Collapsible Header */}
       {showHeader && (
-        <div className="bg-[#0c1422] shadow-md">
+        <div className="bg-white dark:bg-[#0c1422] shadow-md">
           <div className="container mx-auto px-0 py-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold truncate text-white">{song.title}</h1>
-                <p className="text-gray-400">{song.artist}</p>
+                <h1 className="text-2xl font-bold truncate text-gray-900 dark:text-white">{song.title}</h1>
+                <p className="text-gray-600 dark:text-gray-400">{song.artist}</p>
                 
                 {/* Song Metadata */}
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   {song.key && (
-                    <span className="text-sm bg-[#1d293d] text-gray-300 px-2 py-1 rounded">
+                    <span className="text-sm bg-gray-200 dark:bg-[#1d293d] text-gray-700 dark:text-gray-300 px-2 py-1 rounded">
                       Key: {song.key}
                     </span>
                   )}
-                  
                   {song.tempo && (
-                    <span className="text-sm bg-[#1d293d] text-gray-300 px-2 py-1 rounded">
+                    <span className="text-sm bg-gray-200 dark:bg-[#1d293d] text-gray-700 dark:text-gray-300 px-2 py-1 rounded">
                       {song.tempo} BPM
                     </span>
                   )}
-                  
                   {song.timeSignature && (
-                    <span className="text-sm bg-[#1d293d] text-gray-300 px-2 py-1 rounded">
+                    <span className="text-sm bg-gray-200 dark:bg-[#1d293d] text-gray-700 dark:text-gray-300 px-2 py-1 rounded">
                       {song.timeSignature}
                     </span>
                   )}
@@ -169,7 +165,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setShowControlsPanel(true)}
-                  className="px-3 py-2 bg-blue-900 text-blue-300 rounded-lg flex items-center"
+                  className="px-3 py-2 bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-300 rounded-lg flex items-center"
                   aria-label="Show controls"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
@@ -178,29 +174,15 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
                   Controls
                 </button>
                 
-                <button
-                  onClick={() => setShowDisplayOptions(!showDisplayOptions)}
-                  className={`px-3 py-2 rounded-lg flex items-center ${
-                    displayMode !== 'default'
-                      ? 'bg-yellow-900 text-yellow-300'
-                      : 'bg-[#1d293d] text-gray-300'
-                  }`}
-                  aria-label="Display options"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                  </svg>
-                  Display
-                </button>
+
                 
                 {song.key && (
                   <button
                     onClick={() => setShowTransposition(!showTransposition)}
                     className={`px-3 py-2 rounded-lg flex items-center ${
                       transpositionParams 
-                        ? 'bg-green-900 text-green-300'
-                        : 'bg-[#1d293d] text-gray-300'
+                        ? 'bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-300'
+                        : 'bg-gray-200 dark:bg-[#1d293d] text-gray-700 dark:text-gray-300'
                     }`}
                     aria-label="Transpose chords"
                   >
@@ -218,8 +200,8 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
                   }}
                   className={`px-3 py-2 rounded-lg flex items-center
                     ${fullscreen 
-                      ? 'bg-red-900 text-red-300'
-                      : 'bg-[#1d293d] text-gray-300'
+                      ? 'bg-red-100 dark:bg-red-900 text-red-900 dark:text-red-300'
+                      : 'bg-gray-200 dark:bg-[#1d293d] text-gray-700 dark:text-gray-300'
                     }`}
                   aria-label="Toggle fullscreen"
                 >
@@ -231,13 +213,13 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
                 
                 {/* Only show Edit button if authenticated and not loading */}
                 {loading ? (
-                  <div className="px-3 py-2 rounded-lg bg-[#1d293d] text-gray-500 flex items-center animate-pulse" style={{ minWidth: 80 }}>
+                  <div className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-[#1d293d] text-gray-500 flex items-center animate-pulse" style={{ minWidth: 80 }}>
                     <svg className="h-5 w-5 mr-1" /> Loading...
                   </div>
                 ) : isAuthenticated ? (
                   <Link
                     href={`/edit/${song.id}`}
-                    className="px-3 py-2 bg-[#1d293d] text-gray-300 rounded-lg flex items-center"
+                    className="px-3 py-2 bg-gray-200 dark:bg-[#1d293d] text-gray-700 dark:text-gray-300 rounded-lg flex items-center"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -273,7 +255,6 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
           fontSize={fontSize}
           setFontSize={setFontSize}
           autoScroll={autoScroll}
-          displayMode={displayMode}
           stepSize={stepSize}
           setStepSize={setStepSize}
           originalKey={song.key as ChordNote | null}
@@ -281,77 +262,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
         />
       </div>
       
-      {/* Display options panel */}
-      {showDisplayOptions && (
-        <div className="fixed inset-x-0 bottom-0 bg-white dark:bg-gray-900 shadow-lg border-t border-gray-200 dark:border-gray-700 p-4 z-20">
-          <div className="container mx-auto px-0">
-            <div className="flex flex-col space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Display Options</h3>
-                <button 
-                  onClick={() => setShowDisplayOptions(false)}
-                  className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
-                  aria-label="Close display options"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className="flex flex-wrap gap-4 md:justify-center">
-                <button
-                  onClick={() => setDisplayMode('default')}
-                  className={`p-3 rounded-lg flex flex-col items-center justify-center ${
-                    displayMode === 'default' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-800'
-                  }`}
-                >
-                  <div className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded flex items-center justify-center mb-2 bg-white dark:bg-gray-800">
-                    <span className="text-sm">Aa</span>
-                  </div>
-                  <span className="text-sm">Default</span>
-                </button>
-                
-                <button
-                  onClick={() => setDisplayMode('high-contrast')}
-                  className={`p-3 rounded-lg flex flex-col items-center justify-center ${
-                    displayMode === 'high-contrast' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-800'
-                  }`}
-                >
-                  <div className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded flex items-center justify-center mb-2 bg-white">
-                    <span className="text-sm text-black font-bold">Aa</span>
-                  </div>
-                  <span className="text-sm">High Contrast</span>
-                </button>
-                
-                <button
-                  onClick={() => setDisplayMode('yellow-black')}
-                  className={`p-3 rounded-lg flex flex-col items-center justify-center ${
-                    displayMode === 'yellow-black' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-800'
-                  }`}
-                >
-                  <div className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded flex items-center justify-center mb-2 bg-black">
-                    <span className="text-sm text-yellow-300">Aa</span>
-                  </div>
-                  <span className="text-sm">Yellow on Black</span>
-                </button>
-                
-                <button
-                  onClick={() => setDisplayMode('black-white')}
-                  className={`p-3 rounded-lg flex flex-col items-center justify-center ${
-                    displayMode === 'black-white' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-800'
-                  }`}
-                >
-                  <div className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded flex items-center justify-center mb-2 bg-white">
-                    <span className="text-sm text-black font-bold">Aa</span>
-                  </div>
-                  <span className="text-sm">Black & White</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
       
       {/* Transposition panel */}
       {showTransposition && song.key && (
