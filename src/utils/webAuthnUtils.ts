@@ -1,35 +1,66 @@
-'use server';
 
-import { 
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
-  generateAuthenticationOptions,
-  verifyAuthenticationResponse
-} from '@simplewebauthn/server';
-import type { 
-  GenerateRegistrationOptionsOpts,
-  VerifyRegistrationResponseOpts,
-  GenerateAuthenticationOptionsOpts,
-  VerifyAuthenticationResponseOpts,
-  RegistrationResponseJSON,
-  AuthenticationResponseJSON
-} from '@simplewebauthn/server';
-import type {
-  RegistrationCredential,
-  AuthenticationCredential
-} from '@simplewebauthn/browser';
+
 import { PrismaClient } from '@prisma/client';
 
-let prisma: PrismaClient;
+type GenerateRegistrationOptionsOpts = {
+  rpName: string;
+  rpID: string;
+  userID: string;
+  userName: string;
+  userDisplayName: string;
+  timeout?: number;
+  attestationType?: string;
+  excludeCredentials?: any[];
+  authenticatorSelection?: {
+    residentKey?: string;
+    userVerification?: string;
+    authenticatorAttachment?: string;
+  };
+};
 
-if (process.env.NODE_ENV === 'production') {
-  prisma = new PrismaClient();
-} else {
-  if (!(global as any).prisma) {
-    (global as any).prisma = new PrismaClient();
+type GenerateAuthenticationOptionsOpts = {
+  rpID: string;
+  timeout?: number;
+  userVerification?: string;
+  allowCredentials?: any[];
+};
+
+type RegistrationResponseJSON = any;
+type AuthenticationResponseJSON = any;
+
+let generateRegistrationOptions: (opts: GenerateRegistrationOptionsOpts) => any;
+let verifyRegistrationResponse: (opts: any) => any;
+let generateAuthenticationOptions: (opts: GenerateAuthenticationOptionsOpts) => any;
+let verifyAuthenticationResponse: (opts: any) => any;
+
+if (typeof window === 'undefined') {
+  try {
+    const simpleWebAuthn = require('@simplewebauthn/server');
+    generateRegistrationOptions = simpleWebAuthn.generateRegistrationOptions;
+    verifyRegistrationResponse = simpleWebAuthn.verifyRegistrationResponse;
+    generateAuthenticationOptions = simpleWebAuthn.generateAuthenticationOptions;
+    verifyAuthenticationResponse = simpleWebAuthn.verifyAuthenticationResponse;
+  } catch (error) {
+    console.error('Error importing WebAuthn libraries:', error);
+    const errorFn = () => {
+      throw new Error('WebAuthn libraries failed to load');
+    };
+    generateRegistrationOptions = errorFn;
+    verifyRegistrationResponse = errorFn;
+    generateAuthenticationOptions = errorFn;
+    verifyAuthenticationResponse = errorFn;
   }
-  prisma = (global as any).prisma;
 }
+
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  });
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 const rpName = 'BlindTab';
 const rpID = process.env.NEXT_PUBLIC_DOMAIN || 'localhost';
