@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
 // Define paths that require authentication
 const PROTECTED_PATHS = [
@@ -17,9 +18,15 @@ const PUBLIC_PATHS = [
   '/register',
   '/api/auth/login',
   '/api/auth/register',
+  '/api/auth/callback',
+  '/api/auth/signin',
+  '/api/auth/signout',
+  '/api/auth/session',
+  '/api/auth/csrf',
+  '/api/auth/providers',
+  '/api/auth/verify-request',
+  '/api/auth/error',
 ];
-
-
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -32,17 +39,21 @@ export async function middleware(request: NextRequest) {
   // Check if the path is explicitly public
   const isPublicPath = PUBLIC_PATHS.some(path => 
     pathname.startsWith(path)
-  );
+  ) || pathname.startsWith('/api/auth/');
   
   // If it's a public path, allow access
   if (isPublicPath) {
     return NextResponse.next();
   }
   
-  // If it's a protected path, check for auth
+  // If it's a protected path, check for auth using NextAuth
   if (isProtectedPath) {
-    const cookieHeader = request.cookies.get('auth_token');
-    if (!cookieHeader) {
+    const token = await getToken({ 
+      req: request, 
+      secret: process.env.NEXTAUTH_SECRET 
+    });
+    
+    if (!token) {
       const url = new URL('/login', request.url);
       url.searchParams.set('from', pathname);
       return NextResponse.redirect(url);
@@ -59,7 +70,8 @@ export const config = {
     '/songs/edit/:path*',
     '/login',
     '/register',
+    '/api/auth/:path*',
     '/api/tags/manage/:path*',
     '/tags/manage/:path*',
   ],
-};                                                                                                                        
+};                                                                                                                                                                                                                                                                                                                                                                        
