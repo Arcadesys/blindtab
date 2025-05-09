@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import jwt from 'jsonwebtoken';
 
 // Define paths that require authentication
 const PROTECTED_PATHS = [
@@ -7,13 +8,19 @@ const PROTECTED_PATHS = [
   '/api/songs/edit',
   '/songs/create',
   '/songs/edit',
+  '/api/tags/manage',
+  '/tags/manage',
 ];
 
 // Define paths that are explicitly public
 const PUBLIC_PATHS = [
   '/login',
+  '/register',
   '/api/auth/login',
+  '/api/auth/register',
 ];
+
+const JWT_SECRET = process.env.JWT_SECRET || '';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -38,15 +45,22 @@ export function middleware(request: NextRequest) {
     // Get the auth token from cookies
     const authToken = request.cookies.get('auth_token')?.value;
     
-    // If no token or invalid token, redirect to login
+    // If no token, redirect to login
     if (!authToken) {
       const url = new URL('/login', request.url);
       url.searchParams.set('from', pathname);
       return NextResponse.redirect(url);
     }
     
-    // In a real app, you'd verify the token here
-    // For this simple example, we'll just check if it exists
+    try {
+      jwt.verify(authToken, JWT_SECRET);
+      // Token is valid, allow access
+    } catch (error) {
+      // Token is invalid, redirect to login
+      const url = new URL('/login', request.url);
+      url.searchParams.set('from', pathname);
+      return NextResponse.redirect(url);
+    }
   }
   
   return NextResponse.next();
@@ -58,5 +72,8 @@ export const config = {
     '/songs/create/:path*',
     '/songs/edit/:path*',
     '/login',
+    '/register',
+    '/api/tags/manage/:path*',
+    '/tags/manage/:path*',
   ],
-}; 
+};     

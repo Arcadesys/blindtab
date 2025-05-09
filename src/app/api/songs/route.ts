@@ -1,24 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
-// Helper function to check if user is authenticated
-async function isAuthenticated(): Promise<boolean> {
+// Helper function to check if user is authenticated and get user ID
+async function getAuthenticatedUser(): Promise<{ isAuthenticated: boolean; userId?: string }> {
   const cookieStore = cookies();
   const authToken = cookieStore.get('auth_token');
-  return !!authToken;
+  
+  if (!authToken) {
+    return { isAuthenticated: false };
+  }
+  
+  try {
+    const token = jwt.verify(authToken.value, process.env.JWT_SECRET || '');
+    const userId = (token as { userId: string }).userId;
+    return { isAuthenticated: true, userId };
+  } catch (error) {
+    return { isAuthenticated: false };
+  }
 }
 
 export async function GET() {
   try {
     // Check if user is authenticated
-    const isAdmin = await isAuthenticated();
+    const { isAuthenticated, userId } = await getAuthenticatedUser();
     
-    // If not authenticated, only return public songs
+    let whereCondition = {};
+    
+    if (isAuthenticated && userId) {
+      // If authenticated, return user's songs + public songs
+      whereCondition = {
+        OR: [
+          { userId },
+          { isPublic: true }
+        ]
+      };
+    } else {
+      // If not authenticated, only return public songs
+      whereCondition = { isPublic: true };
+    }
+    
     const songs = await prisma.song.findMany({
-      where: isAdmin ? undefined : { isPublic: true },
+      where: whereCondition,
       include: {
         tags: true,
       },
@@ -40,7 +66,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // Check if user is authenticated
-    if (!await isAuthenticated()) {
+    const { isAuthenticated, userId } = await getAuthenticatedUser();
+    
+    if (!isAuthenticated || !userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -65,7 +93,7 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Create the song
+    // Create the song with user ID
     const song = await prisma.song.create({
       data: {
         title: data.title,
@@ -75,6 +103,7 @@ export async function POST(request: NextRequest) {
         tempo: data.tempo ? parseInt(data.tempo) : null,
         timeSignature: data.timeSignature || null,
         isPublic: data.isPublic ?? false, // Default to private
+        userId, // Associate song with the user
         tags: tags,
       },
       include: {
@@ -90,4 +119,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}     
