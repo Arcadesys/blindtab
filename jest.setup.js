@@ -30,4 +30,6 @@ jest.mock('next/navigation', () => ({
   useSearchParams() {
     return new URLSearchParams();
   },
-})); 
+}));
+
+global.Request = class RequestMock {};
