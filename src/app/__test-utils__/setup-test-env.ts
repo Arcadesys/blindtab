@@ -1,12 +1,34 @@
 import { config } from 'dotenv';
 config({ path: '.env.test' });
 
-import { prisma } from './mocks/prisma';
-import { PrismaClient } from '@prisma/client';
+import { mockPrisma } from './mocks/prisma';
 
 jest.mock('@prisma/client', () => {
   return {
-    PrismaClient: jest.fn(() => prisma),
+    PrismaClient: jest.fn().mockImplementation(() => {
+      return {
+        user: {
+          findUnique: jest.fn(),
+          findMany: jest.fn(),
+          create: jest.fn(),
+          update: jest.fn(),
+          delete: jest.fn(),
+        },
+        song: {
+          findUnique: jest.fn(),
+          findMany: jest.fn(),
+          create: jest.fn(),
+          update: jest.fn(),
+          delete: jest.fn(),
+        },
+        tag: {
+          findUnique: jest.fn(),
+          findMany: jest.fn(),
+          create: jest.fn(),
+        },
+        $disconnect: jest.fn(),
+      };
+    }),
   };
 });
 
@@ -43,5 +65,3 @@ jest.mock('bcrypt', () => {
     }),
   };
 });
-
-export { prisma };
