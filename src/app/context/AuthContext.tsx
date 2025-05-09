@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCookie, isAuthenticated } from '@/utils/cookieUtils';
+
 import { AuthUser } from '@/types/auth';
 
 interface AuthContextType {
@@ -23,19 +23,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuth, setIsAuth] = useState(false);
 
   useEffect(() => {
-    // Check authentication status on mount
+    // Check authentication status on mount by calling the API
     (async () => {
-      const auth = await isAuthenticated();
-      setIsAuth(auth);
-      if (auth) {
-        // Optionally, fetch user info from an endpoint or decode JWT
-        const token = await getCookie('auth_token');
-        if (token) {
-          // You may want to decode the JWT here to get user info
-          // For now, just set as authenticated
-          setUser(null); // Or fetch user info if needed
+      try {
+        const res = await fetch('/api/auth/check');
+        if (res.ok) {
+          const data = await res.json();
+          setIsAuth(data.authenticated);
+          setUser(data.user || null);
+        } else {
+          setIsAuth(false);
+          setUser(null);
         }
-      } else {
+      } catch {
+        setIsAuth(false);
         setUser(null);
       }
       setLoading(false);
