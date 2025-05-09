@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { getToken } from 'next-auth/jwt';
 
 // Define paths that require authentication
 const PROTECTED_PATHS = [
@@ -20,9 +20,9 @@ const PUBLIC_PATHS = [
   '/api/auth/register',
 ];
 
-const JWT_SECRET = process.env.JWT_SECRET || '';
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || '';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   // Check if the path is protected
@@ -42,21 +42,14 @@ export function middleware(request: NextRequest) {
   
   // If it's a protected path, check for auth
   if (isProtectedPath) {
-    // Get the auth token from cookies
-    const authToken = request.cookies.get('auth_token')?.value;
+    // Get the auth session from NextAuth
+    const token = await getToken({ 
+      req: request, 
+      secret: NEXTAUTH_SECRET 
+    });
     
     // If no token, redirect to login
-    if (!authToken) {
-      const url = new URL('/login', request.url);
-      url.searchParams.set('from', pathname);
-      return NextResponse.redirect(url);
-    }
-    
-    try {
-      jwt.verify(authToken, JWT_SECRET);
-      // Token is valid, allow access
-    } catch {
-      // Token is invalid, redirect to login
+    if (!token) {
       const url = new URL('/login', request.url);
       url.searchParams.set('from', pathname);
       return NextResponse.redirect(url);
@@ -76,4 +69,4 @@ export const config = {
     '/api/tags/manage/:path*',
     '/tags/manage/:path*',
   ],
-};                    
+};                                                                                                                        

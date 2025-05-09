@@ -1,16 +1,14 @@
 
 
 import { NextResponse } from 'next/server';
-import { Auth } from '@auth/core';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../[...nextauth]/route';
 
 export async function GET(request: Request) {
   try {
-    const response = await Auth(request, authOptions);
-    const { status } = response;
-    const data = await response.json();
+    const session = await getServerSession(authOptions);
 
-    if (!data?.user) {
+    if (!session?.user) {
       return NextResponse.json(
         { authenticated: false },
         { status: 401 }
@@ -19,8 +17,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       authenticated: true,
-      user: data.user,
-    }, { status });
+      user: session.user,
+    });
   } catch (err) {
     console.error('Auth check error:', err);
     return NextResponse.json(
@@ -28,5 +26,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-// (No trailing brace here; removed extra closing brace)
-}                              
+}                                                                                                                                                      

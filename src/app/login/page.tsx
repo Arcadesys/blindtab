@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { signIn } from 'next-auth/react';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -20,17 +21,14 @@ function LoginForm() {
     setError('');
     
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
       });
       
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Login failed');
+      if (!result?.ok) {
+        throw new Error(result?.error || 'Login failed');
       }
       
       // Redirect to the original destination or songs page
@@ -128,4 +126,4 @@ export default function LoginPage() {
       <LoginForm />
     </Suspense>
   );
-}   
+}            

@@ -1,44 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { comparePasswords, generateJwtToken, setAuthCookie } from '@/utils/authUtils';
-
-const prisma = new PrismaClient();
+import { authOptions } from '../[...nextauth]/route';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
-    
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password are required' },
-        { status: 400 }
-      );
-    }
-    
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-    
-    // Check if user exists and password matches
-    if (!user || !(await comparePasswords(password, user.password || ''))) {
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
-    
-    const token = generateJwtToken(user.id);
-    
-    setAuthCookie(token);
-    
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
-    });
+    return NextResponse.redirect(new URL('/api/auth/signin', request.url));
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
@@ -46,4 +11,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}   
+}         

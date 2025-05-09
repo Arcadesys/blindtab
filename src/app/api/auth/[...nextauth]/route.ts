@@ -1,7 +1,8 @@
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { PrismaClient } from '@prisma/client';
-import { Auth } from '@auth/core';
-import CredentialsProvider from '@auth/core/providers/credentials';
+import NextAuth from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
 import { comparePasswords } from '@/utils/authUtils';
 
 const prisma = new PrismaClient();
@@ -34,6 +35,10 @@ export const authOptions = {
         };
       },
     }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    }),
   ],
   session: {
     strategy: 'jwt' as const,
@@ -52,5 +57,5 @@ export const authOptions = {
   },
 };
 
-const handler = Auth(authOptions);
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
