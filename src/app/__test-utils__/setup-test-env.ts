@@ -22,23 +22,8 @@ global.Headers = class Headers {
 };
 
 jest.mock('next/server', () => {
-  type ResponseInit = {
-    status?: number;
-    headers?: Record<string, string>;
-  };
-
-  type RequestInit = {
-    method?: string;
-    headers?: Record<string, string>;
-    body?: any;
-  };
-
   class NextResponse {
-    status: number;
-    body: any;
-    headers: Headers;
-    
-    constructor(body: any, init?: ResponseInit) {
+    constructor(body, init) {
       this.body = body;
       this.status = init?.status || 200;
       this.headers = new Headers(init?.headers);
@@ -48,27 +33,25 @@ jest.mock('next/server', () => {
       return this.body;
     }
     
-    static json(body: any, init?: ResponseInit) {
-      const response = new NextResponse(body, init);
-      return response;
+    static json(body, init) {
+      return {
+        status: init?.status || 200,
+        body,
+        headers: new Headers(init?.headers),
+        json: async () => body,
+      };
     }
     
-    static redirect(url: string | URL) {
-      const response = new NextResponse(null, {
+    static redirect(url) {
+      return {
         status: 302,
-        headers: { Location: url.toString() }
-      });
-      return response;
+        headers: new Headers({ Location: url.toString() }),
+      };
     }
   }
   
   class NextRequest {
-    url: string;
-    method: string;
-    headers: Headers;
-    private _body: any;
-    
-    constructor(url: string, init: RequestInit = {}) {
+    constructor(url, init = {}) {
       this.url = url;
       this.method = init.method || 'GET';
       this.headers = new Headers(init.headers);
