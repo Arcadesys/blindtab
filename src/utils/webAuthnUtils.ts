@@ -18,7 +18,16 @@ import type {
 } from '@simplewebauthn/browser';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+let prisma: PrismaClient;
+
+if (process.env.NODE_ENV === 'production') {
+  prisma = new PrismaClient();
+} else {
+  if (!(global as any).prisma) {
+    (global as any).prisma = new PrismaClient();
+  }
+  prisma = (global as any).prisma;
+}
 
 const rpName = 'BlindTab';
 const rpID = process.env.NEXT_PUBLIC_DOMAIN || 'localhost';
