@@ -12,7 +12,7 @@ jest.mock('@prisma/client', () => {
 
 jest.mock('next/headers', () => {
   return {
-    cookies: jest.fn(() => ({
+    cookies: jest.fn(() => Promise.resolve({
       get: jest.fn((name) => {
         if (name === 'auth_token') {
           return { value: 'mock-token' };
