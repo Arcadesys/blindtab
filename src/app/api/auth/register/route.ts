@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { hashPassword, generateJwtToken, setAuthCookie } from '@/utils/authUtils';
+import { hashPassword } from '@/utils/authUtils';
 
 const prisma = new PrismaClient();
 
@@ -36,9 +36,6 @@ export async function POST(request: NextRequest) {
       },
     });
     
-    const token = generateJwtToken(user.id);
-    
-    setAuthCookie(token);
     
     return NextResponse.json({
       success: true,

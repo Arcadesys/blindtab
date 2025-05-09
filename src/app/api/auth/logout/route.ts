@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
-import { removeAuthCookie } from '@/utils/authUtils';
+import NextAuth from 'next-auth';
+import { authOptions } from '../[...nextauth]/route';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    // Clear the auth cookie
-    removeAuthCookie();
-    
-    return NextResponse.json({ success: true });
+    return NextResponse.redirect(new URL('/api/auth/signout', request.url));
   } catch (error) {
     console.error('Logout error:', error);
     return NextResponse.json(
@@ -14,4 +12,4 @@ export async function POST() {
       { status: 500 }
     );
   }
-}   
+}         

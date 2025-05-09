@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '../context/AuthContext';
 
 function RegisterForm() {
   const [name, setName] = useState('');
@@ -13,6 +14,7 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   
   const router = useRouter();
+  const { register } = useAuth();
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,17 +28,10 @@ function RegisterForm() {
     }
     
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name, email, password }),
-      });
+      const success = await register(name, email, password);
       
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Registration failed');
+      if (!success) {
+        throw new Error('Registration failed');
       }
       
       router.push('/songs');
