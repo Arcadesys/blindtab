@@ -6,32 +6,69 @@ import { mockPrisma } from './mocks/prisma';
 global.Request = class Request {};
 global.Response = class Response {};
 global.Headers = class Headers {
-  constructor(init) {
+  private headers: Record<string, string>;
+  
+  constructor(init?: Record<string, string>) {
     this.headers = init || {};
+  }
+  
+  get(name: string): string | null {
+    return this.headers[name] || null;
+  }
+  
+  set(name: string, value: string): void {
+    this.headers[name] = value;
   }
 };
 
 jest.mock('next/server', () => {
+  type ResponseInit = {
+    status?: number;
+    headers?: Record<string, string>;
+  };
+
+  type RequestInit = {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: any;
+  };
+
   class NextResponse {
-    static json(body, init) {
-      return {
-        status: init?.status || 200,
-        body,
-        headers: new Headers(init?.headers),
-        json: async () => body,
-      };
+    status: number;
+    body: any;
+    headers: Headers;
+    
+    constructor(body: any, init?: ResponseInit) {
+      this.body = body;
+      this.status = init?.status || 200;
+      this.headers = new Headers(init?.headers);
     }
     
-    static redirect(url) {
-      return {
+    async json() {
+      return this.body;
+    }
+    
+    static json(body: any, init?: ResponseInit) {
+      const response = new NextResponse(body, init);
+      return response;
+    }
+    
+    static redirect(url: string | URL) {
+      const response = new NextResponse(null, {
         status: 302,
-        headers: new Headers({ Location: url.toString() }),
-      };
+        headers: { Location: url.toString() }
+      });
+      return response;
     }
   }
   
   class NextRequest {
-    constructor(url, init = {}) {
+    url: string;
+    method: string;
+    headers: Headers;
+    private _body: any;
+    
+    constructor(url: string, init: RequestInit = {}) {
       this.url = url;
       this.method = init.method || 'GET';
       this.headers = new Headers(init.headers);
