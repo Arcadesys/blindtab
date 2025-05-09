@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { removeAuthCookie } from '@/utils/authUtils';
 
 export async function POST() {
   try {
     // Clear the auth cookie
-    const cookieStore = cookies();
-    cookieStore.delete('auth_token');
+    removeAuthCookie();
     
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -15,4 +14,4 @@ export async function POST() {
       { status: 500 }
     );
   }
-} 
+}   

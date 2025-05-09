@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { PrismaClient } from '@prisma/client';
+import jwt from 'jsonwebtoken';
+
+const prisma = new PrismaClient();
 
 export async function GET() {
   try {
@@ -14,10 +18,34 @@ export async function GET() {
       );
     }
     
-    // In a real app, you'd verify the token here
-    // For this simple example, we'll just check if it exists
-    
-    return NextResponse.json({ authenticated: true });
+    try {
+      const token = jwt.verify(authToken.value, process.env.JWT_SECRET || '');
+      const userId = (token as { userId: string }).userId;
+      
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      });
+      
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      return NextResponse.json({ 
+        authenticated: true,
+        user
+      });
+    } catch (error) {
+      cookieStore.delete('auth_token');
+      return NextResponse.json(
+        { authenticated: false },
+        { status: 401 }
+      );
+    }
   } catch (error) {
     console.error('Auth check error:', error);
     return NextResponse.json(
@@ -25,4 +53,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-} 
+}     

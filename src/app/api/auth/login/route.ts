@@ -1,35 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { PrismaClient } from '@prisma/client';
+import { comparePasswords, generateJwtToken, setAuthCookie } from '@/utils/authUtils';
 
-// In a real app, you'd store this securely in environment variables
-// and use a proper hashing mechanism
-const ADMIN_PASSWORD = 'bennyvaleriecartoonhorse';
+const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const { password } = await request.json();
+    const { email, password } = await request.json();
     
-    // Check if password matches
-    if (password !== ADMIN_PASSWORD) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: 'Invalid password' },
+        { error: 'Email and password are required' },
+        { status: 400 }
+      );
+    }
+    
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+    
+    // Check if user exists and password matches
+    if (!user || !(await comparePasswords(password, user.password || ''))) {
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
     
-    // Set a cookie with the auth token
-    // In a real app, you'd generate a proper JWT or session token
-    const cookieStore = cookies();
-    cookieStore.set({
-      name: 'auth_token',
-      value: 'authenticated',
-      path: '/',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-    });
+    const token = generateJwtToken(user.id);
     
-    return NextResponse.json({ success: true });
+    setAuthCookie(token);
+    
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
@@ -37,4 +46,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}   
