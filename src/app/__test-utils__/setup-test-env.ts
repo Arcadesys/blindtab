@@ -3,6 +3,55 @@ config({ path: '.env.test' });
 
 import { mockPrisma } from './mocks/prisma';
 
+global.Request = class Request {};
+global.Response = class Response {};
+global.Headers = class Headers {
+  constructor(init) {
+    this.headers = init || {};
+  }
+};
+
+jest.mock('next/server', () => {
+  class NextResponse {
+    static json(body, init) {
+      return {
+        status: init?.status || 200,
+        body,
+        headers: new Headers(init?.headers),
+        json: async () => body,
+      };
+    }
+    
+    static redirect(url) {
+      return {
+        status: 302,
+        headers: new Headers({ Location: url.toString() }),
+      };
+    }
+  }
+  
+  class NextRequest {
+    constructor(url, init = {}) {
+      this.url = url;
+      this.method = init.method || 'GET';
+      this.headers = new Headers(init.headers);
+      this._body = init.body;
+    }
+    
+    async json() {
+      if (typeof this._body === 'string') {
+        return JSON.parse(this._body);
+      }
+      return this._body;
+    }
+  }
+  
+  return {
+    NextResponse,
+    NextRequest,
+  };
+});
+
 jest.mock('@prisma/client', () => {
   return {
     PrismaClient: jest.fn().mockImplementation(() => {
