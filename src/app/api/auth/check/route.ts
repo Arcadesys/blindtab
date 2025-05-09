@@ -1,51 +1,21 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
 
-const prisma = new PrismaClient();
+import { NextResponse } from 'next/server';
+import { getServerSession } from '@auth/core/next';
+import { authOptions } from '../[...nextauth]/route';
 
 export async function GET() {
   try {
-    // Check if the auth token cookie exists
-    const cookieStore = await cookies();
-    const authToken = cookieStore.get('auth_token');
-    
-    if (!authToken) {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
       return NextResponse.json(
         { authenticated: false },
         { status: 401 }
       );
     }
-    
-    try {
-      const token = jwt.verify(authToken.value, process.env.JWT_SECRET || '');
-      const userId = (token as { userId: string }).userId;
-      
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      });
-      
-      if (!user) {
-        throw new Error('User not found');
-      }
-      
-      return NextResponse.json({ 
-        authenticated: true,
-        user
-      });
-    } catch {
-      cookieStore.delete('auth_token');
-      return NextResponse.json(
-        { authenticated: false },
-        { status: 401 }
-      );
-    }
+    return NextResponse.json({
+      authenticated: true,
+      user: session.user,
+    });
   } catch (err) {
     console.error('Auth check error:', err);
     return NextResponse.json(
