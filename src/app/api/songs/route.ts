@@ -7,15 +7,16 @@ const prisma = new PrismaClient();
 
 // Helper function to check if user is authenticated and get user ID
 async function getAuthenticatedUser(): Promise<{ isAuthenticated: boolean; userId?: string }> {
-  const cookieStore = cookies();
-  const authToken = cookieStore.get('auth_token');
-  
+  // Use the async cookie utility to get the auth token
+  const { getCookie } = await import('@/utils/cookieUtils');
+  const authToken = await getCookie('auth_token');
+
   if (!authToken) {
     return { isAuthenticated: false };
   }
-  
+
   try {
-    const token = jwt.verify(authToken.value, process.env.JWT_SECRET || '');
+    const token = jwt.verify(authToken, process.env.JWT_SECRET || '');
     const userId = (token as { userId: string }).userId;
     return { isAuthenticated: true, userId };
   } catch {
