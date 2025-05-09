@@ -23,11 +23,6 @@ const OAUTH_PROVIDERS: OAuthProvider[] = [
     name: 'Google',
     icon: 'google',
   },
-  {
-    id: 'github',
-    name: 'GitHub',
-    icon: 'github',
-  },
 ];
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -136,4 +131,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}                                        
+}                                                        
