@@ -1,26 +1,43 @@
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
 
-export async function GET() {
-  const cookieStore = cookies();
-  const token = cookieStore.get('auth_token');
-  if (!token) {
-    return NextResponse.json(
-      { authenticated: false },
-      { status: 401 }
-    );
-  }
+const prisma = new PrismaClient();
+
+export async function GET(request: NextRequest) {
   try {
-    const decoded = jwt.verify(token.value, process.env.JWT_SECRET || '');
-    return NextResponse.json({
-      authenticated: true,
-      user: decoded,
-    });
-  } catch (err) {
-    return NextResponse.json(
-      { authenticated: false, error: 'Invalid token' },
-      { status: 401 }
-    );
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token');
+    
+    if (!token) {
+      return NextResponse.redirect(new URL('/api/songs/public', request.url));
+    }
+    
+    try {
+      const decoded = jwt.verify(token.value, process.env.JWT_SECRET || '') as { userId: string };
+      
+      const songs = await prisma.song.findMany({
+        where: {
+          OR: [
+            { userId: decoded.userId },
+            { isPublic: true }
+          ]
+        },
+        include: {
+          tags: true,
+        },
+        orderBy: {
+          title: 'asc',
+        },
+      });
+      
+      return NextResponse.json(songs);
+    } catch (err) {
+      return NextResponse.redirect(new URL('/api/songs/public', request.url));
+    }
+  } catch (error) {
+    console.error('Error in songs API:', error);
+    return NextResponse.redirect(new URL('/api/songs/public', request.url));
   }
 }
