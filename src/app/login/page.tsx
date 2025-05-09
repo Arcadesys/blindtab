@@ -3,35 +3,27 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { signIn } from 'next-auth/react';
+import { useAuth } from '../context/AuthContext';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get('from') || '/songs';
-  
+  const { login } = useAuth();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
-      
-      if (!result?.ok) {
-        throw new Error(result?.error || 'Login failed');
+      const success = await login(email, password);
+      if (!success) {
+        throw new Error('Login failed');
       }
-      
-      // Redirect to the original destination or songs page
       router.push(from);
       router.refresh();
     } catch (err) {

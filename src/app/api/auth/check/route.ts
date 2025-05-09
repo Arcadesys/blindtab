@@ -1,24 +1,31 @@
 
 
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../[...nextauth]/route';
 
-export async function GET(request: Request) {
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
+
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
+    const cookieStore = cookies();
+    const token = cookieStore.get('auth_token');
+    if (!token) {
       return NextResponse.json(
         { authenticated: false },
         { status: 401 }
       );
     }
-
-    return NextResponse.json({
-      authenticated: true,
-      user: session.user,
-    });
+    try {
+      const decoded = jwt.verify(token.value, process.env.JWT_SECRET || '');
+      return NextResponse.json({
+        authenticated: true,
+        user: decoded,
+      });
+    } catch (err) {
+      return NextResponse.json(
+        { authenticated: false, error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
   } catch (err) {
     console.error('Auth check error:', err);
     return NextResponse.json(
