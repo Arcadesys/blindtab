@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Tag } from '@prisma/client';
 
 export default function ManageTagsPage() {
-  const router = useRouter();
   const [tags, setTags] = useState<Tag[]>([]);
   const [newTagName, setNewTagName] = useState('');
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
@@ -69,9 +67,9 @@ export default function ManageTagsPage() {
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating tag:', err);
-      setError(err.message || 'Failed to create tag. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to create tag. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -125,9 +123,9 @@ export default function ManageTagsPage() {
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error updating tag:', err);
-      setError(err.message || 'Failed to update tag. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to update tag. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -162,9 +160,9 @@ export default function ManageTagsPage() {
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error deleting tag:', err);
-      setError(err.message || 'Failed to delete tag. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to delete tag. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -280,4 +278,4 @@ export default function ManageTagsPage() {
       </div>
     </div>
   );
-} 
+}        

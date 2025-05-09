@@ -7,10 +7,9 @@ import { Song } from '@/types/song';
 import LeadsheetDisplay from '@/app/components/LeadsheetDisplay';
 import ControlsPanel from '@/app/components/ControlsPanel';
 import TagBadge from '@/app/components/TagBadge';
-import TranspositionControls, { DisplayMode as ChordDisplayMode } from '@/app/components/TranspositionControls';
+import TranspositionControls from '@/app/components/TranspositionControls';
 import { ChordNote } from '@/utils/chordUtils';
 
-type DisplayMode = 'default' | 'high-contrast' | 'yellow-black' | 'black-white';
 
 interface SongDetailClientProps {
   song: Song;
@@ -396,4 +395,4 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
       )}
     </div>
   );
-} 
+}    

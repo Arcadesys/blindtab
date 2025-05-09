@@ -39,18 +39,18 @@ export async function GET() {
         authenticated: true,
         user
       });
-    } catch (error) {
+    } catch {
       cookieStore.delete('auth_token');
       return NextResponse.json(
         { authenticated: false },
         { status: 401 }
       );
     }
-  } catch (error) {
-    console.error('Auth check error:', error);
+  } catch (err) {
+    console.error('Auth check error:', err);
     return NextResponse.json(
       { error: 'Authentication check failed' },
       { status: 500 }
     );
   }
-}     
+}                              

@@ -2,8 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-import { isAuthenticated } from '@/utils/cookieUtils';
-
 const prisma = new PrismaClient();
 
 

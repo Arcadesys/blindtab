@@ -64,12 +64,9 @@ export default function TranspositionControls({
       const noteArray = preferFlats ? FLAT_NOTES : NOTES;
       const newTargetKey = noteArray[targetIndex] as ChordNote;
       
-      // Only update if the key is different
-      if (newTargetKey !== targetKey) {
-        setTargetKey(newTargetKey);
-      }
+      setTargetKey(newTargetKey);
     }
-  }, [preferFlats, originalKey, semitones]);
+  }, [preferFlats, originalKey, semitones, targetKey]);
   
   // This is triggered when semitones are directly changed (e.g., via +/- buttons)
   const handleSemitonesChange = (newSemitones: number) => {
@@ -230,4 +227,4 @@ export default function TranspositionControls({
       </div>
     </div>
   );
-} 
+}  
