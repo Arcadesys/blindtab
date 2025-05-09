@@ -6,9 +6,11 @@ import { mockTag } from '../../__test-utils__/mocks/tagMocks';
 
 // Mock next/link
 jest.mock('next/link', () => {
-  return ({ children, href }: { children: React.ReactNode; href: string }) => {
+  const MockLink = ({ children, href }: { children: React.ReactNode; href: string }) => {
     return <a href={href}>{children}</a>;
   };
+  MockLink.displayName = 'MockLink';
+  return MockLink;
 });
 
 describe('TagBadge', () => {
@@ -51,4 +53,4 @@ describe('TagBadge', () => {
     rerender(<TagBadge tag={mockTag} size="large" />);
     expect(screen.getByText('Test Tag')).toHaveClass('text-base');
   });
-}); 
+});  

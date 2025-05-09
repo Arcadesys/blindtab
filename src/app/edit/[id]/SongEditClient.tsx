@@ -341,7 +341,7 @@ It's not [G] easy being green [C]`}
             <br />
             2. Square brackets: [G] [C] [D]
             <br />
-            3. Inline: It's not [G] easy being green [C]
+            3. Inline: It&apos;s not [G] easy being green [C]
           </p>
         </div>
 
@@ -389,4 +389,4 @@ It's not [G] easy being green [C]`}
       )}
     </div>
   );
-} 
+}  

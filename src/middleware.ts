@@ -55,7 +55,7 @@ export function middleware(request: NextRequest) {
     try {
       jwt.verify(authToken, JWT_SECRET);
       // Token is valid, allow access
-    } catch (error) {
+    } catch {
       // Token is invalid, redirect to login
       const url = new URL('/login', request.url);
       url.searchParams.set('from', pathname);
@@ -76,4 +76,4 @@ export const config = {
     '/api/tags/manage/:path*',
     '/tags/manage/:path*',
   ],
-};     
+};                    

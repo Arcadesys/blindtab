@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 // Mock next/link
 jest.mock('next/link', () => ({
   __esModule: true,
-  default: function mock({ children, href }: { children: any; href: string }) {
+  default: function mock({ children, href }: { children: React.ReactNode; href: string }) {
     return (
       `<a href="${href}">${children}</a>`
     );
@@ -28,5 +28,5 @@ jest.mock('next-themes', () => ({
     theme: 'light',
     setTheme: jest.fn(),
   }),
-  ThemeProvider: ({ children }: { children: any }) => children,
-})); 
+  ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
+}));  

@@ -7,8 +7,7 @@ import {
   transposeChord, 
   lineToNashville,
   ChordNote,
-  parseChord,
-  ChordPosition
+  parseChord
 } from '@/utils/chordUtils';
 
 // Display mode for the leadsheet
@@ -94,7 +93,7 @@ export default function LeadsheetDisplay({
     const types: ('chord' | 'lyric' | 'empty')[] = [];
 
     // Function to process a line based on transposition settings
-    const processLine = (line: string, index: number) => {
+    const processLine = (line: string) => {
       if (line.trim() === '') {
         processedLines.push('');
         types.push('empty');
@@ -103,7 +102,7 @@ export default function LeadsheetDisplay({
         
         // Apply transposition if parameters are provided
         if (transpositionParams && originalKey) {
-          const { targetKey, semitones, displayMode: chordDisplayMode, preferFlats } = transpositionParams;
+          const { semitones, displayMode: chordDisplayMode, preferFlats } = transpositionParams;
           
           if (chordDisplayMode === 'original') {
             // Keep the original chord line
@@ -472,4 +471,4 @@ export default function LeadsheetDisplay({
       </div>
     </div>
   );
-} 
+}      

@@ -20,7 +20,6 @@ export default function CreateSongPage() {
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch available tags
@@ -185,11 +184,7 @@ export default function CreateSongPage() {
           </div>
         )}
 
-        {successMessage && (
-          <div className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 p-4 rounded-lg mb-6">
-            <p>{successMessage}</p>
-          </div>
-        )}
+
 
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -346,7 +341,7 @@ It's not [G] easy being green [C]`}
               <br />
               2. Square brackets: [G] [C] [D]
               <br />
-              3. Inline: It's not [G] easy being green [C]
+              3. Inline: It&apos;s not [G] easy being green [C]
             </p>
           </div>
 
@@ -365,4 +360,4 @@ It's not [G] easy being green [C]`}
       </div>
     </div>
   );
-} 
+}      

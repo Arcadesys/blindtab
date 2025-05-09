@@ -2,7 +2,6 @@ import React from 'react';
 import { screen, fireEvent } from '@testing-library/react';
 import { render } from '../__test-utils__/test-utils';
 import TranspositionControls from '../components/TranspositionControls';
-import { ChordNote } from '@/utils/chordUtils';
 import userEvent from '@testing-library/user-event';
 
 describe('TranspositionControls', () => {
@@ -142,4 +141,4 @@ describe('TranspositionControls', () => {
       })
     );
   });
-}); 
+});  

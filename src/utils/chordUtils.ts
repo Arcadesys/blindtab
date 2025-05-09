@@ -149,8 +149,6 @@ export function findChords(text: string): ParsedChord[] {
   
   while ((match = CHORD_REGEX.exec(text)) !== null) {
     const fullMatch = match[0];
-    const rootNote = match[1] as ChordNote;
-    const qualityStr = match[2];
     
     const chord = parseChord(fullMatch);
     if (chord) {
@@ -482,4 +480,4 @@ export function findChordsInText(text: string): ChordPosition[] {
   }
   
   return chords;
-} 
+}  

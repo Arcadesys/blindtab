@@ -1,6 +1,6 @@
 module.exports = {
   testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/src/app/__test-utils__/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
@@ -24,4 +24,4 @@ module.exports = {
     '!src/**/*.test.{js,jsx,ts,tsx}',
     '!src/app/__test-utils__/**/*',
   ],
-}; 
+};  

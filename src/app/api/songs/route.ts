@@ -18,7 +18,7 @@ async function getAuthenticatedUser(): Promise<{ isAuthenticated: boolean; userI
     const token = jwt.verify(authToken.value, process.env.JWT_SECRET || '');
     const userId = (token as { userId: string }).userId;
     return { isAuthenticated: true, userId };
-  } catch (error) {
+  } catch {
     return { isAuthenticated: false };
   }
 }
@@ -54,8 +54,8 @@ export async function GET() {
     });
     
     return NextResponse.json(songs);
-  } catch (error) {
-    console.error('Error fetching songs:', error);
+  } catch (err) {
+    console.error('Error fetching songs:', err);
     return NextResponse.json(
       { error: 'Failed to fetch songs' },
       { status: 500 }
@@ -112,11 +112,11 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(song, { status: 201 });
-  } catch (error) {
-    console.error('Error creating song:', error);
+  } catch (err) {
+    console.error('Error creating song:', err);
     return NextResponse.json(
       { error: 'Failed to create song' },
       { status: 500 }
     );
   }
-}     
+}                                        
