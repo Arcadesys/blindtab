@@ -41,7 +41,8 @@ describe('Songs API', () => {
   it('should redirect to public songs if no auth token is present', async () => {
     mockCookieStore.get.mockReturnValue(null);
     
-    const response = await GET();
+    const request = new NextRequest('http://localhost:3000/api/songs');
+    const response = await GET(request);
     
     expect(response.status).toBe(302); // Redirect status
     expect(response.headers.get('Location')).toContain('/api/songs/public');
@@ -54,7 +55,8 @@ describe('Songs API', () => {
       throw new Error('Invalid token');
     });
     
-    const response = await GET();
+    const request = new NextRequest('http://localhost:3000/api/songs');
+    const response = await GET(request);
     
     expect(response.status).toBe(302); // Redirect status
     expect(response.headers.get('Location')).toContain('/api/songs/public');
@@ -85,7 +87,8 @@ describe('Songs API', () => {
     
     mockPrisma.song.findMany.mockResolvedValue(mockSongs);
     
-    const response = await GET();
+    const request = new NextRequest('http://localhost:3000/api/songs');
+    const response = await GET(request);
     const data = await response.json();
     
     expect(response.status).toBe(200);
