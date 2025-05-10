@@ -41,11 +41,8 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
   
   // Initialize audio elements
   useEffect(() => {
-    // We won't try to load any audio files since they don't exist
-    // Instead, we'll just set up console logging for actions
     if (typeof window !== 'undefined') {
-      console.debug('Setting up audio placeholders');
-      transposeSoundRef.current = null;
+      transposeSoundRef.current = new Audio('/sounds/transpose.mp3');
     }
     
     return () => {
@@ -116,8 +113,10 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
     ) {
       setTranspositionParams(params);
       
-      // For now, don't try to play sounds since we don't have the files
-      console.debug('Transpose sound would play here');
+      if (transposeSoundRef.current) {
+        transposeSoundRef.current.currentTime = 0;
+        transposeSoundRef.current.play().catch((e: Error) => console.error('Error playing sound:', e));
+      }
     }
   };
 
@@ -395,4 +394,4 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
       )}
     </div>
   );
-}    
+}                        

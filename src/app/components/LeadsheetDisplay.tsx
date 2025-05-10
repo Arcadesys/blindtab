@@ -65,11 +65,8 @@ export default function LeadsheetDisplay({
   
   // Initialize audio elements
   useEffect(() => {
-    // We won't try to load any audio files since they don't exist
-    // Instead, we'll just set up console logging for actions
     if (typeof window !== 'undefined') {
-      console.debug('Setting up audio placeholders');
-      navigateSoundRef.current = null;
+      navigateSoundRef.current = new Audio('/sounds/navigate.mp3');
     }
     
     return () => {
@@ -202,7 +199,7 @@ export default function LeadsheetDisplay({
       
       autoScrollTimerRef.current = setTimeout(() => {
         if (activeLineIndex < lines.length - 1) {
-          setActiveLineIndex(prev => prev + stepSize);
+          setActiveLineIndex((prev: number) => prev + stepSize);
         } else {
           // Stop auto-scroll at the end
           if (autoScrollTimerRef.current) {
@@ -259,7 +256,7 @@ export default function LeadsheetDisplay({
         activeLineIndex + 1 < lines.length &&
         lineTypes[activeLineIndex + 1] === 'lyric'
       ) {
-        setActiveLineIndex(prevIndex => prevIndex + 2);
+        setActiveLineIndex((prevIndex: number) => prevIndex + 2);
       } 
       // If current line is a lyric and previous line was a chord, jump to the next chord line 
       else if (
@@ -276,16 +273,18 @@ export default function LeadsheetDisplay({
           setActiveLineIndex(nextIndex);
         } else {
           // If no more chord lines, just go to the next line
-          setActiveLineIndex(prevIndex => prevIndex + stepSize);
+          setActiveLineIndex((prevIndex: number) => prevIndex + stepSize);
         }
       } 
       // Otherwise, move stepSize lines
       else {
-        setActiveLineIndex(prevIndex => prevIndex + stepSize);
+        setActiveLineIndex((prevIndex: number) => prevIndex + stepSize);
       }
       
-      // Just log instead of trying to play sound
-      console.debug('Navigation sound would play here');
+      if (navigateSoundRef.current) {
+        navigateSoundRef.current.currentTime = 0;
+        navigateSoundRef.current.play().catch((e: Error) => console.error('Error playing sound:', e));
+      }
     }
   }, [activeLineIndex, lines.length, lineTypes, stepSize]);
 
@@ -310,16 +309,18 @@ export default function LeadsheetDisplay({
           setActiveLineIndex(prevIndex);
         } else {
           // If no previous chord lines, just go back stepSize
-          setActiveLineIndex(prevIndex => Math.max(prevIndex - stepSize, 0));
+          setActiveLineIndex((prevIndex: number) => Math.max(prevIndex - stepSize, 0));
         }
       }
       // Otherwise, move back stepSize lines
       else {
-        setActiveLineIndex(prevIndex => Math.max(prevIndex - stepSize, 0));
+        setActiveLineIndex((prevIndex: number) => Math.max(prevIndex - stepSize, 0));
       }
       
-      // Just log instead of trying to play sound
-      console.debug('Navigation sound would play here');
+      if (navigateSoundRef.current) {
+        navigateSoundRef.current.currentTime = 0;
+        navigateSoundRef.current.play().catch((e: Error) => console.error('Error playing sound:', e));
+      }
     }
   }, [activeLineIndex, lineTypes, stepSize]);
 
@@ -394,10 +395,10 @@ export default function LeadsheetDisplay({
 
   // Display mode is now handled globally; use theme-aware styles
   const styles = {
-    container: 'bg-white text-gray-900 dark:bg-[#121a29] dark:text-white',
-    chord: 'font-mono text-blue-600 dark:text-blue-400 py-1 leadsheet-font',
-    lyric: 'font-mono text-gray-900 dark:text-white leadsheet-font',
-    highlight: 'bg-blue-100 dark:bg-blue-900 bg-opacity-30',
+    container: 'bg-white text-gray-900 dark:bg-[#121a29] dark:text-white high-contrast:bg-black high-contrast:text-white',
+    chord: 'font-mono text-blue-600 dark:text-blue-400 high-contrast:text-yellow-400 py-1 leadsheet-font',
+    lyric: 'font-mono text-gray-900 dark:text-white high-contrast:text-white leadsheet-font',
+    highlight: 'bg-blue-100 dark:bg-blue-900 high-contrast:bg-yellow-900 bg-opacity-30',
   };
 
   return (
@@ -411,9 +412,9 @@ export default function LeadsheetDisplay({
       }}
     >
       {showTapHint && (
-        <div className="fixed top-4 right-4 bg-black bg-opacity-80 text-white px-3 py-2 rounded-lg z-10">
-          <p>Tap tempo detected</p>
-          <p>{Math.round(60000 / (autoScrollIntervalRef.current / stepSize))} BPM</p>
+        <div className="fixed top-4 right-4 bg-black bg-opacity-80 text-white px-3 py-2 rounded-lg z-10 shadow-lg">
+          <p className="font-medium">Tap tempo detected</p>
+          <p className="text-lg">{Math.round(60000 / (autoScrollIntervalRef.current / stepSize))} BPM</p>
         </div>
       )}
 
@@ -471,4 +472,4 @@ export default function LeadsheetDisplay({
       </div>
     </div>
   );
-}      
+}                                                                                                                                    
