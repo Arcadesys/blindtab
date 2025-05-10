@@ -9,6 +9,7 @@ import {
   ChordNote,
   parseChord
 } from '@/utils/chordUtils';
+import { useSounds } from '../context/SoundContext';
 
 // Display mode for the leadsheet
 // DisplayMode is now handled globally, not per leadsheet
@@ -44,6 +45,7 @@ export default function LeadsheetDisplay({
   originalKey,
   transpositionParams,
 }: LeadsheetDisplayProps) {
+  const { soundsEnabled } = useSounds();
   // State for content processing
   const [lines, setLines] = useState<string[]>([]);
   const [lineTypes, setLineTypes] = useState<('chord' | 'lyric' | 'empty')[]>([]);
@@ -281,7 +283,7 @@ export default function LeadsheetDisplay({
         setActiveLineIndex((prevIndex: number) => prevIndex + stepSize);
       }
       
-      if (navigateSoundRef.current) {
+      if (navigateSoundRef.current && soundsEnabled) {
         navigateSoundRef.current.currentTime = 0;
         navigateSoundRef.current.play().catch((e: Error) => console.error('Error playing sound:', e));
       }
@@ -317,7 +319,7 @@ export default function LeadsheetDisplay({
         setActiveLineIndex((prevIndex: number) => Math.max(prevIndex - stepSize, 0));
       }
       
-      if (navigateSoundRef.current) {
+      if (navigateSoundRef.current && soundsEnabled) {
         navigateSoundRef.current.currentTime = 0;
         navigateSoundRef.current.play().catch((e: Error) => console.error('Error playing sound:', e));
       }
@@ -412,9 +414,9 @@ export default function LeadsheetDisplay({
       }}
     >
       {showTapHint && (
-        <div className="fixed top-4 right-4 bg-black bg-opacity-80 text-white px-3 py-2 rounded-lg z-10 shadow-lg">
+        <div className="fixed top-4 right-4 bg-black bg-opacity-80 text-white px-3 py-2 rounded-lg z-10 shadow-lg border-2 border-blue-400 dark:border-blue-500 high-contrast:border-yellow-400">
           <p className="font-medium">Tap tempo detected</p>
-          <p className="text-lg">{Math.round(60000 / (autoScrollIntervalRef.current / stepSize))} BPM</p>
+          <p className="text-lg font-bold">{Math.round(60000 / (autoScrollIntervalRef.current / stepSize))} BPM</p>
         </div>
       )}
 
@@ -472,4 +474,4 @@ export default function LeadsheetDisplay({
       </div>
     </div>
   );
-}                                                                                                                                    
+}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
