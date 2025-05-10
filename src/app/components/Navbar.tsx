@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useAuth } from '../context/AuthContext';
+import SoundToggle from './SoundToggle';
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
@@ -200,6 +201,13 @@ export default function Navbar() {
                   </div>
                 </div>
                 
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Sound Effects</label>
+                  <div className="flex items-center">
+                    <SoundToggle />
+                  </div>
+                </div>
+                
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                   Keyboard shortcuts: D (toggle dark mode), + (increase font), - (decrease font)
                 </div>
@@ -235,4 +243,4 @@ export default function Navbar() {
       </div>
     </nav>
   );
-} 
+}    

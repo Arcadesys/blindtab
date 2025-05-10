@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
+import { useSounds } from '@/app/context/SoundContext';
 import { Song } from '@/types/song';
 import LeadsheetDisplay from '@/app/components/LeadsheetDisplay';
 import ControlsPanel from '@/app/components/ControlsPanel';
@@ -17,6 +18,7 @@ interface SongDetailClientProps {
 
 export default function SongDetailClient({ song }: SongDetailClientProps) {
   const { isAuthenticated, loading } = useAuth();
+  const { soundsEnabled } = useSounds();
   const [fontSize, setFontSize] = useState(36);
   // const [displayMode, setDisplayMode] = useState<DisplayMode>('default');
   // const [showDisplayOptions, setShowDisplayOptions] = useState(false);
@@ -113,7 +115,7 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
     ) {
       setTranspositionParams(params);
       
-      if (transposeSoundRef.current) {
+      if (transposeSoundRef.current && soundsEnabled) {
         transposeSoundRef.current.currentTime = 0;
         transposeSoundRef.current.play().catch((e: Error) => console.error('Error playing sound:', e));
       }
@@ -394,4 +396,4 @@ export default function SongDetailClient({ song }: SongDetailClientProps) {
       )}
     </div>
   );
-}                        
+}                                                                                                                                                
